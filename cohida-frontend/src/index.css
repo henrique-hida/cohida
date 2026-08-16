@@ -1,0 +1,141 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+@import "@fontsource-variable/geist";
+
+@custom-variant dark (&:is(.dark *));
+
+:root {
+  --background: #f2f2f2;
+  --foreground: #0d0d0d;
+  --card: #ffffff;
+  --card-foreground: #0d0d0d;
+  --popover: #ffffff;
+  --popover-foreground: #0d0d0d;
+  --primary: #61e786;
+  --primary-foreground: #0d0d0d;
+  --secondary: #e6e6e6;
+  --secondary-foreground: #0d0d0d;
+  --muted: #e6e6e6;
+  --muted-foreground: #4d4d4d;
+  --accent: #61e786;
+  --accent-foreground: #0d0d0d;
+  --destructive: #d93636;
+  --border: #e6e6e6;
+  --input: #e6e6e6;
+  --ring: #61e786;
+  --chart-1: #61e786;
+  --chart-2: #0d0d0d;
+  --chart-3: #4d4d4d;
+  --chart-4: #8a8a8a;
+  --chart-5: #b3b3b3;
+  --radius: 0.625rem;
+  --sidebar: #ffffff;
+  --sidebar-foreground: #0d0d0d;
+  --sidebar-primary: #61e786;
+  --sidebar-primary-foreground: #0d0d0d;
+  --sidebar-accent: #e6e6e6;
+  --sidebar-accent-foreground: #0d0d0d;
+  --sidebar-border: #e6e6e6;
+  --sidebar-ring: #61e786;
+
+  /* App-level aliases. Prefer shadcn tokens in components. */
+  --bg: #f2f2f2;
+  --bg-light: #ffffff;
+  --bg-dark: #e6e6e6;
+  --text: #0d0d0d;
+  --text-h: #0d0d0d;
+  --text-muted: #4d4d4d;
+  --action: #61e786;
+  --action-hover: #4cd975;
+  --action-text: #0d0d0d;
+  --accent-bg: #e6e6e6;
+  --accent-border: #61e786;
+  --shadow: rgba(13, 13, 13, 0.12) 0 10px 15px -3px,
+    rgba(13, 13, 13, 0.06) 0 4px 6px -2px;
+}
+
+.dark {
+  --background: #0d0d0d;
+  --foreground: #f2f2f2;
+  --card: #1a1a1a;
+  --card-foreground: #f2f2f2;
+  --popover: #1a1a1a;
+  --popover-foreground: #f2f2f2;
+  --primary: #61e786;
+  --primary-foreground: #0d0d0d;
+  --secondary: #000000;
+  --secondary-foreground: #f2f2f2;
+  --muted: #000000;
+  --muted-foreground: #b3b3b3;
+  --accent: #61e786;
+  --accent-foreground: #0d0d0d;
+  --destructive: #ff7a7a;
+  --border: #000000;
+  --input: #000000;
+  --ring: #61e786;
+  --chart-1: #61e786;
+  --chart-2: #f2f2f2;
+  --chart-3: #b3b3b3;
+  --chart-4: #7a7a7a;
+  --chart-5: #4d4d4d;
+  --sidebar: #1a1a1a;
+  --sidebar-foreground: #f2f2f2;
+  --sidebar-primary: #61e786;
+  --sidebar-primary-foreground: #0d0d0d;
+  --sidebar-accent: #000000;
+  --sidebar-accent-foreground: #f2f2f2;
+  --sidebar-border: #000000;
+  --sidebar-ring: #61e786;
+
+  --bg: #0d0d0d;
+  --bg-light: #1a1a1a;
+  --bg-dark: #000000;
+  --text: #f2f2f2;
+  --text-h: #f2f2f2;
+  --text-muted: #b3b3b3;
+  --action: #61e786;
+  --action-hover: #7ced98;
+  --action-text: #0d0d0d;
+  --accent-bg: #000000;
+  --accent-border: #61e786;
+  --shadow: rgba(0, 0, 0, 0.35) 0 10px 15px -3px,
+    rgba(0, 0, 0, 0.2) 0 4px 6px -2px;
+}
+
+@theme inline {
+  --font-sans: "Geist Variable", sans-serif;
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+    margin: 0;
+  }
+}
