@@ -116,7 +116,7 @@ export function AdminProductDetailPage() {
               <CardTitle>Estoque</CardTitle>
               <CardDescription>Visão atual de disponibilidade.</CardDescription>
             </CardHeader>
-            <CardContent className="grid grid-cols-2 gap-3">
+            <CardContent className="grid grid-cols-2 gap-3 sm:grid-cols-3">
               <div className="rounded-lg bg-success p-4 text-success-foreground">
                 <p className="text-xs">Disponível</p>
                 <p className="mt-1 text-2xl font-semibold">
@@ -127,6 +127,14 @@ export function AdminProductDetailPage() {
                 <p className="text-xs">Reservado</p>
                 <p className="mt-1 text-2xl font-semibold">
                   {product.stock.reserved} un.
+                </p>
+              </div>
+              <div
+                className={`rounded-lg p-4 ${product.stock.available < product.stock.minimum ? "bg-warning text-warning-foreground" : "bg-muted text-foreground"}`}
+              >
+                <p className="text-xs">Estoque mínimo</p>
+                <p className="mt-1 text-2xl font-semibold">
+                  {product.stock.minimum} un.
                 </p>
               </div>
             </CardContent>

@@ -148,7 +148,9 @@ export function AdminDashboardPage() {
                 key={product.name}
               >
                 <span>{product.name}</span>
-                <span className="font-medium">{product.quantity} un.</span>
+                <span className="font-medium">
+                  {product.quantity} / mín. {product.minimum} un.
+                </span>
               </div>
             ))}
             <Button

@@ -1,27 +1,34 @@
 import { useState } from "react";
 import { Link } from "react-router";
 import {
-  CircleUserRound,
+  BookOpen,
   Dumbbell,
   Footprints,
-  Menu,
   Mountain,
-  ShoppingBag,
+  Medal,
+  RotateCcw,
+  ShieldCheck,
+  Sparkles,
+  Star,
   Trophy,
+  Truck,
 } from "lucide-react";
 
 import heroImage from "@/assets/CoHidaHero.png";
-import {
-  AppLogo,
-  PageContainer,
-  ProductCard,
-  ThemeToggle,
-} from "@/components/shared";
+import { PageContainer, ProductCard, StoreHeader } from "@/components/shared";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { categories, products } from "@/mocks";
+import {
+  categories,
+  homeBestSellerProductIds,
+  homeGoalCollections,
+  homeGuide,
+  homeTestimonials,
+  homeTrustMetrics,
+  products,
+} from "@/mocks";
 
-const categoryIcons = [Trophy, Footprints, Dumbbell, Mountain];
+const categoryIcons = [Trophy, Footprints, Dumbbell, Mountain, Medal];
 
 export function HomePage() {
   const [cartItemCount, setCartItemCount] = useState(0);
@@ -32,64 +39,7 @@ export function HomePage() {
 
   return (
     <div className="min-h-svh bg-background">
-      <header className="border-b border-border bg-background/90 backdrop-blur">
-        <PageContainer className="flex h-18 items-center justify-between gap-4">
-          <Link aria-label="coHida — início" className="shrink-0" to="/">
-            <AppLogo className="dark:hidden" variant="dark" />
-            <AppLogo className="hidden dark:block" variant="light" />
-          </Link>
-
-          <nav
-            aria-label="Navegação principal"
-            className="hidden items-center gap-6 text-sm font-medium md:flex"
-          >
-            <a
-              className="transition-colors hover:text-primary"
-              href="#categorias"
-            >
-              Categorias
-            </a>
-            <a
-              className="transition-colors hover:text-primary"
-              href="#destaques"
-            >
-              Destaques
-            </a>
-            <a className="transition-colors hover:text-primary" href="#sobre">
-              Sobre a coHida
-            </a>
-          </nav>
-
-          <div className="flex items-center gap-2">
-            <ThemeToggle />
-            <Button render={<Link to="/admin/login" />} variant="outline">
-              <CircleUserRound aria-hidden="true" />
-              <span className="hidden sm:inline">Perfil</span>
-            </Button>
-            <Button
-              aria-label={`Carrinho com ${cartItemCount} itens`}
-              className="relative"
-              variant="default"
-            >
-              <ShoppingBag aria-hidden="true" />
-              <span className="hidden sm:inline">Carrinho</span>
-              {cartItemCount > 0 ? (
-                <span className="absolute -right-2 -top-2 grid size-5 place-items-center rounded-full bg-foreground text-xs text-background">
-                  {cartItemCount}
-                </span>
-              ) : null}
-            </Button>
-            <Button
-              aria-label="Abrir menu"
-              className="md:hidden"
-              size="icon"
-              variant="outline"
-            >
-              <Menu aria-hidden="true" />
-            </Button>
-          </div>
-        </PageContainer>
-      </header>
+      <StoreHeader cartItemCount={cartItemCount} />
 
       <main>
         <section className="relative isolate overflow-hidden bg-[#0d0d0d] text-[#f2f2f2]">
@@ -112,10 +62,11 @@ export function HomePage() {
                 e ir além.
               </p>
               <div className="mt-8 flex flex-wrap gap-3">
-                <Button render={<a href="#destaques" />} size="lg">
+                <Button render={<Link to="/produtos" />} size="lg">
                   Ver destaques
                 </Button>
                 <Button
+                  className="border-white/35 bg-white/10 text-white hover:bg-white/20 hover:text-white"
                   render={<a href="#categorias" />}
                   size="lg"
                   variant="outline"
@@ -124,6 +75,43 @@ export function HomePage() {
                 </Button>
               </div>
             </div>
+          </PageContainer>
+        </section>
+
+        <section className="border-b border-border bg-muted/45">
+          <PageContainer className="grid gap-5 py-6 sm:grid-cols-3 sm:gap-8">
+            {[
+              {
+                icon: Truck,
+                text: "Entrega para todo o Brasil",
+                title: "Pronto para chegar",
+              },
+              {
+                icon: RotateCcw,
+                text: "Solicitação simples pela sua conta",
+                title: "Troca descomplicada",
+              },
+              {
+                icon: ShieldCheck,
+                text: "Pagamento e dados protegidos",
+                title: "Compra segura",
+              },
+            ].map((benefit) => {
+              const Icon = benefit.icon;
+              return (
+                <div className="flex items-center gap-3" key={benefit.title}>
+                  <span className="grid size-9 shrink-0 place-items-center rounded-lg bg-background text-primary ring-1 ring-border">
+                    <Icon className="size-4" />
+                  </span>
+                  <div>
+                    <p className="text-sm font-medium">{benefit.title}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {benefit.text}
+                    </p>
+                  </div>
+                </div>
+              );
+            })}
           </PageContainer>
         </section>
 
@@ -139,15 +127,15 @@ export function HomePage() {
                 </h2>
               </div>
             </div>
-            <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
               {categories.map((category, index) => {
                 const Icon = categoryIcons[index];
 
                 return (
-                  <a
+                  <Link
                     className="group rounded-xl border border-border bg-card p-5 transition-all hover:-translate-y-0.5 hover:border-primary hover:shadow-lg"
-                    href={`#${category.slug}`}
                     key={category.id}
+                    to={`/produtos?categoria=${category.id}`}
                   >
                     <span className="grid size-11 place-items-center rounded-lg bg-primary text-primary-foreground">
                       <Icon aria-hidden="true" className="size-5" />
@@ -156,7 +144,7 @@ export function HomePage() {
                     <p className="mt-2 text-sm leading-6 text-muted-foreground">
                       {category.description}
                     </p>
-                  </a>
+                  </Link>
                 );
               })}
             </div>
@@ -172,7 +160,7 @@ export function HomePage() {
                   Produtos em destaque
                 </h2>
               </div>
-              <Button render={<a href="#catalogo" />} variant="outline">
+              <Button render={<Link to="/produtos" />} variant="outline">
                 Ver catálogo
               </Button>
             </div>
@@ -188,6 +176,168 @@ export function HomePage() {
                   onAddToCart={addToCart}
                   product={product}
                 />
+              ))}
+            </div>
+          </section>
+
+          <section className="mt-20">
+            <div className="flex flex-wrap items-end justify-between gap-6">
+              <div>
+                <p className="text-sm font-medium text-primary">
+                  Em alta esta semana
+                </p>
+                <h2 className="mt-2 text-3xl font-semibold tracking-tight">
+                  Os mais escolhidos pela comunidade
+                </h2>
+              </div>
+              <Button render={<Link to="/produtos" />} variant="outline">
+                Ver todos
+              </Button>
+            </div>
+            <div className="mt-8 grid gap-4 md:grid-cols-3">
+              {homeBestSellerProductIds.map((productId, index) => {
+                const product = products.find((item) => item.id === productId);
+                return product ? (
+                  <Link
+                    className="group flex gap-4 rounded-xl border border-border bg-card p-4 transition-all hover:-translate-y-0.5 hover:border-primary hover:shadow-lg"
+                    key={product.id}
+                    to={`/produtos/${product.slug}`}
+                  >
+                    <img
+                      alt={product.images[0]?.alt}
+                      className="size-20 rounded-lg object-cover"
+                      src={product.images[0]?.src}
+                    />
+                    <div className="min-w-0">
+                      <p className="text-xs font-medium text-primary">
+                        #{index + 1} em alta
+                      </p>
+                      <h3 className="mt-1 font-semibold">{product.name}</h3>
+                      <p className="mt-2 text-sm font-medium">
+                        R${" "}
+                        {(product.priceCents / 100).toLocaleString("pt-BR", {
+                          minimumFractionDigits: 2,
+                        })}
+                      </p>
+                    </div>
+                  </Link>
+                ) : null;
+              })}
+            </div>
+          </section>
+
+          <section className="mt-20">
+            <div className="max-w-2xl">
+              <p className="text-sm font-medium text-primary">
+                Escolha pelo objetivo
+              </p>
+              <h2 className="mt-2 text-3xl font-semibold tracking-tight">
+                Um ponto de partida para cada desafio
+              </h2>
+            </div>
+            <div className="mt-8 grid gap-4 lg:grid-cols-3">
+              {homeGoalCollections.map((collection) => {
+                const firstProduct = products.find(
+                  (product) => product.id === collection.productIds[0],
+                );
+                return (
+                  <Link
+                    className="group relative min-h-64 overflow-hidden rounded-2xl bg-foreground p-6 text-background"
+                    key={collection.title}
+                    to={`/produtos/${firstProduct?.slug ?? ""}`}
+                  >
+                    <img
+                      alt=""
+                      className="absolute inset-0 size-full object-cover opacity-35 transition-transform duration-500 group-hover:scale-105"
+                      src={firstProduct?.images[0]?.src}
+                    />
+                    <div className="absolute inset-0 bg-linear-to-t from-black/90 via-black/40 to-transparent" />
+                    <div className="relative flex h-full flex-col justify-end">
+                      <h3 className="text-xl font-semibold">
+                        {collection.title}
+                      </h3>
+                      <p className="mt-2 text-sm leading-6 text-white/75">
+                        {collection.description}
+                      </p>
+                      <span className="mt-5 text-sm font-medium text-primary">
+                        Ver seleção
+                      </span>
+                    </div>
+                  </Link>
+                );
+              })}
+            </div>
+          </section>
+
+          <section className="mt-20 grid gap-6 lg:grid-cols-[minmax(0,1.15fr)_minmax(18rem,.85fr)]">
+            <article className="rounded-2xl border border-border bg-card p-6 sm:p-8">
+              <div className="flex size-11 items-center justify-center rounded-xl bg-primary text-primary-foreground">
+                <BookOpen className="size-5" />
+              </div>
+              <p className="mt-6 text-sm font-medium text-primary">
+                Conteúdo para evoluir
+              </p>
+              <h2 className="mt-2 text-2xl font-semibold tracking-tight">
+                {homeGuide.title}
+              </h2>
+              <p className="mt-3 max-w-2xl leading-7 text-muted-foreground">
+                {homeGuide.description}
+              </p>
+              <Button
+                className="mt-6"
+                render={<Link to="/produtos?categoria=running" />}
+                variant="outline"
+              >
+                Ler guia e ver opções
+              </Button>
+            </article>
+            <article className="rounded-2xl bg-primary p-6 text-primary-foreground sm:p-8">
+              <Sparkles className="size-6" />
+              <h2 className="mt-6 text-2xl font-semibold tracking-tight">
+                Não sabe por onde começar?
+              </h2>
+              <p className="mt-3 leading-7 text-primary-foreground/80">
+                Conte seu objetivo ao assistente coHida e receba uma seleção
+                para sua rotina.
+              </p>
+              <p className="mt-6 text-sm font-medium">
+                Abra o assistente no canto da tela.
+              </p>
+            </article>
+          </section>
+
+          <section className="mt-20">
+            <div className="grid gap-4 rounded-2xl bg-muted p-6 sm:grid-cols-3 sm:p-8">
+              {homeTrustMetrics.map((metric) => (
+                <div key={metric.label}>
+                  <p className="text-2xl font-semibold tracking-tight">
+                    {metric.value}
+                  </p>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    {metric.label}
+                  </p>
+                </div>
+              ))}
+            </div>
+            <div className="mt-10 grid gap-4 lg:grid-cols-3">
+              {homeTestimonials.map((testimonial) => (
+                <article
+                  className="rounded-xl border border-border bg-card p-5"
+                  key={testimonial.name}
+                >
+                  <div className="flex gap-1 text-primary">
+                    {Array.from({ length: 5 }, (_, index) => (
+                      <Star className="size-3 fill-current" key={index} />
+                    ))}
+                  </div>
+                  <blockquote className="mt-4 text-sm leading-6">
+                    “{testimonial.quote}”
+                  </blockquote>
+                  <p className="mt-5 text-sm font-medium">{testimonial.name}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {testimonial.sport}
+                  </p>
+                </article>
               ))}
             </div>
           </section>

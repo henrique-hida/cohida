@@ -25,4 +25,10 @@ export const categories: Category[] = [
     slug: "outdoor",
     description: "Acessórios para aventura, trilha e exploração.",
   },
+  {
+    id: "martial-arts",
+    name: "Artes marciais",
+    slug: "artes-marciais",
+    description: "Judogis, faixas e acessórios para evoluir no tatame.",
+  },
 ];

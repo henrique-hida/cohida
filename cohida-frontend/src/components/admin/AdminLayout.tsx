@@ -71,7 +71,7 @@ export function AdminLayout({ children }: AdminLayoutProps) {
 
   return (
     <div className="min-h-svh bg-background lg:grid lg:grid-cols-[15rem_1fr]">
-      <aside className="border-b border-border bg-card lg:min-h-svh lg:border-r lg:border-b-0">
+      <aside className="flex flex-col border-b border-border bg-card lg:min-h-svh lg:border-r lg:border-b-0">
         <div className="flex h-16 items-center justify-between px-5 lg:h-20">
           <Link aria-label="coHida — início" to="/">
             <AppLogo className="dark:hidden" variant="dark" />
@@ -120,6 +120,16 @@ export function AdminLayout({ children }: AdminLayoutProps) {
             </NavLink>
           ))}
         </nav>
+        <div className="px-3 pb-3 lg:mt-auto lg:pb-5">
+          <Button
+            className="w-full justify-start"
+            render={<Link to="/" />}
+            variant="outline"
+          >
+            <ChevronLeft aria-hidden="true" />
+            Voltar para a loja
+          </Button>
+        </div>
       </aside>
 
       <div className="min-w-0">

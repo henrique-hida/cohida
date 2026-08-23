@@ -56,14 +56,21 @@ export const adminRecentOrders = [
 ];
 
 export const adminLowStockProducts = [
-  { name: "Bola de Futebol Pro X", quantity: 1 },
-  { name: "Kit Elástico Resistance", quantity: 2 },
-  { name: "Munhequeira Training", quantity: 3 },
+  { minimum: 5, name: "Bola de Futebol Pro X", quantity: 1 },
+  { minimum: 5, name: "Tênis Run Flow", quantity: 4 },
+  { minimum: 4, name: "Kit Elástico Resistance", quantity: 1 },
 ];
 
 export const adminProductFormOptions = {
   brands: ["Nike", "Adidas", "Puma", "Kipsta", "Vollo"],
-  categories: ["Futebol", "Corrida", "Treino e academia", "Basquete", "Vôlei"],
+  categories: [
+    "Futebol",
+    "Corrida",
+    "Treino e academia",
+    "Artes marciais",
+    "Basquete",
+    "Vôlei",
+  ],
   pricingGroups: [
     { label: "Performance", margin: "40%" },
     { label: "Essentials", margin: "32%" },
@@ -84,7 +91,7 @@ export interface AdminProduct {
   pricingGroup: string;
   salePrice: string;
   status: "ATIVO" | "INATIVO";
-  stock: { available: number; reserved: number };
+  stock: { available: number; minimum: number; reserved: number };
   attributes: { color: string; material: string; model: string; size: string };
 }
 
@@ -109,7 +116,7 @@ export const adminProducts: AdminProduct[] = [
     pricingGroup: "Performance",
     salePrice: "R$ 199,90",
     status: "ATIVO",
-    stock: { available: 18, reserved: 2 },
+    stock: { available: 1, minimum: 5, reserved: 2 },
   },
   {
     attributes: {
@@ -131,7 +138,7 @@ export const adminProducts: AdminProduct[] = [
     pricingGroup: "Performance",
     salePrice: "R$ 459,90",
     status: "ATIVO",
-    stock: { available: 4, reserved: 1 },
+    stock: { available: 4, minimum: 5, reserved: 1 },
   },
   {
     attributes: {
@@ -153,7 +160,7 @@ export const adminProducts: AdminProduct[] = [
     pricingGroup: "Acessórios",
     salePrice: "R$ 119,90",
     status: "ATIVO",
-    stock: { available: 1, reserved: 1 },
+    stock: { available: 1, minimum: 4, reserved: 1 },
   },
 ];
 
@@ -600,14 +607,35 @@ export const adminResourceContent: Record<
   },
   estoque: {
     action: "Registrar entrada",
-    columns: ["Produto", "Disponível", "Reservado", "Fornecedor", "Alerta"],
+    columns: [
+      "Produto",
+      "Disponível",
+      "Mínimo",
+      "Reservado",
+      "Fornecedor",
+      "Alerta",
+    ],
     description:
       "Acompanhe entradas, reservas, níveis disponíveis e alertas de reposição.",
     heading: "Estoque",
     rows: [
-      ["Bola de Futebol Pro X", "18 un.", "2 un.", "Sport Supply", "Normal"],
-      ["Kit Elástico Resistance", "1 un.", "1 un.", "Move Brasil", "Baixo"],
-      ["Munhequeira Training", "2 un.", "0 un.", "Fit Pro", "Baixo"],
+      [
+        "Bola de Futebol Pro X",
+        "1 un.",
+        "5 un.",
+        "2 un.",
+        "Sport Supply",
+        "Baixo",
+      ],
+      ["Tênis Run Flow", "4 un.", "5 un.", "1 un.", "Move Brasil", "Baixo"],
+      [
+        "Kit Elástico Resistance",
+        "1 un.",
+        "4 un.",
+        "1 un.",
+        "Fit Pro",
+        "Baixo",
+      ],
     ],
   },
   pedidos: {

@@ -30,6 +30,7 @@ export function ProductForm({ product }: ProductFormProps) {
     event.preventDefault();
     const formData = new FormData(event.currentTarget);
     const categories = formData.getAll("categories");
+    const barcode = String(formData.get("barcode") ?? "").replace(/\D/g, "");
     const dimensions = ["height", "width", "depth", "weight"];
     const hasInvalidDimension = dimensions.some(
       (dimension) => Number(formData.get(dimension)) < 0,
@@ -39,9 +40,20 @@ export function ProductForm({ product }: ProductFormProps) {
       setSaved(false);
       return;
     }
-    if (hasInvalidDimension || Number(formData.get("cost")) <= 0) {
+    if (barcode.length < 8 || barcode.length > 14) {
+      setError("Informe um código de barras válido, com 8 a 14 dígitos.");
+      setSaved(false);
+      return;
+    }
+    const minimumStock = Number(formData.get("minimumStock"));
+    if (
+      hasInvalidDimension ||
+      Number(formData.get("cost")) <= 0 ||
+      !Number.isInteger(minimumStock) ||
+      minimumStock < 0
+    ) {
       setError(
-        "Dimensões não podem ser negativas e o custo deve ser maior que zero.",
+        "Dimensões e estoque mínimo não podem ser negativos; o custo deve ser maior que zero.",
       );
       setSaved(false);
       return;
@@ -103,6 +115,20 @@ export function ProductForm({ product }: ProductFormProps) {
                 <option key={brand}>{brand}</option>
               ))}
             </select>
+          </label>
+          <label className="space-y-2">
+            <span className="text-sm font-medium">Código de barras</span>
+            <input
+              className={inputClassName}
+              defaultValue={product?.barcode}
+              inputMode="numeric"
+              name="barcode"
+              placeholder="7890000000000"
+              required
+            />
+            <span className="block text-xs text-muted-foreground">
+              Entre 8 e 14 dígitos.
+            </span>
           </label>
           <label className="space-y-2 md:col-span-2">
             <span className="text-sm font-medium">Descrição</span>
@@ -292,6 +318,21 @@ export function ProductForm({ product }: ProductFormProps) {
               {product?.salePrice ?? "Calculado ao salvar"}
             </div>
           </div>
+          <label className="space-y-2">
+            <span className="text-sm font-medium">Estoque mínimo</span>
+            <input
+              className={inputClassName}
+              defaultValue={product?.stock.minimum}
+              min="0"
+              name="minimumStock"
+              placeholder="Ex.: 5"
+              required
+              type="number"
+            />
+            <span className="block text-xs text-muted-foreground">
+              Gera alerta quando o disponível ficar abaixo deste valor.
+            </span>
+          </label>
           <label className="flex items-center gap-3 rounded-lg border border-input px-3 py-3 text-sm md:col-span-2 lg:col-span-3">
             <input
               className="size-4 accent-primary"

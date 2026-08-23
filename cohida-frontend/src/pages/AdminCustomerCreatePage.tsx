@@ -19,29 +19,41 @@ import {
 } from "@/components/ui/card";
 import { adminCustomerFormOptions } from "@/mocks";
 
-export function AdminCustomerCreatePage() {
+interface CustomerFormValues {
+  email: string;
+  id: string;
+  name: string;
+  phone: string;
+}
+
+export function AdminCustomerFormPage({
+  customer,
+}: {
+  customer?: CustomerFormValues;
+}) {
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState("");
+  const isEditing = Boolean(customer);
 
   function submitForm(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const formData = new FormData(event.currentTarget);
-    const password = String(formData.get("password"));
-    const confirmation = String(formData.get("passwordConfirmation"));
+    const password = String(formData.get("password") ?? "");
+    const confirmation = String(formData.get("passwordConfirmation") ?? "");
     const passwordIsValid =
       password.length >= 8 &&
       /[A-Z]/.test(password) &&
       /[a-z]/.test(password) &&
       /[^A-Za-z0-9]/.test(password);
 
-    if (!passwordIsValid) {
+    if (!isEditing && !passwordIsValid) {
       setError(
         "A senha deve ter 8 caracteres, maiúscula, minúscula e símbolo.",
       );
       setSaved(false);
       return;
     }
-    if (password !== confirmation) {
+    if (!isEditing && password !== confirmation) {
       setError("A confirmação de senha não corresponde à senha informada.");
       setSaved(false);
       return;
@@ -57,17 +69,21 @@ export function AdminCustomerCreatePage() {
         Clientes
       </Button>
       <div className="mt-4">
-        <h1 className="text-3xl font-semibold tracking-tight">Novo cliente</h1>
+        <h1 className="text-3xl font-semibold tracking-tight">
+          {isEditing ? "Editar cliente" : "Novo cliente"}
+        </h1>
         <p className="mt-2 text-muted-foreground">
-          Cadastre os dados de contato e os endereços obrigatórios do cliente.
+          {isEditing
+            ? `Atualize os dados de ${customer?.name}.`
+            : "Cadastre os dados de contato e os endereços obrigatórios do cliente."}
         </p>
       </div>
       <form className="mt-8 max-w-4xl space-y-6" onSubmit={submitForm}>
         {saved ? (
           <div className={adminSuccessNoticeClassName}>
             <Check className="size-5" />
-            Cliente salvo apenas na interface. A persistência será conectada à
-            API posteriormente.
+            {isEditing ? "Alterações" : "Cliente"} salvas apenas na interface. A
+            persistência será conectada à API posteriormente.
           </div>
         ) : null}
         {error ? (
@@ -89,6 +105,7 @@ export function AdminCustomerCreatePage() {
             <AdminFormField className="md:col-span-2" label="Nome completo">
               <input
                 className={adminInputClassName}
+                defaultValue={customer?.name}
                 name="name"
                 placeholder="Nome completo"
                 required
@@ -97,7 +114,7 @@ export function AdminCustomerCreatePage() {
             <AdminFormField label="Gênero">
               <select
                 className={adminInputClassName}
-                defaultValue=""
+                defaultValue={isEditing ? "Não informar" : ""}
                 name="gender"
                 required
               >
@@ -112,6 +129,7 @@ export function AdminCustomerCreatePage() {
             <AdminFormField label="Data de nascimento">
               <input
                 className={adminInputClassName}
+                defaultValue={customer ? "1995-01-01" : undefined}
                 name="birthDate"
                 required
                 type="date"
@@ -120,6 +138,7 @@ export function AdminCustomerCreatePage() {
             <AdminFormField label="CPF">
               <input
                 className={adminInputClassName}
+                defaultValue={customer ? "000.000.000-00" : undefined}
                 inputMode="numeric"
                 name="cpf"
                 placeholder="000.000.000-00"
@@ -130,6 +149,7 @@ export function AdminCustomerCreatePage() {
               <input
                 autoComplete="email"
                 className={adminInputClassName}
+                defaultValue={customer?.email}
                 name="email"
                 placeholder="cliente@email.com"
                 required
@@ -139,7 +159,7 @@ export function AdminCustomerCreatePage() {
             <AdminFormField label="Tipo de telefone">
               <select
                 className={adminInputClassName}
-                defaultValue=""
+                defaultValue={isEditing ? "Celular" : ""}
                 name="phoneType"
                 required
               >
@@ -155,6 +175,7 @@ export function AdminCustomerCreatePage() {
               <AdminFormField label="DDD">
                 <input
                   className={adminInputClassName}
+                  defaultValue={customer?.phone.replace(/\D/g, "").slice(0, 2)}
                   inputMode="numeric"
                   maxLength={2}
                   name="ddd"
@@ -165,6 +186,7 @@ export function AdminCustomerCreatePage() {
               <AdminFormField label="Número">
                 <input
                   className={adminInputClassName}
+                  defaultValue={customer?.phone.replace(/\D/g, "").slice(2)}
                   inputMode="numeric"
                   name="phone"
                   placeholder="99999-9999"
@@ -174,37 +196,39 @@ export function AdminCustomerCreatePage() {
             </div>
           </CardContent>
         </Card>
-        <Card>
-          <CardHeader>
-            <CardTitle>Senha de acesso</CardTitle>
-            <CardDescription>
-              Use no mínimo oito caracteres, com maiúscula, minúscula e
-              caractere especial.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="grid gap-5 md:grid-cols-2">
-            <AdminFormField label="Senha">
-              <input
-                autoComplete="new-password"
-                className={adminInputClassName}
-                minLength={8}
-                name="password"
-                required
-                type="password"
-              />
-            </AdminFormField>
-            <AdminFormField label="Confirmar senha">
-              <input
-                autoComplete="new-password"
-                className={adminInputClassName}
-                minLength={8}
-                name="passwordConfirmation"
-                required
-                type="password"
-              />
-            </AdminFormField>
-          </CardContent>
-        </Card>
+        {!isEditing ? (
+          <Card>
+            <CardHeader>
+              <CardTitle>Senha de acesso</CardTitle>
+              <CardDescription>
+                Use no mínimo oito caracteres, com maiúscula, minúscula e
+                caractere especial.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="grid gap-5 md:grid-cols-2">
+              <AdminFormField label="Senha">
+                <input
+                  autoComplete="new-password"
+                  className={adminInputClassName}
+                  minLength={8}
+                  name="password"
+                  required
+                  type="password"
+                />
+              </AdminFormField>
+              <AdminFormField label="Confirmar senha">
+                <input
+                  autoComplete="new-password"
+                  className={adminInputClassName}
+                  minLength={8}
+                  name="passwordConfirmation"
+                  required
+                  type="password"
+                />
+              </AdminFormField>
+            </CardContent>
+          </Card>
+        ) : null}
         <Card>
           <CardHeader>
             <CardTitle>Endereço de cobrança</CardTitle>
@@ -237,10 +261,14 @@ export function AdminCustomerCreatePage() {
           </Button>
           <Button type="submit">
             <Save />
-            Salvar cliente
+            {isEditing ? "Salvar alterações" : "Salvar cliente"}
           </Button>
         </div>
       </form>
     </AdminLayout>
   );
+}
+
+export function AdminCustomerCreatePage() {
+  return <AdminCustomerFormPage />;
 }

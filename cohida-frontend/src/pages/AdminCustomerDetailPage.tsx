@@ -35,7 +35,7 @@ export function AdminCustomerDetailPage() {
             {customer.code} · Perfil de compra: {customer.profile}
           </p>
         </div>
-        <Button render={<Link to="/admin/clientes/novo" />}>
+        <Button render={<Link to={`/admin/clientes/${customer.id}/editar`} />}>
           <Pencil />
           Editar perfil
         </Button>
