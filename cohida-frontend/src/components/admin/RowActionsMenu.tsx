@@ -2,18 +2,22 @@ import { useEffect, useRef, useState } from "react";
 import { Ellipsis, Eye, Pencil, Trash2 } from "lucide-react";
 import { Link } from "react-router";
 
-import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/admin/ConfirmDialog";
+import { Button } from "@/components/ui/button";
 
 interface RowActionsMenuProps {
-  editTo: string;
+  editTo?: string;
+  label?: string;
   onDelete: () => void;
-  viewTo: string;
+  onEdit?: () => void;
+  viewTo?: string;
 }
 
 export function RowActionsMenu({
   editTo,
+  label = "registro",
   onDelete,
+  onEdit,
   viewTo,
 }: RowActionsMenuProps) {
   const [open, setOpen] = useState(false);
@@ -30,12 +34,9 @@ export function RowActionsMenu({
   }
 
   useEffect(() => {
-    function closeOnOutsideClick(event: MouseEvent) {
-      if (!menuRef.current?.contains(event.target as Node)) {
-        closeMenu();
-      }
-    }
-
+    const closeOnOutsideClick = (event: MouseEvent) => {
+      if (!menuRef.current?.contains(event.target as Node)) closeMenu();
+    };
     document.addEventListener("mousedown", closeOnOutsideClick);
     return () => document.removeEventListener("mousedown", closeOnOutsideClick);
   }, []);
@@ -45,19 +46,21 @@ export function RowActionsMenu({
       <Button
         aria-expanded={open}
         aria-haspopup="menu"
-        aria-label="Ações do produto"
-        ref={triggerRef}
+        aria-label={`Ações do ${label}`}
         onClick={(event) => {
           event.stopPropagation();
-          setOpen((isOpen) => !isOpen);
+          setOpen((current) => !current);
         }}
         onKeyDown={(event) => {
           if (event.key === "ArrowDown") {
             event.preventDefault();
             setOpen(true);
-            requestAnimationFrame(() => itemRefs.current[0]?.focus());
+            requestAnimationFrame(() =>
+              itemRefs.current.filter(Boolean)[0]?.focus(),
+            );
           }
         }}
+        ref={triggerRef}
         size="icon-sm"
         variant="ghost"
       >
@@ -65,51 +68,74 @@ export function RowActionsMenu({
       </Button>
       {open ? (
         <div
-          aria-label="Ações do produto"
-          className="absolute top-full right-0 z-30 mt-1 w-36 rounded-lg border border-border bg-popover p-1 text-left shadow-lg motion-safe:animate-in motion-safe:fade-in-0 motion-safe:zoom-in-95 motion-safe:duration-150"
-          role="menu"
+          aria-label={`Ações do ${label}`}
+          className="absolute top-full right-0 z-30 mt-1 w-36 rounded-lg border border-border bg-popover p-1 text-left shadow-lg"
           onKeyDown={(event) => {
-            const items = itemRefs.current.filter(Boolean);
-            const current = items.findIndex(
-              (item) => item === document.activeElement,
-            );
             if (event.key === "Escape") {
               event.preventDefault();
               closeMenu(true);
+              return;
             }
             if (event.key === "ArrowDown" || event.key === "ArrowUp") {
               event.preventDefault();
+              const items = itemRefs.current.filter(Boolean);
+              const current = items.findIndex(
+                (item) => item === document.activeElement,
+              );
               const direction = event.key === "ArrowDown" ? 1 : -1;
               items[
                 (current + direction + items.length) % items.length
               ]?.focus();
             }
           }}
+          role="menu"
         >
-          <Link
-            className="flex items-center gap-2 rounded-md px-2.5 py-2 text-sm hover:bg-muted"
-            onClick={(event) => event.stopPropagation()}
-            role="menuitem"
-            ref={(element) => {
-              itemRefs.current[0] = element;
-            }}
-            to={viewTo}
-          >
-            <Eye className="size-4" />
-            Ver
-          </Link>
-          <Link
-            className="flex items-center gap-2 rounded-md px-2.5 py-2 text-sm hover:bg-muted"
-            onClick={(event) => event.stopPropagation()}
-            role="menuitem"
-            ref={(element) => {
-              itemRefs.current[1] = element;
-            }}
-            to={editTo}
-          >
-            <Pencil className="size-4" />
-            Editar
-          </Link>
+          {viewTo ? (
+            <Link
+              className="flex items-center gap-2 rounded-md px-2.5 py-2 text-sm hover:bg-muted"
+              onClick={(event) => event.stopPropagation()}
+              ref={(element) => {
+                itemRefs.current[0] = element;
+              }}
+              role="menuitem"
+              to={viewTo}
+            >
+              <Eye className="size-4" />
+              Ver
+            </Link>
+          ) : null}
+          {editTo ? (
+            <Link
+              className="flex items-center gap-2 rounded-md px-2.5 py-2 text-sm hover:bg-muted"
+              onClick={(event) => event.stopPropagation()}
+              ref={(element) => {
+                itemRefs.current[1] = element;
+              }}
+              role="menuitem"
+              to={editTo}
+            >
+              <Pencil className="size-4" />
+              Editar
+            </Link>
+          ) : null}
+          {onEdit ? (
+            <button
+              className="flex w-full items-center gap-2 rounded-md px-2.5 py-2 text-left text-sm hover:bg-muted"
+              onClick={(event) => {
+                event.stopPropagation();
+                onEdit();
+                closeMenu();
+              }}
+              ref={(element) => {
+                itemRefs.current[1] = element;
+              }}
+              role="menuitem"
+              type="button"
+            >
+              <Pencil className="size-4" />
+              Editar
+            </button>
+          ) : null}
           <button
             className="flex w-full items-center gap-2 rounded-md px-2.5 py-2 text-left text-sm text-destructive hover:bg-error"
             onClick={(event) => {
@@ -117,10 +143,10 @@ export function RowActionsMenu({
               setConfirming(true);
               setOpen(false);
             }}
-            role="menuitem"
             ref={(element) => {
               itemRefs.current[2] = element;
             }}
+            role="menuitem"
             type="button"
           >
             <Trash2 className="size-4" />
@@ -137,7 +163,7 @@ export function RowActionsMenu({
             onDelete();
             setConfirming(false);
           }}
-          title="Excluir produto?"
+          title={`Excluir ${label}?`}
         />
       ) : null}
     </div>

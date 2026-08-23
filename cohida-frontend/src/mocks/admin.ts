@@ -413,6 +413,13 @@ export const adminAnalyticsData = {
     { category: "Corrida", values: [7200, 8100, 9870] },
     { category: "Treino", values: [5900, 6420, 7340] },
   ],
+  topProducts: [
+    { name: "Bola Pro X", revenue: 9995, units: 50 },
+    { name: "Tênis Run Flow", revenue: 9198, units: 20 },
+    { name: "Kit Resistance", revenue: 5712, units: 48 },
+    { name: "Caneleira Pro", revenue: 3596, units: 40 },
+    { name: "Munhequeira", revenue: 1890, units: 63 },
+  ],
 };
 
 export const adminConfigurationSections = [

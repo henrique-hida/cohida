@@ -1,8 +1,9 @@
 import { useState, type FormEvent } from "react";
-import { Check, Pencil, Plus, Save, Trash2, X } from "lucide-react";
+import { Check, CircleHelp, Plus, Save, X } from "lucide-react";
 
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { ConfirmDialog } from "@/components/admin/ConfirmDialog";
+import { RowActionsMenu } from "@/components/admin/RowActionsMenu";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -11,6 +12,12 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import { Table } from "@/components/ui/table";
 import {
   adminConfigurationFormOptions,
   adminConfigurationRecords,
@@ -170,7 +177,27 @@ export function AdminAdministrationPage() {
           <Card>
             <CardHeader className="flex-row items-start justify-between gap-4">
               <div>
-                <CardTitle>{selected.label}</CardTitle>
+                <div className="flex items-center gap-1">
+                  <CardTitle>{selected.label}</CardTitle>
+                  <Tooltip>
+                    <TooltipTrigger
+                      render={
+                        <Button
+                          aria-label="Ajuda desta área"
+                          size="icon-xs"
+                          variant="ghost"
+                        />
+                      }
+                    >
+                      <CircleHelp />
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      {canManage
+                        ? "Selecione um cadastro para editar ou crie um novo registro com os campos específicos desta área."
+                        : "A auditoria é somente leitura. A API registrará cada escrita com data, autor e dados alterados."}
+                    </TooltipContent>
+                  </Tooltip>
+                </div>
                 <CardDescription>{selected.description}</CardDescription>
               </div>
               {canManage ? (
@@ -187,46 +214,39 @@ export function AdminAdministrationPage() {
                   {notice}
                 </p>
               ) : null}
-              <p className="mb-5 rounded-lg bg-muted p-3 text-sm text-muted-foreground">
-                {canManage
-                  ? "Selecione um cadastro para editar ou crie um novo registro com os campos específicos desta área."
-                  : "A auditoria é somente leitura. A API registrará cada escrita com data, autor e dados alterados."}
-              </p>
-              <div className="space-y-2">
-                {records[section].map((record, index) => (
-                  <div
-                    className="flex items-center gap-3 rounded-lg border border-input p-3 text-sm"
-                    key={record.id}
-                  >
-                    <div className="min-w-0 flex-1">
-                      <p className="font-medium">{record.title}</p>
-                      <p className="mt-1 text-xs text-muted-foreground">
-                        {record.details}
-                      </p>
-                    </div>
+              <Table className="min-w-[36rem] text-left">
+                <thead className="border-b border-border text-xs tracking-wide text-muted-foreground uppercase">
+                  <tr>
+                    <th className="pb-3 font-medium">Cadastro</th>
+                    <th className="pb-3 font-medium">Detalhes</th>
                     {canManage ? (
-                      <>
-                        <Button
-                          aria-label={`Editar ${record.title}`}
-                          onClick={() => openEditForm(record, index)}
-                          size="icon-sm"
-                          variant="ghost"
-                        >
-                          <Pencil />
-                        </Button>
-                        <Button
-                          aria-label={`Excluir ${record.title}`}
-                          onClick={() => setDeleting(index)}
-                          size="icon-sm"
-                          variant="ghost"
-                        >
-                          <Trash2 className="text-destructive" />
-                        </Button>
-                      </>
+                      <th className="pb-3 text-right font-medium">Ações</th>
                     ) : null}
-                  </div>
-                ))}
-              </div>
+                  </tr>
+                </thead>
+                <tbody>
+                  {records[section].map((record, index) => (
+                    <tr
+                      className="border-b border-border last:border-0"
+                      key={record.id}
+                    >
+                      <td className="py-4 font-medium">{record.title}</td>
+                      <td className="py-4 text-muted-foreground">
+                        {record.details}
+                      </td>
+                      {canManage ? (
+                        <td className="py-4 text-right">
+                          <RowActionsMenu
+                            label={record.title}
+                            onDelete={() => setDeleting(index)}
+                            onEdit={() => openEditForm(record, index)}
+                          />
+                        </td>
+                      ) : null}
+                    </tr>
+                  ))}
+                </tbody>
+              </Table>
             </CardContent>
           </Card>
           {formOpen ? (

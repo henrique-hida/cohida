@@ -83,7 +83,7 @@ export function AdminLayout({ children }: AdminLayoutProps) {
         </div>
         <nav
           aria-label="Navegação administrativa"
-          className="relative flex gap-1 overflow-x-auto border-t border-border px-3 py-3 lg:block lg:border-0 lg:px-3"
+          className="relative flex gap-1 overflow-x-auto border-t border-border px-3 py-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden lg:block lg:border-0 lg:px-3 lg:py-3"
         >
           {indicator ? (
             <span
@@ -100,13 +100,14 @@ export function AdminLayout({ children }: AdminLayoutProps) {
             <NavLink
               className={({ isActive }) =>
                 cn(
-                  "relative z-10 flex shrink-0 items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground lg:mb-1",
+                  "relative z-10 flex size-10 shrink-0 items-center justify-center rounded-lg p-2.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground sm:w-auto sm:gap-2 sm:px-3 lg:mb-1 lg:w-full lg:justify-start lg:gap-3",
                   isActive &&
                     "text-primary-foreground hover:bg-transparent hover:text-primary-foreground",
                 )
               }
               end={to === "/admin"}
               key={to}
+              aria-label={label}
               ref={(element) => {
                 if (element) {
                   itemRefs.current.set(to, element);
@@ -115,7 +116,7 @@ export function AdminLayout({ children }: AdminLayoutProps) {
               to={to}
             >
               <Icon aria-hidden="true" className="size-4" />
-              {label}
+              <span className="hidden sm:inline">{label}</span>
             </NavLink>
           ))}
         </nav>

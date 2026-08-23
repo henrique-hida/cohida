@@ -25,7 +25,15 @@ function statusVariant(status: string) {
       : "info";
 }
 
+function getGreeting(hour: number) {
+  if (hour < 12) return "Bom dia";
+  if (hour < 18) return "Boa tarde";
+  return "Boa noite";
+}
+
 export function AdminDashboardPage() {
+  const greeting = getGreeting(new Date().getHours());
+
   return (
     <AdminLayout>
       <div className="flex flex-wrap items-end justify-between gap-4">
@@ -34,7 +42,7 @@ export function AdminDashboardPage() {
             Domingo, 23 de agosto
           </p>
           <h1 className="mt-1 text-3xl font-semibold tracking-tight">
-            Bom dia, Marina.
+            {greeting}, Marina.
           </h1>
           <p className="mt-2 text-muted-foreground">
             Acompanhe o que precisa de atenção na operação.

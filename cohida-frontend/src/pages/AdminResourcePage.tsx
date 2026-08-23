@@ -22,6 +22,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { Table } from "@/components/ui/table";
 import {
   adminCustomers,
   adminExchanges,
@@ -211,110 +212,119 @@ export function AdminResourcePage({ resource }: { resource: AdminResource }) {
               {actionNotice}
             </p>
           ) : null}
-          <table className="hidden w-full text-left text-sm md:table">
-            <thead className="border-b border-border text-xs tracking-wide text-muted-foreground uppercase">
-              <tr>
-                {page.columns.map((column) => (
-                  <th className="pb-3 font-medium" key={column}>
-                    {column}
-                  </th>
-                ))}
-                {hasProductActions ? (
-                  <th className="pb-3 text-right font-medium">Ações</th>
-                ) : null}
-              </tr>
-            </thead>
-            <tbody>
-              {visibleRows.length ? (
-                visibleRows.map(({ index: rowIndex, row }) => {
-                  const detailPath =
-                    resource === "produtos"
-                      ? `/admin/produtos/${adminProducts[rowIndex]?.id ?? adminProducts[0].id}`
-                      : resource === "pedidos"
-                        ? `/admin/pedidos/${adminOrders[rowIndex]?.id ?? adminOrders[0].id}`
-                        : resource === "trocas"
-                          ? `/admin/trocas/${adminExchanges[rowIndex]?.id ?? adminExchanges[0].id}`
-                          : resource === "clientes"
-                            ? `/admin/clientes/${adminCustomers[rowIndex]?.id ?? adminCustomers[0].id}`
-                            : undefined;
-                  return (
-                    <tr
-                      aria-label={detailPath ? `Abrir ${row[0]}` : undefined}
-                      className={`border-b border-border last:border-0 motion-safe:animate-in motion-safe:fade-in-0 motion-safe:slide-in-from-bottom-1 motion-safe:duration-200 ${detailPath ? "cursor-pointer hover:bg-muted/50 focus-visible:bg-muted/50" : ""}`}
-                      key={row[0]}
-                      onClick={
-                        detailPath ? () => navigate(detailPath) : undefined
-                      }
-                      onKeyDown={
-                        detailPath
-                          ? (event) => {
-                              if (event.key === "Enter" || event.key === " ") {
-                                event.preventDefault();
-                                navigate(detailPath);
-                              }
-                            }
-                          : undefined
-                      }
-                      role={detailPath ? "link" : undefined}
-                      tabIndex={detailPath ? 0 : undefined}
-                    >
-                      {row.map((cell, index) => (
-                        <td className="py-4" key={cell}>
-                          {index === row.length - 1 ? (
-                            <Badge
-                              variant={
-                                cell.includes("BAIXO") ||
-                                cell.includes("PROCESSAMENTO") ||
-                                cell.includes("TROCA")
-                                  ? "secondary"
-                                  : "outline"
-                              }
-                            >
-                              {cell}
-                            </Badge>
-                          ) : index === 0 ? (
-                            <span className="font-medium">{cell}</span>
-                          ) : (
-                            cell
-                          )}
-                        </td>
-                      ))}
-                      {hasProductActions ? (
-                        <td className="py-4 text-right">
-                          <RowActionsMenu
-                            editTo={`${detailPath}/editar`}
-                            onDelete={() =>
-                              setDeletedProductRows((rows) => [
-                                ...rows,
-                                rowIndex,
-                              ])
-                            }
-                            viewTo={detailPath!}
-                          />
-                        </td>
-                      ) : null}
-                    </tr>
-                  );
-                })
-              ) : (
+          <div className="hidden md:block">
+            <Table className="table-fixed text-left">
+              <thead className="border-b border-border text-xs tracking-wide text-muted-foreground uppercase">
                 <tr>
-                  <td
-                    className="p-0"
-                    colSpan={page.columns.length + (hasProductActions ? 1 : 0)}
-                  >
-                    <AdminDataState
-                      description={`Não encontramos registros para “${search || "os filtros selecionados"}”.`}
-                      title="Nenhum resultado encontrado"
-                      variant="empty"
-                    />
-                  </td>
+                  {page.columns.map((column) => (
+                    <th className="pb-3 font-medium" key={column}>
+                      {column}
+                    </th>
+                  ))}
+                  {hasProductActions ? (
+                    <th className="pb-3 text-right font-medium">Ações</th>
+                  ) : null}
                 </tr>
-              )}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {visibleRows.length ? (
+                  visibleRows.map(({ index: rowIndex, row }) => {
+                    const cells = row.slice(0, page.columns.length);
+                    const detailPath =
+                      resource === "produtos"
+                        ? `/admin/produtos/${adminProducts[rowIndex]?.id ?? adminProducts[0].id}`
+                        : resource === "pedidos"
+                          ? `/admin/pedidos/${adminOrders[rowIndex]?.id ?? adminOrders[0].id}`
+                          : resource === "trocas"
+                            ? `/admin/trocas/${adminExchanges[rowIndex]?.id ?? adminExchanges[0].id}`
+                            : resource === "clientes"
+                              ? `/admin/clientes/${adminCustomers[rowIndex]?.id ?? adminCustomers[0].id}`
+                              : undefined;
+                    return (
+                      <tr
+                        aria-label={detailPath ? `Abrir ${row[0]}` : undefined}
+                        className={`border-b border-border last:border-0 motion-safe:animate-in motion-safe:fade-in-0 motion-safe:slide-in-from-bottom-1 motion-safe:duration-200 ${detailPath ? "cursor-pointer hover:bg-muted/50 focus-visible:bg-muted/50" : ""}`}
+                        key={row[0]}
+                        onClick={
+                          detailPath ? () => navigate(detailPath) : undefined
+                        }
+                        onKeyDown={
+                          detailPath
+                            ? (event) => {
+                                if (
+                                  event.key === "Enter" ||
+                                  event.key === " "
+                                ) {
+                                  event.preventDefault();
+                                  navigate(detailPath);
+                                }
+                              }
+                            : undefined
+                        }
+                        role={detailPath ? "link" : undefined}
+                        tabIndex={detailPath ? 0 : undefined}
+                      >
+                        {cells.map((cell, index) => (
+                          <td className="py-4" key={cell}>
+                            {index === cells.length - 1 ? (
+                              <Badge
+                                variant={
+                                  cell.includes("BAIXO") ||
+                                  cell.includes("PROCESSAMENTO") ||
+                                  cell.includes("TROCA")
+                                    ? "secondary"
+                                    : "outline"
+                                }
+                              >
+                                {cell}
+                              </Badge>
+                            ) : index === 0 ? (
+                              <span className="font-medium">{cell}</span>
+                            ) : (
+                              cell
+                            )}
+                          </td>
+                        ))}
+                        {hasProductActions ? (
+                          <td className="py-4 text-right">
+                            <RowActionsMenu
+                              editTo={`${detailPath}/editar`}
+                              onDelete={() =>
+                                setDeletedProductRows((rows) => [
+                                  ...rows,
+                                  rowIndex,
+                                ])
+                              }
+                              viewTo={detailPath!}
+                            />
+                          </td>
+                        ) : null}
+                      </tr>
+                    );
+                  })
+                ) : (
+                  <tr>
+                    <td
+                      className="p-0"
+                      colSpan={
+                        page.columns.length + (hasProductActions ? 1 : 0)
+                      }
+                    >
+                      <AdminDataState
+                        description={`Não encontramos registros para “${search || "os filtros selecionados"}”.`}
+                        title="Nenhum resultado encontrado"
+                        variant="empty"
+                      />
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </Table>
+          </div>
           <div className="space-y-3 md:hidden">
             {visibleRows.length ? (
               visibleRows.map(({ index: rowIndex, row }) => {
+                const cells = row.slice(0, page.columns.length);
                 const detailPath =
                   resource === "produtos"
                     ? `/admin/produtos/${adminProducts[rowIndex]?.id ?? adminProducts[0].id}`
@@ -328,11 +338,11 @@ export function AdminResourcePage({ resource }: { resource: AdminResource }) {
                 const cardContent = (
                   <>
                     <div className="flex items-start justify-between gap-3">
-                      <span className="font-medium">{row[0]}</span>
-                      <Badge variant="outline">{row.at(-1)}</Badge>
+                      <span className="font-medium">{cells[0]}</span>
+                      <Badge variant="outline">{cells.at(-1)}</Badge>
                     </div>
                     <dl className="mt-3 grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
-                      {row.slice(1, -1).map((cell, index) => (
+                      {cells.slice(1, -1).map((cell, index) => (
                         <div key={`${row[0]}-${cell}`}>
                           <dt className="text-xs text-muted-foreground">
                             {page.columns[index + 1]}

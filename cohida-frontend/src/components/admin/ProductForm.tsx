@@ -104,17 +104,6 @@ export function ProductForm({ product }: ProductFormProps) {
               ))}
             </select>
           </label>
-          <label className="space-y-2">
-            <span className="text-sm font-medium">Código de barras</span>
-            <input
-              className={inputClassName}
-              defaultValue={product?.barcode}
-              inputMode="numeric"
-              name="barcode"
-              placeholder="7890000000000"
-              required
-            />
-          </label>
           <label className="space-y-2 md:col-span-2">
             <span className="text-sm font-medium">Descrição</span>
             <textarea

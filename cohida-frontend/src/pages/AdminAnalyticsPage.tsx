@@ -1,10 +1,15 @@
 import { useMemo, useState } from "react";
 import { Download } from "lucide-react";
 import {
+  Bar,
+  BarChart,
   CartesianGrid,
+  Cell,
   Legend,
   Line,
   LineChart,
+  Pie,
+  PieChart,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -12,8 +17,8 @@ import {
 } from "recharts";
 
 import { AdminLayout } from "@/components/admin/AdminLayout";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Calendar } from "@/components/ui/calendar";
 import {
   Card,
   CardContent,
@@ -21,14 +26,46 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { adminAnalyticsData } from "@/mocks";
 
 const colors = ["#61e786", "#5aa7ff", "#f4b740"];
+const tooltipStyle = {
+  background: "var(--popover)",
+  border: "1px solid var(--border)",
+  borderRadius: 10,
+  color: "var(--popover-foreground)",
+};
+
+function formatDate(value: string) {
+  return new Intl.DateTimeFormat("pt-BR", { dateStyle: "medium" }).format(
+    new Date(`${value}T12:00:00`),
+  );
+}
+
+function toDate(value: string) {
+  return new Date(`${value}T12:00:00`);
+}
+
+function toIsoDate(date: Date) {
+  return date.toISOString().slice(0, 10);
+}
 
 export function AdminAnalyticsPage() {
   const [selected, setSelected] = useState(adminAnalyticsData.categories);
-  const [startDate, setStartDate] = useState("2026-06");
-  const [endDate, setEndDate] = useState("2026-08");
+  const [startDate, setStartDate] = useState("2026-06-01");
+  const [endDate, setEndDate] = useState("2026-08-31");
   const [error, setError] = useState("");
   const selectedSeries = useMemo(
     () =>
@@ -50,19 +87,20 @@ export function AdminAnalyticsPage() {
       ),
     [],
   );
-  function toggle(category: string) {
-    setSelected((items) =>
-      items.includes(category)
-        ? items.filter((item) => item !== category)
-        : [...items, category],
-    );
-  }
+  const categoryDistribution = useMemo(
+    () =>
+      selectedSeries.map((series) => ({
+        name: series.category,
+        value: series.values.reduce((total, value) => total + value, 0),
+      })),
+    [selectedSeries],
+  );
   function validateRange(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const rangeInMonths =
       (Number(endDate.slice(0, 4)) - Number(startDate.slice(0, 4))) * 12 +
-      Number(endDate.slice(5)) -
-      Number(startDate.slice(5)) +
+      Number(endDate.slice(5, 7)) -
+      Number(startDate.slice(5, 7)) +
       1;
     if (!selected.length) {
       setError("Selecione ao menos uma categoria para comparar.");
@@ -123,49 +161,100 @@ export function AdminAnalyticsPage() {
             className="flex flex-wrap items-end gap-4"
             onSubmit={validateRange}
           >
-            <label className="space-y-2">
+            <div className="flex flex-col items-start gap-2">
               <span className="text-sm font-medium">Início</span>
-              <input
-                className="block h-10 rounded-lg border border-input bg-background px-3 text-sm"
-                value={startDate}
-                max="2026-08"
-                min="2024-09"
-                onChange={(event) => setStartDate(event.target.value)}
-                type="month"
-              />
-            </label>
-            <label className="space-y-2">
-              <span className="text-sm font-medium">Fim</span>
-              <input
-                className="block h-10 rounded-lg border border-input bg-background px-3 text-sm"
-                value={endDate}
-                max="2026-08"
-                min="2024-09"
-                onChange={(event) => setEndDate(event.target.value)}
-                type="month"
-              />
-            </label>
-            <div className="flex flex-wrap gap-2">
-              {adminAnalyticsData.categories.map((category) => (
-                <label className="cursor-pointer" key={category}>
-                  <input
-                    checked={selected.includes(category)}
-                    className="sr-only"
-                    onChange={() => toggle(category)}
-                    type="checkbox"
-                  />
-                  <Badge
-                    className={selected.includes(category) ? "" : "opacity-45"}
-                    variant="outline"
+              <div>
+                <Popover>
+                  <PopoverTrigger
+                    render={
+                      <Button
+                        className="min-w-44 justify-start"
+                        variant="outline"
+                      />
+                    }
                   >
-                    {category}
-                  </Badge>
-                </label>
-              ))}
+                    {formatDate(startDate)}
+                  </PopoverTrigger>
+                  <PopoverContent align="start" className="w-auto p-0">
+                    <Calendar
+                      disabled={{
+                        after: toDate(endDate),
+                        before: new Date("2024-09-01"),
+                      }}
+                      mode="single"
+                      onSelect={(date) => date && setStartDate(toIsoDate(date))}
+                      selected={toDate(startDate)}
+                    />
+                  </PopoverContent>
+                </Popover>
+              </div>
             </div>
-            <Button type="submit" variant="outline">
-              Aplicar
-            </Button>
+            <div className="flex flex-col items-start gap-2">
+              <span className="text-sm font-medium">Fim</span>
+              <div>
+                <Popover>
+                  <PopoverTrigger
+                    render={
+                      <Button
+                        className="min-w-44 justify-start"
+                        variant="outline"
+                      />
+                    }
+                  >
+                    {formatDate(endDate)}
+                  </PopoverTrigger>
+                  <PopoverContent align="start" className="w-auto p-0">
+                    <Calendar
+                      disabled={{
+                        after: new Date("2026-08-31"),
+                        before: toDate(startDate),
+                      }}
+                      mode="single"
+                      onSelect={(date) => date && setEndDate(toIsoDate(date))}
+                      selected={toDate(endDate)}
+                    />
+                  </PopoverContent>
+                </Popover>
+              </div>
+            </div>
+            <div className="flex flex-col items-start gap-2">
+              <span className="text-sm font-medium">Categorias</span>
+              <div>
+                <Select
+                  multiple
+                  onValueChange={(value) => setSelected(value)}
+                  value={selected}
+                >
+                  <SelectTrigger className="min-w-52">
+                    <SelectValue>
+                      {(values: string[]) =>
+                        values.length
+                          ? `${values.length} categorias selecionadas`
+                          : "Selecione categorias"
+                      }
+                    </SelectValue>
+                  </SelectTrigger>
+                  <SelectContent>
+                    {adminAnalyticsData.categories.map((category) => (
+                      <SelectItem key={category} value={category}>
+                        {category}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div className="flex flex-col items-start gap-2">
+              <span
+                aria-hidden="true"
+                className="text-sm font-medium opacity-0"
+              >
+                Ação
+              </span>
+              <Button type="submit" variant="outline">
+                Aplicar
+              </Button>
+            </div>
           </form>
           {error ? (
             <p className="mt-3 text-sm text-destructive">{error}</p>
@@ -202,17 +291,15 @@ export function AdminAnalyticsPage() {
                   }
                 />
                 <Tooltip
-                  contentStyle={{
-                    background: "var(--popover)",
-                    border: "1px solid var(--border)",
-                    borderRadius: 10,
-                  }}
+                  contentStyle={tooltipStyle}
                   formatter={(value) =>
                     Number(value ?? 0).toLocaleString("pt-BR", {
                       style: "currency",
                       currency: "BRL",
                     })
                   }
+                  itemStyle={{ color: "var(--popover-foreground)" }}
+                  labelStyle={{ color: "var(--popover-foreground)" }}
                 />
                 <Legend />
                 {selectedSeries.map((series, index) => (
@@ -231,6 +318,95 @@ export function AdminAnalyticsPage() {
           </div>
         </CardContent>
       </Card>
+      <div className="mt-6 grid gap-6 xl:grid-cols-2">
+        <Card>
+          <CardHeader>
+            <CardTitle>Produtos mais vendidos</CardTitle>
+            <CardDescription>
+              Quantidade de itens aprovados no período.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="h-80">
+              <ResponsiveContainer height="100%" width="100%">
+                <BarChart
+                  data={adminAnalyticsData.topProducts}
+                  layout="vertical"
+                  margin={{ left: 20, right: 24 }}
+                >
+                  <CartesianGrid
+                    horizontal={false}
+                    stroke="var(--border)"
+                    strokeDasharray="3 3"
+                  />
+                  <XAxis type="number" />
+                  <YAxis
+                    dataKey="name"
+                    tick={{ fontSize: 12, fill: "var(--muted-foreground)" }}
+                    type="category"
+                    width={88}
+                  />
+                  <Tooltip
+                    contentStyle={tooltipStyle}
+                    formatter={(value) => `${value} un.`}
+                    itemStyle={{ color: "var(--popover-foreground)" }}
+                    labelStyle={{ color: "var(--popover-foreground)" }}
+                  />
+                  <Bar
+                    dataKey="units"
+                    fill="#61e786"
+                    name="Unidades"
+                    radius={[0, 6, 6, 0]}
+                  />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader>
+            <CardTitle>Participação por categoria</CardTitle>
+            <CardDescription>
+              Distribuição da receita entre as categorias selecionadas.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="h-80">
+              <ResponsiveContainer height="100%" width="100%">
+                <PieChart>
+                  <Pie
+                    data={categoryDistribution}
+                    dataKey="value"
+                    innerRadius={56}
+                    nameKey="name"
+                    outerRadius={94}
+                    paddingAngle={3}
+                  >
+                    {categoryDistribution.map((entry, index) => (
+                      <Cell
+                        fill={colors[index % colors.length]}
+                        key={entry.name}
+                      />
+                    ))}
+                  </Pie>
+                  <Tooltip
+                    contentStyle={tooltipStyle}
+                    formatter={(value) =>
+                      Number(value ?? 0).toLocaleString("pt-BR", {
+                        style: "currency",
+                        currency: "BRL",
+                      })
+                    }
+                    itemStyle={{ color: "var(--popover-foreground)" }}
+                    labelStyle={{ color: "var(--popover-foreground)" }}
+                  />
+                  <Legend />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
     </AdminLayout>
   );
 }
