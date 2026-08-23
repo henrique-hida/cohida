@@ -1,25 +1,33 @@
-import { useState } from 'react'
-import { Link } from 'react-router'
-import { CircleUserRound, Dumbbell, Footprints, Menu, Mountain, ShoppingBag, Trophy } from 'lucide-react'
+import { useState } from "react";
+import { Link } from "react-router";
+import {
+  CircleUserRound,
+  Dumbbell,
+  Footprints,
+  Menu,
+  Mountain,
+  ShoppingBag,
+  Trophy,
+} from "lucide-react";
 
-import heroImage from '@/assets/CoHidaHero.png'
+import heroImage from "@/assets/CoHidaHero.png";
 import {
   AppLogo,
   PageContainer,
   ProductCard,
   ThemeToggle,
-} from '@/components/shared'
-import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
-import { categories, products } from '@/mocks'
+} from "@/components/shared";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { categories, products } from "@/mocks";
 
-const categoryIcons = [Trophy, Footprints, Dumbbell, Mountain]
+const categoryIcons = [Trophy, Footprints, Dumbbell, Mountain];
 
 export function HomePage() {
-  const [cartItemCount, setCartItemCount] = useState(0)
+  const [cartItemCount, setCartItemCount] = useState(0);
 
   function addToCart() {
-    setCartItemCount((count) => count + 1)
+    setCartItemCount((count) => count + 1);
   }
 
   return (
@@ -31,10 +39,25 @@ export function HomePage() {
             <AppLogo className="hidden dark:block" variant="light" />
           </Link>
 
-          <nav aria-label="Navegação principal" className="hidden items-center gap-6 text-sm font-medium md:flex">
-            <a className="transition-colors hover:text-primary" href="#categorias">Categorias</a>
-            <a className="transition-colors hover:text-primary" href="#destaques">Destaques</a>
-            <a className="transition-colors hover:text-primary" href="#sobre">Sobre a coHida</a>
+          <nav
+            aria-label="Navegação principal"
+            className="hidden items-center gap-6 text-sm font-medium md:flex"
+          >
+            <a
+              className="transition-colors hover:text-primary"
+              href="#categorias"
+            >
+              Categorias
+            </a>
+            <a
+              className="transition-colors hover:text-primary"
+              href="#destaques"
+            >
+              Destaques
+            </a>
+            <a className="transition-colors hover:text-primary" href="#sobre">
+              Sobre a coHida
+            </a>
           </nav>
 
           <div className="flex items-center gap-2">
@@ -43,7 +66,11 @@ export function HomePage() {
               <CircleUserRound aria-hidden="true" />
               <span className="hidden sm:inline">Perfil</span>
             </Button>
-            <Button aria-label={`Carrinho com ${cartItemCount} itens`} className="relative" variant="default">
+            <Button
+              aria-label={`Carrinho com ${cartItemCount} itens`}
+              className="relative"
+              variant="default"
+            >
               <ShoppingBag aria-hidden="true" />
               <span className="hidden sm:inline">Carrinho</span>
               {cartItemCount > 0 ? (
@@ -52,7 +79,12 @@ export function HomePage() {
                 </span>
               ) : null}
             </Button>
-            <Button aria-label="Abrir menu" className="md:hidden" size="icon" variant="outline">
+            <Button
+              aria-label="Abrir menu"
+              className="md:hidden"
+              size="icon"
+              variant="outline"
+            >
               <Menu aria-hidden="true" />
             </Button>
           </div>
@@ -69,16 +101,25 @@ export function HomePage() {
           />
           <PageContainer className="flex min-h-[34rem] items-center py-20 sm:min-h-[38rem]">
             <div className="max-w-xl">
-              <Badge className="mb-5" variant="default">Equipe seu próximo desafio</Badge>
+              <Badge className="mb-5" variant="default">
+                Equipe seu próximo desafio
+              </Badge>
               <h1 className="text-4xl font-semibold tracking-tight text-balance sm:text-6xl">
                 Performance começa com a escolha certa.
               </h1>
               <p className="mt-6 max-w-lg text-base leading-7 text-[#b3b3b3] sm:text-lg">
-                Equipamentos esportivos selecionados para você treinar, competir e ir além.
+                Equipamentos esportivos selecionados para você treinar, competir
+                e ir além.
               </p>
               <div className="mt-8 flex flex-wrap gap-3">
-                <Button render={<a href="#destaques" />} size="lg">Ver destaques</Button>
-                <Button render={<a href="#categorias" />} size="lg" variant="outline">
+                <Button render={<a href="#destaques" />} size="lg">
+                  Ver destaques
+                </Button>
+                <Button
+                  render={<a href="#categorias" />}
+                  size="lg"
+                  variant="outline"
+                >
                   Explorar categorias
                 </Button>
               </div>
@@ -90,13 +131,17 @@ export function HomePage() {
           <section id="categorias">
             <div className="flex items-end justify-between gap-6">
               <div>
-                <p className="text-sm font-medium text-primary">Encontre seu esporte</p>
-                <h2 className="mt-2 text-3xl font-semibold tracking-tight">Categorias para acompanhar seu ritmo</h2>
+                <p className="text-sm font-medium text-primary">
+                  Encontre seu esporte
+                </p>
+                <h2 className="mt-2 text-3xl font-semibold tracking-tight">
+                  Categorias para acompanhar seu ritmo
+                </h2>
               </div>
             </div>
             <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
               {categories.map((category, index) => {
-                const Icon = categoryIcons[index]
+                const Icon = categoryIcons[index];
 
                 return (
                   <a
@@ -108,9 +153,11 @@ export function HomePage() {
                       <Icon aria-hidden="true" className="size-5" />
                     </span>
                     <h3 className="mt-5 font-semibold">{category.name}</h3>
-                    <p className="mt-2 text-sm leading-6 text-muted-foreground">{category.description}</p>
+                    <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                      {category.description}
+                    </p>
                   </a>
-                )
+                );
               })}
             </div>
           </section>
@@ -118,15 +165,25 @@ export function HomePage() {
           <section className="mt-20" id="destaques">
             <div className="flex flex-wrap items-end justify-between gap-6">
               <div>
-                <p className="text-sm font-medium text-primary">Favoritos da comunidade</p>
-                <h2 className="mt-2 text-3xl font-semibold tracking-tight">Produtos em destaque</h2>
+                <p className="text-sm font-medium text-primary">
+                  Favoritos da comunidade
+                </p>
+                <h2 className="mt-2 text-3xl font-semibold tracking-tight">
+                  Produtos em destaque
+                </h2>
               </div>
-              <Button render={<a href="#catalogo" />} variant="outline">Ver catálogo</Button>
+              <Button render={<a href="#catalogo" />} variant="outline">
+                Ver catálogo
+              </Button>
             </div>
             <div className="mt-8 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
               {products.map((product) => (
                 <ProductCard
-                  categoryName={categories.find((category) => category.id === product.categoryIds[0])?.name}
+                  categoryName={
+                    categories.find(
+                      (category) => category.id === product.categoryIds[0],
+                    )?.name
+                  }
                   key={product.id}
                   onAddToCart={addToCart}
                   product={product}
@@ -135,17 +192,25 @@ export function HomePage() {
             </div>
           </section>
 
-          <section className="mt-20 rounded-2xl bg-foreground px-6 py-12 text-background sm:px-12" id="sobre">
-            <p className="text-sm font-medium text-primary">Feita para se mover</p>
+          <section
+            className="mt-20 rounded-2xl bg-foreground px-6 py-12 text-background sm:px-12"
+            id="sobre"
+          >
+            <p className="text-sm font-medium text-primary">
+              Feita para se mover
+            </p>
             <div className="mt-3 flex flex-col justify-between gap-6 md:flex-row md:items-end">
               <h2 className="max-w-2xl text-3xl font-semibold tracking-tight">
-                A coHida une desempenho, qualidade e equipamento para sua rotina esportiva.
+                A coHida une desempenho, qualidade e equipamento para sua rotina
+                esportiva.
               </h2>
-              <Button render={<a href="mailto:contato@cohida.com" />} size="lg">Fale com a gente</Button>
+              <Button render={<a href="mailto:contato@cohida.com" />} size="lg">
+                Fale com a gente
+              </Button>
             </div>
           </section>
         </PageContainer>
       </main>
     </div>
-  )
+  );
 }

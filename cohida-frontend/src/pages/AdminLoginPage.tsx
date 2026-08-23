@@ -1,15 +1,15 @@
-import { ArrowLeft, ShieldCheck } from 'lucide-react'
-import { Link } from 'react-router'
+import { ArrowLeft, ShieldCheck } from "lucide-react";
+import { Link } from "react-router";
 
-import { AppLogo, PageContainer, ThemeToggle } from '@/components/shared'
-import { Button } from '@/components/ui/button'
+import { AppLogo, PageContainer, ThemeToggle } from "@/components/shared";
+import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-} from '@/components/ui/card'
+} from "@/components/ui/card";
 
 export function AdminLoginPage() {
   return (
@@ -36,9 +36,14 @@ export function AdminLoginPage() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <form className="space-y-5" onSubmit={(event) => event.preventDefault()}>
+            <form
+              className="space-y-5"
+              onSubmit={(event) => event.preventDefault()}
+            >
               <div className="space-y-2">
-                <label className="text-sm font-medium" htmlFor="admin-email">E-mail</label>
+                <label className="text-sm font-medium" htmlFor="admin-email">
+                  E-mail
+                </label>
                 <input
                   autoComplete="email"
                   className="h-10 w-full rounded-lg border border-input bg-background px-3 text-sm outline-none transition-colors placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
@@ -49,7 +54,9 @@ export function AdminLoginPage() {
                 />
               </div>
               <div className="space-y-2">
-                <label className="text-sm font-medium" htmlFor="admin-password">Senha</label>
+                <label className="text-sm font-medium" htmlFor="admin-password">
+                  Senha
+                </label>
                 <input
                   autoComplete="current-password"
                   className="h-10 w-full rounded-lg border border-input bg-background px-3 text-sm outline-none transition-colors placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
@@ -59,12 +66,19 @@ export function AdminLoginPage() {
                   type="password"
                 />
               </div>
-              <Button className="w-full" type="submit">Entrar</Button>
+              <Button className="w-full" type="submit">
+                Entrar
+              </Button>
             </form>
             <p className="mt-5 text-center text-sm text-muted-foreground">
-              A autenticação será conectada à API antes da área administrativa entrar em produção.
+              A autenticação será conectada à API antes da área administrativa
+              entrar em produção.
             </p>
-            <Button className="mt-6 w-full" render={<Link to="/" />} variant="ghost">
+            <Button
+              className="mt-6 w-full"
+              render={<Link to="/" />}
+              variant="ghost"
+            >
               <ArrowLeft aria-hidden="true" />
               Voltar para a loja
             </Button>
@@ -72,5 +86,5 @@ export function AdminLoginPage() {
         </Card>
       </PageContainer>
     </div>
-  )
+  );
 }

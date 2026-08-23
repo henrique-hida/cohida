@@ -59,7 +59,8 @@
   --action-text: #0d0d0d;
   --accent-bg: #e6e6e6;
   --accent-border: #61e786;
-  --shadow: rgba(13, 13, 13, 0.12) 0 10px 15px -3px,
+  --shadow:
+    rgba(13, 13, 13, 0.12) 0 10px 15px -3px,
     rgba(13, 13, 13, 0.06) 0 4px 6px -2px;
 }
 
@@ -115,8 +116,8 @@
   --action-text: #0d0d0d;
   --accent-bg: #000000;
   --accent-border: #61e786;
-  --shadow: rgba(0, 0, 0, 0.35) 0 10px 15px -3px,
-    rgba(0, 0, 0, 0.2) 0 4px 6px -2px;
+  --shadow:
+    rgba(0, 0, 0, 0.35) 0 10px 15px -3px, rgba(0, 0, 0, 0.2) 0 4px 6px -2px;
 }
 
 @theme inline {
