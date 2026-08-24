@@ -4,34 +4,47 @@ import {
   CreditCard,
   MapPin,
   PackageCheck,
+  X,
 } from "lucide-react";
 import { useState } from "react";
 import { Link } from "react-router";
 
-import { AppLogo, PageContainer, ThemeToggle } from "@/components/shared";
+import { PageContainer, StoreHeader } from "@/components/shared";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { formatCurrency } from "@/lib/currency";
+import { cartShippingCents, products } from "@/mocks";
+import { useCommerce } from "@/data/useCommerce";
+import type { Order } from "@/types";
 import {
-  cartDemoItems,
-  cartShippingCents,
-  checkoutAddresses,
-  checkoutCoupon,
-  checkoutPaymentMethods,
-  products,
-} from "@/mocks";
+  cardBrands,
+  formatCardNumber,
+  formatCvv,
+  formatExpiry,
+} from "@/lib/card";
 
 export function CheckoutPage() {
-  const [addressId, setAddressId] = useState(checkoutAddresses[0]?.id ?? "");
-  const [paymentMethodId, setPaymentMethodId] = useState(
-    checkoutPaymentMethods[0]?.id ?? "",
+  const { addAddress, createOrder, state } = useCommerce();
+  const deliveryAddresses = state.addresses.filter(
+    (address) => address.type === "delivery",
   );
-  const [isComplete, setIsComplete] = useState(false);
+  const [addressId, setAddressId] = useState(deliveryAddresses[0]?.id ?? "");
+  const [selectedPayments, setSelectedPayments] = useState<string[]>(
+    state.cards[0] ? [state.cards[0].id] : ["pix"],
+  );
+  const [paymentAmounts, setPaymentAmounts] = useState<Record<string, number>>(
+    {},
+  );
+  const [completedOrder, setCompletedOrder] = useState<Order | null>(null);
   const [isAddingAddress, setIsAddingAddress] = useState(false);
   const [isAddingCard, setIsAddingCard] = useState(false);
   const [coupon, setCoupon] = useState("");
-  const [isCouponApplied, setIsCouponApplied] = useState(false);
-  const entries = cartDemoItems.flatMap((item) => {
+  const [isCouponListOpen, setIsCouponListOpen] = useState(false);
+  const [appliedCouponCodes, setAppliedCouponCodes] = useState<string[]>([]);
+  const [couponError, setCouponError] = useState("");
+  const [checkoutError, setCheckoutError] = useState("");
+  const checkoutItems = state.buyNowItem ? [state.buyNowItem] : state.cartItems;
+  const entries = checkoutItems.flatMap((item) => {
     const product = products.find((entry) => entry.id === item.productId);
     const variant = product?.variants.find(
       (entry) => entry.id === item.variantId,
@@ -42,21 +55,20 @@ export function CheckoutPage() {
     (total, { item }) => total + item.unitPriceCents * item.quantity,
     0,
   );
-  const discountCents = isCouponApplied ? checkoutCoupon.discountCents : 0;
-  const totalCents = subtotalCents + cartShippingCents - discountCents;
+  const appliedCoupons = state.coupons.filter((entry) =>
+    appliedCouponCodes.includes(entry.code),
+  );
+  const discountCents = appliedCoupons.reduce(
+    (total, entry) => total + entry.valueCents,
+    0,
+  );
+  const shippingCents = entries.length ? cartShippingCents : 0;
+  const totalCents = Math.max(0, subtotalCents + shippingCents - discountCents);
 
-  if (isComplete) {
+  if (completedOrder) {
     return (
       <div className="min-h-svh bg-background">
-        <header className="border-b border-border bg-background/90 backdrop-blur">
-          <PageContainer className="flex h-18 items-center justify-between">
-            <Link aria-label="coHida — início" to="/">
-              <AppLogo className="dark:hidden" variant="dark" />
-              <AppLogo className="hidden dark:block" variant="light" />
-            </Link>
-            <ThemeToggle />
-          </PageContainer>
-        </header>
+        <StoreHeader />
         <PageContainer className="grid min-h-[calc(100svh-4.5rem)] place-items-center py-10 text-center">
           <div className="max-w-md">
             <span className="mx-auto grid size-14 place-items-center rounded-full bg-primary text-primary-foreground">
@@ -72,10 +84,10 @@ export function CheckoutPage() {
             <Card className="mt-7 text-left">
               <CardContent className="p-5 text-sm">
                 <p className="text-muted-foreground">Número do pedido</p>
-                <p className="mt-1 font-semibold">#CH-2026-0841</p>
+                <p className="mt-1 font-semibold">#{completedOrder.id}</p>
                 <p className="mt-4 text-muted-foreground">Total</p>
                 <p className="mt-1 font-semibold">
-                  {formatCurrency(totalCents)}
+                  {formatCurrency(completedOrder.totalCents)}
                 </p>
               </CardContent>
             </Card>
@@ -90,15 +102,7 @@ export function CheckoutPage() {
 
   return (
     <div className="min-h-svh bg-background">
-      <header className="border-b border-border bg-background/90 backdrop-blur">
-        <PageContainer className="flex h-18 items-center justify-between gap-4">
-          <Link aria-label="coHida — início" className="shrink-0" to="/">
-            <AppLogo className="dark:hidden" variant="dark" />
-            <AppLogo className="hidden dark:block" variant="light" />
-          </Link>
-          <ThemeToggle />
-        </PageContainer>
-      </header>
+      <StoreHeader />
       <PageContainer className="py-8 sm:py-12">
         <Button render={<Link to="/carrinho" />} size="sm" variant="ghost">
           <ChevronLeft />
@@ -126,7 +130,7 @@ export function CheckoutPage() {
                 </div>
               </div>
               <div className="mt-4 grid gap-3">
-                {checkoutAddresses.map((address) => (
+                {deliveryAddresses.map((address) => (
                   <label
                     className="flex cursor-pointer gap-3 rounded-xl border border-border bg-card p-4 has-checked:border-primary has-checked:ring-1 has-checked:ring-primary"
                     key={address.id}
@@ -142,7 +146,7 @@ export function CheckoutPage() {
                       <span className="font-medium">{address.label}</span>
                       <span className="mt-1 block text-sm text-muted-foreground">
                         {address.street}, {address.number}
-                        {address.complement ? ` · ${address.complement}` : ""}
+                        {address.notes ? ` · ${address.notes}` : ""}
                         <br />
                         {address.neighborhood} · {address.city} -{" "}
                         {address.state}
@@ -164,13 +168,41 @@ export function CheckoutPage() {
                   className="mt-3 grid gap-3 rounded-xl border border-dashed border-border p-4 sm:grid-cols-2"
                   onSubmit={(event) => {
                     event.preventDefault();
+                    const formData = new FormData(event.currentTarget);
+                    const address = addAddress({
+                      city: String(formData.get("city") ?? "").trim(),
+                      country: "Brasil",
+                      label: String(formData.get("label") ?? "").trim(),
+                      neighborhood: String(
+                        formData.get("neighborhood") ?? "",
+                      ).trim(),
+                      number: String(formData.get("number") ?? "").trim(),
+                      postalCode: String(
+                        formData.get("postalCode") ?? "",
+                      ).trim(),
+                      residenceType: "Não informado",
+                      state: String(formData.get("state") ?? "").trim(),
+                      street: String(formData.get("street") ?? "").trim(),
+                      streetType: "Logradouro",
+                      type: "delivery",
+                    });
+                    setAddressId(address.id);
                     setIsAddingAddress(false);
                   }}
                 >
                   <label className="grid gap-1 text-sm">
+                    Apelido
+                    <input
+                      className="h-9 rounded-lg border border-input bg-background px-3"
+                      name="label"
+                      required
+                    />
+                  </label>
+                  <label className="grid gap-1 text-sm">
                     CEP
                     <input
                       className="h-9 rounded-lg border border-input bg-background px-3"
+                      name="postalCode"
                       required
                     />
                   </label>
@@ -178,6 +210,7 @@ export function CheckoutPage() {
                     Número
                     <input
                       className="h-9 rounded-lg border border-input bg-background px-3"
+                      name="number"
                       required
                     />
                   </label>
@@ -185,6 +218,31 @@ export function CheckoutPage() {
                     Endereço
                     <input
                       className="h-9 rounded-lg border border-input bg-background px-3"
+                      name="street"
+                      required
+                    />
+                  </label>
+                  <label className="grid gap-1 text-sm">
+                    Bairro
+                    <input
+                      className="h-9 rounded-lg border border-input bg-background px-3"
+                      name="neighborhood"
+                      required
+                    />
+                  </label>
+                  <label className="grid gap-1 text-sm">
+                    Cidade
+                    <input
+                      className="h-9 rounded-lg border border-input bg-background px-3"
+                      name="city"
+                      required
+                    />
+                  </label>
+                  <label className="grid gap-1 text-sm">
+                    Estado
+                    <input
+                      className="h-9 rounded-lg border border-input bg-background px-3"
+                      name="state"
                       required
                     />
                   </label>
@@ -208,17 +266,33 @@ export function CheckoutPage() {
                 </div>
               </div>
               <div className="mt-4 grid gap-3">
-                {checkoutPaymentMethods.map((method) => (
+                {[
+                  ...state.cards.map((card) => ({
+                    id: card.id,
+                    label: card.brand,
+                    description: `Final ${card.lastDigits} · ${card.label}`,
+                  })),
+                  {
+                    id: "pix",
+                    label: "Pix",
+                    description: "Aprovação imediata após o pagamento",
+                  },
+                ].map((method) => (
                   <label
                     className="flex cursor-pointer gap-3 rounded-xl border border-border bg-card p-4 has-checked:border-primary has-checked:ring-1 has-checked:ring-primary"
                     key={method.id}
                   >
                     <input
-                      checked={paymentMethodId === method.id}
+                      checked={selectedPayments.includes(method.id)}
                       className="mt-1 accent-primary"
-                      name="payment-method"
-                      onChange={() => setPaymentMethodId(method.id)}
-                      type="radio"
+                      onChange={(event) =>
+                        setSelectedPayments((current) =>
+                          event.target.checked
+                            ? [...current, method.id]
+                            : current.filter((id) => id !== method.id),
+                        )
+                      }
+                      type="checkbox"
                     />
                     <span>
                       <span className="font-medium">{method.label}</span>
@@ -229,6 +303,30 @@ export function CheckoutPage() {
                   </label>
                 ))}
               </div>
+              {selectedPayments.length > 1 ? (
+                <div className="mt-3 grid gap-2 rounded-xl border border-border p-4">
+                  {selectedPayments.map((id) => (
+                    <label className="grid gap-1 text-sm" key={id}>
+                      Valor para{" "}
+                      {id === "pix"
+                        ? "Pix"
+                        : state.cards.find((card) => card.id === id)?.brand}
+                      <input
+                        className="h-9 rounded-lg border border-input bg-background px-3"
+                        min="10"
+                        onChange={(event) =>
+                          setPaymentAmounts((current) => ({
+                            ...current,
+                            [id]: Math.round(Number(event.target.value) * 100),
+                          }))
+                        }
+                        step="0.01"
+                        type="number"
+                      />
+                    </label>
+                  ))}
+                </div>
+              ) : null}
               <Button
                 className="mt-3"
                 onClick={() => setIsAddingCard((isAdding) => !isAdding)}
@@ -250,6 +348,11 @@ export function CheckoutPage() {
                     <input
                       className="h-9 rounded-lg border border-input bg-background px-3"
                       inputMode="numeric"
+                      onInput={(event) => {
+                        event.currentTarget.value = formatCardNumber(
+                          event.currentTarget.value,
+                        );
+                      }}
                       required
                     />
                   </label>
@@ -265,8 +368,39 @@ export function CheckoutPage() {
                     <input
                       className="h-9 rounded-lg border border-input bg-background px-3"
                       placeholder="MM/AA"
+                      onInput={(event) => {
+                        event.currentTarget.value = formatExpiry(
+                          event.currentTarget.value,
+                        );
+                      }}
                       required
                     />
+                  </label>
+                  <label className="grid gap-1 text-sm">
+                    CVV
+                    <input
+                      className="h-9 rounded-lg border border-input bg-background px-3"
+                      inputMode="numeric"
+                      maxLength={4}
+                      onInput={(event) => {
+                        event.currentTarget.value = formatCvv(
+                          event.currentTarget.value,
+                        );
+                      }}
+                      required
+                    />
+                  </label>
+                  <label className="grid gap-1 text-sm">
+                    Bandeira
+                    <select
+                      className="h-9 rounded-lg border border-input bg-background px-3"
+                      required
+                    >
+                      <option value="">Selecione</option>
+                      {cardBrands.map((brand) => (
+                        <option key={brand}>{brand}</option>
+                      ))}
+                    </select>
                   </label>
                   <Button className="w-fit" type="submit">
                     Usar este cartão
@@ -301,7 +435,7 @@ export function CheckoutPage() {
                 </div>
                 <div className="flex justify-between gap-4 text-muted-foreground">
                   <dt>Entrega</dt>
-                  <dd>{formatCurrency(cartShippingCents)}</dd>
+                  <dd>{formatCurrency(shippingCents)}</dd>
                 </div>
                 {discountCents ? (
                   <div className="flex justify-between gap-4 text-primary">
@@ -318,10 +452,31 @@ export function CheckoutPage() {
                 className="mt-5 border-t border-border pt-5"
                 onSubmit={(event) => {
                   event.preventDefault();
-                  setIsCouponApplied(
-                    coupon.trim().toLocaleUpperCase("pt-BR") ===
-                      checkoutCoupon.code,
+                  const found = state.coupons.find(
+                    (entry) =>
+                      entry.active &&
+                      entry.code === coupon.trim().toUpperCase(),
                   );
+                  if (!found) {
+                    setCouponError("Cupom inválido ou inativo.");
+                    return;
+                  }
+                  if (
+                    found.kind === "promotional" &&
+                    appliedCoupons.some((entry) => entry.kind === "promotional")
+                  ) {
+                    setCouponError(
+                      "Apenas um cupom promocional pode ser usado por pedido.",
+                    );
+                    return;
+                  }
+                  setAppliedCouponCodes((current) =>
+                    current.includes(found.code)
+                      ? current
+                      : [...current, found.code],
+                  );
+                  setCoupon("");
+                  setCouponError("");
                 }}
               >
                 <label className="text-sm font-medium" htmlFor="coupon">
@@ -339,24 +494,130 @@ export function CheckoutPage() {
                     Aplicar
                   </Button>
                 </div>
-                {isCouponApplied ? (
-                  <p className="mt-2 text-xs text-primary">
-                    Cupom aplicado:{" "}
-                    {formatCurrency(checkoutCoupon.discountCents)} de desconto.
-                  </p>
-                ) : coupon ? (
-                  <p className="mt-2 text-xs text-destructive">
-                    Cupom inválido. Experimente COHIDA15.
-                  </p>
+                <Button
+                  aria-expanded={isCouponListOpen}
+                  className="mt-2 px-0"
+                  onClick={() => setIsCouponListOpen((open) => !open)}
+                  size="sm"
+                  type="button"
+                  variant="link"
+                >
+                  {isCouponListOpen
+                    ? "Ocultar cupons disponíveis"
+                    : "Ver cupons disponíveis"}
+                </Button>
+                {isCouponListOpen ? (
+                  <div className="mt-2 grid gap-2 rounded-lg bg-muted/50 p-3">
+                    {state.coupons
+                      .filter((entry) => entry.active)
+                      .map((entry) => (
+                        <button
+                          className="flex items-center justify-between rounded-md px-2 py-1.5 text-left text-sm hover:bg-background"
+                          key={entry.id}
+                          onClick={() => {
+                            setCoupon(entry.code);
+                            setCouponError("");
+                            setIsCouponListOpen(false);
+                          }}
+                          type="button"
+                        >
+                          <span>
+                            <span className="block font-medium">
+                              {entry.code}
+                            </span>
+                            <span className="text-xs text-muted-foreground">
+                              {entry.kind === "exchange"
+                                ? "Cupom de troca"
+                                : "Cupom promocional"}
+                            </span>
+                          </span>
+                          <span className="font-medium text-primary">
+                            {formatCurrency(entry.valueCents)}
+                          </span>
+                        </button>
+                      ))}
+                  </div>
+                ) : null}
+                {appliedCoupons.length ? (
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {appliedCoupons.map((entry) => (
+                      <span
+                        className="inline-flex items-center gap-1 rounded-md bg-primary/10 px-2 py-1 text-xs text-primary"
+                        key={entry.code}
+                      >
+                        {entry.code} · {formatCurrency(entry.valueCents)}
+                        <Button
+                          aria-label={`Remover cupom ${entry.code}`}
+                          className="size-4"
+                          onClick={() =>
+                            setAppliedCouponCodes((current) =>
+                              current.filter((code) => code !== entry.code),
+                            )
+                          }
+                          size="icon-xs"
+                          type="button"
+                          variant="ghost"
+                        >
+                          <X />
+                        </Button>
+                      </span>
+                    ))}
+                  </div>
+                ) : couponError ? (
+                  <p className="mt-2 text-xs text-destructive">{couponError}</p>
                 ) : null}
               </form>
               <Button
                 className="mt-6 w-full"
-                onClick={() => setIsComplete(true)}
+                onClick={() => {
+                  try {
+                    if (!selectedPayments.length)
+                      throw new Error(
+                        "Selecione ao menos uma forma de pagamento.",
+                      );
+                    if (selectedPayments.length > 1) {
+                      const sum = selectedPayments.reduce(
+                        (total, id) => total + (paymentAmounts[id] ?? 0),
+                        0,
+                      );
+                      if (
+                        selectedPayments.some(
+                          (id) => (paymentAmounts[id] ?? 0) < 1000,
+                        ) ||
+                        sum !== totalCents
+                      )
+                        throw new Error(
+                          "Em pagamentos combinados, informe valores de ao menos R$ 10,00 que totalizem o pedido.",
+                        );
+                    }
+                    const order = createOrder(
+                      {
+                        discountCents,
+                        items: checkoutItems,
+                        shippingCents,
+                        subtotalCents,
+                        totalCents,
+                      },
+                      Boolean(state.buyNowItem),
+                    );
+                    setCompletedOrder(order);
+                  } catch (reason) {
+                    setCheckoutError(
+                      reason instanceof Error
+                        ? reason.message
+                        : "Entre em sua conta para finalizar o pedido.",
+                    );
+                  }
+                }}
                 size="lg"
               >
                 Confirmar pedido
               </Button>
+              {checkoutError ? (
+                <p className="mt-3 text-center text-xs text-destructive">
+                  {checkoutError}
+                </p>
+              ) : null}
               <p className="mt-3 text-center text-xs leading-5 text-muted-foreground">
                 Ao confirmar, você concorda com os termos de compra.
               </p>

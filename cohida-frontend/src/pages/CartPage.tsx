@@ -1,21 +1,17 @@
 import { Clock3, Minus, Plus, ShoppingBag, Trash2 } from "lucide-react";
 import { Link } from "react-router";
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 
-import { AppLogo, PageContainer, ThemeToggle } from "@/components/shared";
+import { PageContainer, StoreHeader } from "@/components/shared";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { formatCurrency } from "@/lib/currency";
-import {
-  cartDemoItems,
-  cartReservationNotice,
-  cartShippingCents,
-  products,
-} from "@/mocks";
-import type { CartItem } from "@/types";
+import { cartReservationNotice, cartShippingCents, products } from "@/mocks";
+import { useCommerce } from "@/data/useCommerce";
 
 export function CartPage() {
-  const [items, setItems] = useState<CartItem[]>(cartDemoItems);
+  const { removeCartItem, state, updateCartItem } = useCommerce();
+  const items = state.cartItems;
   const entries = useMemo(
     () =>
       items.flatMap((item) => {
@@ -35,35 +31,17 @@ export function CartPage() {
   const totalCents = subtotalCents + shippingCents;
 
   function updateQuantity(itemId: string, quantity: number) {
-    setItems((currentItems) =>
-      currentItems.map((item) =>
-        item.id === itemId ? { ...item, quantity } : item,
-      ),
-    );
+    const item = items.find((entry) => entry.id === itemId);
+    if (item) updateCartItem({ ...item, quantity });
   }
 
   function removeItem(itemId: string) {
-    setItems((currentItems) =>
-      currentItems.filter((item) => item.id !== itemId),
-    );
+    removeCartItem(itemId);
   }
 
   return (
     <div className="min-h-svh bg-background">
-      <header className="border-b border-border bg-background/90 backdrop-blur">
-        <PageContainer className="flex h-18 items-center justify-between gap-4">
-          <Link aria-label="coHida — início" className="shrink-0" to="/">
-            <AppLogo className="dark:hidden" variant="dark" />
-            <AppLogo className="hidden dark:block" variant="light" />
-          </Link>
-          <div className="flex items-center gap-2">
-            <ThemeToggle />
-            <Button render={<Link to="/produtos" />} variant="outline">
-              Continuar comprando
-            </Button>
-          </div>
-        </PageContainer>
-      </header>
+      <StoreHeader />
 
       <PageContainer className="py-10 sm:py-14">
         <div className="flex items-center gap-3">
@@ -83,7 +61,7 @@ export function CartPage() {
         {entries.length ? (
           <div className="mt-8 grid gap-8 lg:grid-cols-[minmax(0,1fr)_22rem] lg:items-start">
             <div>
-              <div className="mb-4 flex items-center gap-3 rounded-xl border border-warning/35 bg-warning/10 px-4 py-3 text-sm">
+              <div className="mb-4 flex items-center gap-3 rounded-xl border border-warning/70 bg-warning/75 px-4 py-3 text-sm dark:border-warning/45 dark:bg-warning/30">
                 <Clock3 className="size-4 shrink-0 text-warning-foreground" />
                 <p>
                   {cartReservationNotice.text}{" "}

@@ -1,4 +1,4 @@
-import { ChevronLeft, Pencil } from "lucide-react";
+import { ChevronLeft, Pencil, Power } from "lucide-react";
 import { Link, useParams } from "react-router";
 
 import { AdminLayout } from "@/components/admin/AdminLayout";
@@ -12,11 +12,14 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { adminCustomers } from "@/mocks";
+import { useCommerce } from "@/data/useCommerce";
 
 export function AdminCustomerDetailPage() {
+  const { state, toggleAdminCustomer } = useCommerce();
   const { customerId } = useParams();
   const customer =
     adminCustomers.find((item) => item.id === customerId) ?? adminCustomers[0];
+  const isActive = state.adminCustomerActive[customer.id] ?? true;
   return (
     <AdminLayout>
       <Button render={<Link to="/admin/clientes" />} size="sm" variant="ghost">
@@ -29,16 +32,29 @@ export function AdminCustomerDetailPage() {
             <h1 className="text-3xl font-semibold tracking-tight">
               {customer.name}
             </h1>
-            <Badge variant="success">{customer.status}</Badge>
+            <Badge variant={isActive ? "success" : "destructive"}>
+              {isActive ? "ATIVO" : "INATIVO"}
+            </Badge>
           </div>
           <p className="mt-2 text-muted-foreground">
             {customer.code} · Perfil de compra: {customer.profile}
           </p>
         </div>
-        <Button render={<Link to={`/admin/clientes/${customer.id}/editar`} />}>
-          <Pencil />
-          Editar perfil
-        </Button>
+        <div className="flex gap-2">
+          <Button
+            render={<Link to={`/admin/clientes/${customer.id}/editar`} />}
+          >
+            <Pencil />
+            Editar perfil
+          </Button>
+          <Button
+            onClick={() => toggleAdminCustomer(customer.id)}
+            variant="outline"
+          >
+            <Power />
+            {isActive ? "Inativar" : "Reativar"}
+          </Button>
+        </div>
       </div>
       <div className="mt-8 grid gap-6 xl:grid-cols-[1.4fr_1fr]">
         <div className="space-y-6">

@@ -4,13 +4,16 @@ import { BrowserRouter } from "react-router";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import "./index.css";
 import App from "./App.tsx";
+import { CommerceProvider } from "./data/CommerceProvider.tsx";
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
     <TooltipProvider>
-      <BrowserRouter>
-        <App />
-      </BrowserRouter>
+      <CommerceProvider>
+        <BrowserRouter>
+          <App />
+        </BrowserRouter>
+      </CommerceProvider>
     </TooltipProvider>
   </StrictMode>,
 );

@@ -1,10 +1,28 @@
-import { Menu, ShoppingBag, UserRound, X } from "lucide-react";
+import {
+  LogIn,
+  LogOut,
+  Database,
+  Menu,
+  Package,
+  Repeat2,
+  RotateCcw,
+  ShoppingBag,
+  Ticket,
+  UserRound,
+  X,
+} from "lucide-react";
 import { useState } from "react";
 import { Link, useLocation } from "react-router";
 
 import { AppLogo } from "@/components/shared/AppLogo";
 import { ThemeToggle } from "@/components/shared/ThemeToggle";
 import { Button } from "@/components/ui/button";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { useCommerce } from "@/data/useCommerce";
 import { cn } from "@/lib/utils";
 
 import { PageContainer } from "./PageContainer";
@@ -21,7 +39,14 @@ const links = [
 
 export function StoreHeader({ cartItemCount = 0 }: StoreHeaderProps) {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const { addDemo, logout, reset, state } = useCommerce();
   const { pathname } = useLocation();
+  const currentCartItemCount =
+    cartItemCount ||
+    state.cartItems.reduce((total, item) => total + item.quantity, 0);
+  const signedIn = Boolean(
+    state.customer && state.sessionCustomerId === state.customer.id,
+  );
 
   return (
     <header className="sticky top-0 z-30 border-b border-border bg-background/90 backdrop-blur">
@@ -43,28 +68,112 @@ export function StoreHeader({ cartItemCount = 0 }: StoreHeaderProps) {
           ))}
         </nav>
         <div className="flex items-center gap-2">
-          <ThemeToggle />
           <Button
-            aria-label="Sua conta"
-            render={<Link to="/conta" />}
-            size="icon"
-            variant="outline"
-          >
-            <UserRound />
-          </Button>
-          <Button
-            aria-label={`Carrinho com ${cartItemCount} itens`}
+            aria-label={`Carrinho com ${currentCartItemCount} itens`}
             className="relative"
             render={<Link to="/carrinho" />}
           >
             <ShoppingBag />
             <span className="hidden sm:inline">Carrinho</span>
-            {cartItemCount ? (
+            {currentCartItemCount ? (
               <span className="absolute -right-2 -top-2 grid size-5 place-items-center rounded-full bg-foreground text-xs text-background">
-                {cartItemCount}
+                {currentCartItemCount}
               </span>
             ) : null}
           </Button>
+          <Popover>
+            <PopoverTrigger
+              render={
+                <Button
+                  aria-label="Menu do perfil"
+                  size="icon"
+                  variant="outline"
+                />
+              }
+            >
+              <UserRound />
+            </PopoverTrigger>
+            <PopoverContent align="end" className="w-56 gap-1 p-2">
+              {signedIn ? (
+                <>
+                  <p className="px-2 pt-1 font-medium">
+                    {state.customer?.name}
+                  </p>
+                  <Button
+                    className="w-full justify-start"
+                    render={<Link to="/conta" />}
+                    variant="ghost"
+                  >
+                    <UserRound />
+                    Minha conta
+                  </Button>
+                  <Button
+                    className="w-full justify-start"
+                    render={<Link to="/cupons" />}
+                    variant="ghost"
+                  >
+                    <Ticket />
+                    Meus cupons
+                  </Button>
+                  <Button
+                    className="w-full justify-start"
+                    render={<Link to="/pedidos" />}
+                    variant="ghost"
+                  >
+                    <Package />
+                    Meus pedidos
+                  </Button>
+                  <Button
+                    className="w-full justify-start"
+                    render={<Link to="/trocas" />}
+                    variant="ghost"
+                  >
+                    <Repeat2 />
+                    Trocas e devoluções
+                  </Button>
+                  <Button
+                    className="w-full justify-start"
+                    onClick={logout}
+                    render={<Link to="/" />}
+                    variant="ghost"
+                  >
+                    <LogOut />
+                    Sair
+                  </Button>
+                  <Button
+                    className="w-full justify-start text-destructive hover:text-destructive"
+                    onClick={reset}
+                    render={<Link to="/" />}
+                    variant="ghost"
+                  >
+                    <RotateCcw />
+                    Limpar demo
+                  </Button>
+                </>
+              ) : (
+                <Button
+                  className="w-full justify-start"
+                  render={<Link to="/entrar" />}
+                  variant="ghost"
+                >
+                  <LogIn />
+                  Entrar / cadastrar-se
+                </Button>
+              )}
+              <Button
+                className="w-full justify-start"
+                onClick={() => void addDemo()}
+                variant="ghost"
+              >
+                <Database />
+                Adicionar demo
+              </Button>
+              <div className="mt-1 flex items-center justify-between border-t border-border px-2 pt-2">
+                <span className="text-sm text-muted-foreground">Tema</span>
+                <ThemeToggle />
+              </div>
+            </PopoverContent>
+          </Popover>
           <Button
             aria-label={isMenuOpen ? "Fechar menu" : "Abrir menu"}
             className="md:hidden"

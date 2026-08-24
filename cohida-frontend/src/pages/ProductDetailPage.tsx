@@ -1,20 +1,26 @@
 import { useMemo, useState } from "react";
 import { ChevronLeft, ShoppingBag, Star } from "lucide-react";
-import { Link, useParams } from "react-router";
+import { Link, useNavigate, useParams } from "react-router";
 
 import { PageContainer, Price, StoreHeader } from "@/components/shared";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { categories, products } from "@/mocks";
+import { useCommerce } from "@/data/useCommerce";
 
 export function ProductDetailPage() {
   const { productSlug } = useParams();
+  const navigate = useNavigate();
   const product = products.find((item) => item.slug === productSlug);
   const [selectedVariantId, setSelectedVariantId] = useState(
     product?.variants[0]?.id ?? "",
   );
-  const [cartItemCount, setCartItemCount] = useState(0);
+  const { addCartItem, startBuyNow, state } = useCommerce();
+  const cartItemCount = state.cartItems.reduce(
+    (total, item) => total + item.quantity,
+    0,
+  );
   const selectedVariant = useMemo(
     () => product?.variants.find((item) => item.id === selectedVariantId),
     [product, selectedVariantId],
@@ -42,6 +48,17 @@ export function ProductDetailPage() {
   const isAvailable = Boolean(
     selectedVariant && selectedVariant.stockQuantity > 0,
   );
+
+  function addSelectedVariant() {
+    if (!selectedVariant) return;
+    addCartItem({
+      id: `cart-${crypto.randomUUID()}`,
+      productId: product!.id,
+      quantity: 1,
+      unitPriceCents: product!.priceCents,
+      variantId: selectedVariant.id,
+    });
+  }
 
   return (
     <div className="min-h-svh bg-background">
@@ -113,15 +130,36 @@ export function ProductDetailPage() {
                   : "Variação indisponível"}
               </p>
             </div>
-            <Button
-              className="mt-8 w-full sm:w-auto"
-              disabled={!isAvailable}
-              onClick={() => setCartItemCount((count) => count + 1)}
-              size="lg"
-            >
-              <ShoppingBag />
-              {isAvailable ? "Adicionar ao carrinho" : "Indisponível"}
-            </Button>
+            <div className="mt-8 grid gap-2 sm:flex">
+              <Button
+                className="w-full sm:w-auto"
+                disabled={!isAvailable}
+                onClick={addSelectedVariant}
+                size="lg"
+                variant="outline"
+              >
+                <ShoppingBag />
+                {isAvailable ? "Adicionar ao carrinho" : "Indisponível"}
+              </Button>
+              <Button
+                className="w-full sm:w-auto"
+                disabled={!isAvailable}
+                onClick={() => {
+                  if (!selectedVariant) return;
+                  startBuyNow({
+                    id: `buy-now-${crypto.randomUUID()}`,
+                    productId: product!.id,
+                    quantity: 1,
+                    unitPriceCents: product!.priceCents,
+                    variantId: selectedVariant.id,
+                  });
+                  navigate("/checkout");
+                }}
+                size="lg"
+              >
+                Comprar agora
+              </Button>
+            </div>
             <Card className="mt-10">
               <CardContent className="grid gap-4 p-5 sm:grid-cols-2">
                 {Object.entries(product.attributes).map(([label, value]) => (

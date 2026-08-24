@@ -5,12 +5,12 @@ import { PageContainer, StoreHeader } from "@/components/shared";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { formatCurrency } from "@/lib/currency";
-import { customerOrders } from "@/mocks";
+import { useCommerce } from "@/data/useCommerce";
 
 const statusLabel = {
   approved: "Aprovado",
   delivered: "Entregue",
-  in_transit: "Em transporte",
+  in_transit: "Em trânsito",
   processing: "Em processamento",
   rejected: "Reprovado",
   in_exchange: "Em troca",
@@ -19,6 +19,7 @@ const statusLabel = {
 };
 
 export function OrdersPage() {
+  const { state } = useCommerce();
   return (
     <div className="min-h-svh bg-background">
       <StoreHeader />
@@ -28,7 +29,7 @@ export function OrdersPage() {
           Meus pedidos
         </h1>
         <div className="mt-8 overflow-hidden rounded-xl border border-border bg-card">
-          {customerOrders.map((order) => (
+          {state.orders.map((order) => (
             <article
               className="flex flex-col gap-4 border-b border-border p-5 last:border-b-0 sm:flex-row sm:items-center sm:justify-between"
               key={order.id}

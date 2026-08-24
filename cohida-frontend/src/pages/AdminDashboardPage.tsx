@@ -20,7 +20,7 @@ import {
 function statusVariant(status: string) {
   return status === "EM PROCESSAMENTO"
     ? "warning"
-    : status === "APROVADA"
+    : status === "PAGAMENTO REALIZADO"
       ? "success"
       : "info";
 }

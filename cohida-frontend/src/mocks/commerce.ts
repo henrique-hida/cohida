@@ -31,7 +31,7 @@ export interface ExchangeRequest {
   productId: string;
   reason: string;
   requestedAt: string;
-  status: "requested" | "authorized" | "received" | "completed";
+  status: "requested" | "authorized" | "sent" | "received" | "completed";
 }
 
 export interface Recommendation {

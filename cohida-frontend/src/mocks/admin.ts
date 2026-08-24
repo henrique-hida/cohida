@@ -44,13 +44,13 @@ export const adminRecentOrders = [
   {
     customer: "Gabriel Souza",
     id: "#COH-1047",
-    status: "APROVADA",
+    status: "PAGAMENTO REALIZADO",
     total: "R$ 1.129,00",
   },
   {
     customer: "Camila Rocha",
     id: "#COH-1046",
-    status: "EM TRANSPORTE",
+    status: "EM TRÂNSITO",
     total: "R$ 289,90",
   },
 ];
@@ -206,7 +206,11 @@ export const adminStockEntryFormOptions = {
 };
 
 export type AdminOrderStatus =
-  "EM PROCESSAMENTO" | "APROVADA" | "EM TRANSPORTE" | "ENTREGUE";
+  | "EM ABERTO"
+  | "EM PROCESSAMENTO"
+  | "PAGAMENTO REALIZADO"
+  | "EM TRÂNSITO"
+  | "ENTREGUE";
 
 export interface AdminOrder {
   customer: { email: string; name: string; phone: string };
@@ -230,13 +234,41 @@ export interface AdminOrder {
 }
 
 export const adminOrderStatusSteps: AdminOrderStatus[] = [
+  "EM ABERTO",
   "EM PROCESSAMENTO",
-  "APROVADA",
-  "EM TRANSPORTE",
+  "PAGAMENTO REALIZADO",
+  "EM TRÂNSITO",
   "ENTREGUE",
 ];
 
 export const adminOrders: AdminOrder[] = [
+  {
+    customer: {
+      email: "mariana.alves@email.com",
+      name: "Mariana Alves",
+      phone: "(11) 96666-1188",
+    },
+    deliveryAddress:
+      "Rua da Consolação, 905 · Consolação · São Paulo, SP · 01301-000",
+    id: "COH-1049",
+    items: [
+      {
+        name: "Garrafa Térmica 700 ml",
+        quantity: 1,
+        total: "R$ 79,90",
+        unitPrice: "R$ 79,90",
+      },
+    ],
+    payment: {
+      card: "Elo final 1905",
+      coupon: null,
+      freight: "R$ 19,90",
+      subtotal: "R$ 79,90",
+      total: "R$ 99,80",
+    },
+    placedAt: "23 ago. 2026, 11:05",
+    status: "EM ABERTO",
+  },
   {
     customer: {
       email: "luana.martins@email.com",
@@ -294,7 +326,7 @@ export const adminOrders: AdminOrder[] = [
       total: "R$ 1.129,00",
     },
     placedAt: "23 ago. 2026, 09:18",
-    status: "APROVADA",
+    status: "PAGAMENTO REALIZADO",
   },
   {
     customer: {
@@ -321,18 +353,51 @@ export const adminOrders: AdminOrder[] = [
       total: "R$ 289,90",
     },
     placedAt: "22 ago. 2026, 16:48",
-    status: "EM TRANSPORTE",
+    status: "EM TRÂNSITO",
+  },
+  {
+    customer: {
+      email: "pedro.oliveira@email.com",
+      name: "Pedro Oliveira",
+      phone: "(11) 95555-7777",
+    },
+    deliveryAddress:
+      "Rua das Oliveiras, 61 · Tatuapé · São Paulo, SP · 03308-000",
+    id: "COH-1045",
+    items: [
+      {
+        name: "Faixa de Judô Verde",
+        quantity: 1,
+        total: "R$ 39,90",
+        unitPrice: "R$ 39,90",
+      },
+    ],
+    payment: {
+      card: "Pix",
+      coupon: "TROCA-1000",
+      freight: "R$ 0,00",
+      subtotal: "R$ 39,90",
+      total: "R$ 29,90",
+    },
+    placedAt: "21 ago. 2026, 14:22",
+    status: "ENTREGUE",
   },
 ];
 
 export type AdminExchangeStatus =
-  "EM TROCA" | "TROCA AUTORIZADA" | "RECEBIDA" | "TROCADO";
+  | "TROCA SOLICITADA"
+  | "TROCA ACEITA"
+  | "TROCA NEGADA"
+  | "ITEM ENVIADO"
+  | "ITEM RECEBIDO"
+  | "TROCA PROCESSADA";
 
 export const adminExchangeStatusSteps: AdminExchangeStatus[] = [
-  "EM TROCA",
-  "TROCA AUTORIZADA",
-  "RECEBIDA",
-  "TROCADO",
+  "TROCA SOLICITADA",
+  "TROCA ACEITA",
+  "ITEM ENVIADO",
+  "ITEM RECEBIDO",
+  "TROCA PROCESSADA",
 ];
 export const adminExchanges = [
   {
@@ -341,7 +406,7 @@ export const adminExchanges = [
     item: "Tênis Run Flow",
     orderId: "COH-1027",
     reason: "Tamanho não serviu",
-    status: "TROCA AUTORIZADA" as AdminExchangeStatus,
+    status: "TROCA ACEITA" as AdminExchangeStatus,
     value: "R$ 459,90",
   },
   {
@@ -350,7 +415,7 @@ export const adminExchanges = [
     item: "Caneleira Pro",
     orderId: "COH-1018",
     reason: "Produto com defeito",
-    status: "EM TROCA" as AdminExchangeStatus,
+    status: "TROCA SOLICITADA" as AdminExchangeStatus,
     value: "R$ 89,90",
   },
 ];
@@ -644,6 +709,7 @@ export const adminResourceContent: Record<
     description: "Valide pagamentos e acompanhe cada transição de fulfilment.",
     heading: "Pedidos",
     rows: [
+      ["#COH-1049", "Mariana Alves", "23 ago. 2026", "R$ 99,80", "EM ABERTO"],
       [
         "#COH-1048",
         "Luana Martins",
@@ -651,14 +717,15 @@ export const adminResourceContent: Record<
         "R$ 429,90",
         "EM PROCESSAMENTO",
       ],
-      ["#COH-1047", "Gabriel Souza", "23 ago. 2026", "R$ 1.129,00", "APROVADA"],
       [
-        "#COH-1046",
-        "Camila Rocha",
-        "22 ago. 2026",
-        "R$ 289,90",
-        "EM TRANSPORTE",
+        "#COH-1047",
+        "Gabriel Souza",
+        "23 ago. 2026",
+        "R$ 1.129,00",
+        "PAGAMENTO REALIZADO",
       ],
+      ["#COH-1046", "Camila Rocha", "22 ago. 2026", "R$ 289,90", "EM TRÂNSITO"],
+      ["#COH-1045", "Pedro Oliveira", "21 ago. 2026", "R$ 29,90", "ENTREGUE"],
     ],
   },
   clientes: {

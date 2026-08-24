@@ -19,10 +19,12 @@ import {
   adminOrderStatusSteps,
   type AdminOrderStatus,
 } from "@/mocks";
+import { useCommerce } from "@/data/useCommerce";
 
 function statusVariant(status: AdminOrderStatus) {
   if (status === "EM PROCESSAMENTO") return "warning";
-  if (status === "APROVADA" || status === "ENTREGUE") return "success";
+  if (status === "PAGAMENTO REALIZADO" || status === "ENTREGUE")
+    return "success";
   return "info";
 }
 
@@ -30,12 +32,13 @@ export function AdminOrderDetailPage() {
   const { orderId } = useParams();
   const order =
     adminOrders.find((item) => item.id === orderId) ?? adminOrders[0];
-  const [status, setStatus] = useState<AdminOrderStatus>(order.status);
+  const { state, updateAdminOrderStatus } = useCommerce();
+  const status = state.adminOrderStatuses[order.id] ?? order.status;
   const [updated, setUpdated] = useState(false);
   const [confirmingDelivery, setConfirmingDelivery] = useState(false);
 
   function updateStatus(nextStatus: AdminOrderStatus) {
-    setStatus(nextStatus);
+    updateAdminOrderStatus(order.id, nextStatus);
     setUpdated(true);
   }
 
@@ -57,12 +60,23 @@ export function AdminOrderDetailPage() {
             Realizado em {order.placedAt}
           </p>
         </div>
-        {status === "APROVADA" ? (
-          <Button onClick={() => updateStatus("EM TRANSPORTE")}>
+        {status === "EM ABERTO" ? (
+          <Button onClick={() => updateStatus("EM PROCESSAMENTO")}>
+            Iniciar processamento
+          </Button>
+        ) : null}
+        {status === "EM PROCESSAMENTO" ? (
+          <Button onClick={() => updateStatus("PAGAMENTO REALIZADO")}>
+            Confirmar pagamento
+          </Button>
+        ) : null}
+        {status === "PAGAMENTO REALIZADO" ? (
+          <Button onClick={() => updateStatus("EM TRÂNSITO")}>
             <Truck />
             Enviar pedido
           </Button>
-        ) : status === "EM TRANSPORTE" ? (
+        ) : null}
+        {status === "EM TRÂNSITO" ? (
           <Button onClick={() => setConfirmingDelivery(true)}>
             <PackageCheck />
             Confirmar entrega

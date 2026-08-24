@@ -4,16 +4,24 @@ import {
   Boxes,
   ChevronLeft,
   ClipboardList,
+  Ticket,
   LayoutDashboard,
   Package,
   Repeat2,
   Settings,
+  LogOut,
+  UserRound,
   UsersRound,
 } from "lucide-react";
 import { Link, NavLink, useLocation } from "react-router";
 
 import { AppLogo, ThemeToggle } from "@/components/shared";
 import { Button } from "@/components/ui/button";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 
 const navigation = [
@@ -23,6 +31,7 @@ const navigation = [
   { icon: ClipboardList, label: "Pedidos", to: "/admin/pedidos" },
   { icon: UsersRound, label: "Clientes", to: "/admin/clientes" },
   { icon: Repeat2, label: "Trocas", to: "/admin/trocas" },
+  { icon: Ticket, label: "Cupons", to: "/admin/cupons" },
   { icon: BarChart3, label: "Análises", to: "/admin/analises" },
   { icon: Settings, label: "Administração", to: "/admin/administracao" },
 ];
@@ -135,21 +144,37 @@ export function AdminLayout({ children }: AdminLayoutProps) {
       <div className="min-w-0">
         <header className="flex h-16 items-center justify-between border-b border-border bg-background/90 px-5 backdrop-blur sm:px-8">
           <p className="text-sm text-muted-foreground">Operação coHida</p>
-          <div className="flex items-center gap-3">
-            <ThemeToggle />
-            <span className="hidden text-right text-sm sm:block">
-              <span className="block font-medium">Marina Costa</span>
-              <span className="block text-xs text-muted-foreground">
-                Administradora
-              </span>
-            </span>
-            <span
-              aria-hidden="true"
-              className="grid size-8 place-items-center rounded-full bg-primary text-xs font-bold text-primary-foreground"
+          <Popover>
+            <PopoverTrigger
+              render={
+                <Button
+                  aria-label="Menu da administradora"
+                  size="icon"
+                  variant="outline"
+                />
+              }
             >
-              MC
-            </span>
-          </div>
+              <UserRound />
+            </PopoverTrigger>
+            <PopoverContent align="end" className="w-56 gap-1 p-2">
+              <p className="px-2 pt-1 font-medium">Marina Costa</p>
+              <p className="px-2 text-xs text-muted-foreground">
+                Administradora
+              </p>
+              <div className="mt-1 flex items-center justify-between border-t border-border px-2 pt-2">
+                <span className="text-sm text-muted-foreground">Tema</span>
+                <ThemeToggle />
+              </div>
+              <Button
+                className="w-full justify-start"
+                render={<Link to="/entrar" />}
+                variant="ghost"
+              >
+                <LogOut />
+                Sair
+              </Button>
+            </PopoverContent>
+          </Popover>
         </header>
         <main className="mx-auto max-w-7xl motion-safe:animate-in motion-safe:fade-in-0 motion-safe:slide-in-from-bottom-2 motion-safe:duration-300 p-5 sm:p-8">
           {children}

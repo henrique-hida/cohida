@@ -12,7 +12,8 @@ import { PageContainer, StoreHeader } from "@/components/shared";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { formatCurrency } from "@/lib/currency";
-import { customerOrders, products } from "@/mocks";
+import { products } from "@/mocks";
+import { useCommerce } from "@/data/useCommerce";
 
 const deliverySteps = [
   { icon: Check, label: "Pedido confirmado" },
@@ -22,8 +23,9 @@ const deliverySteps = [
 ];
 
 export function OrderDetailPage() {
+  const { cancelOrder, confirmReceipt, state } = useCommerce();
   const { orderId } = useParams();
-  const order = customerOrders.find((entry) => entry.id === orderId);
+  const order = state.orders.find((entry) => entry.id === orderId);
   if (!order)
     return (
       <div className="min-h-svh bg-background">
@@ -158,6 +160,24 @@ export function OrderDetailPage() {
                 >
                   <CircleHelp />
                   Solicitar troca
+                </Button>
+              ) : null}
+              {order.status === "in_transit" ? (
+                <Button
+                  className="mt-3 w-full"
+                  onClick={() => confirmReceipt(order.id)}
+                  variant="outline"
+                >
+                  Confirmar recebimento
+                </Button>
+              ) : null}
+              {order.status === "processing" ? (
+                <Button
+                  className="mt-3 w-full"
+                  onClick={() => cancelOrder(order.id)}
+                  variant="destructive"
+                >
+                  Cancelar pedido
                 </Button>
               ) : null}
             </CardContent>

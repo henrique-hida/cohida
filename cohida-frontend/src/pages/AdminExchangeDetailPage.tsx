@@ -29,18 +29,18 @@ export function AdminExchangeDetailPage() {
   const [message, setMessage] = useState("");
   const [confirmingCompletion, setConfirmingCompletion] = useState(false);
   const next =
-    status === "EM TROCA"
-      ? (["Autorizar troca", "TROCA AUTORIZADA"] as const)
-      : status === "TROCA AUTORIZADA"
-        ? (["Confirmar recebimento", "RECEBIDA"] as const)
-        : status === "RECEBIDA"
-          ? (["Concluir troca", "TROCADO"] as const)
+    status === "TROCA ACEITA"
+      ? (["Registrar despacho", "ITEM ENVIADO"] as const)
+      : status === "ITEM ENVIADO"
+        ? (["Confirmar recebimento", "ITEM RECEBIDO"] as const)
+        : status === "ITEM RECEBIDO"
+          ? (["Processar troca", "TROCA PROCESSADA"] as const)
           : undefined;
   function advance() {
     if (next) {
       setStatus(next[1]);
       setMessage(
-        next[1] === "RECEBIDA"
+        next[1] === "ITEM RECEBIDO"
           ? "Recebimento confirmado. Cupom de troca disponível."
           : "Troca atualizada apenas na interface.",
       );
@@ -60,9 +60,9 @@ export function AdminExchangeDetailPage() {
             </h1>
             <Badge
               variant={
-                status === "EM TROCA"
+                status === "TROCA SOLICITADA"
                   ? "warning"
-                  : status === "TROCADO"
+                  : status === "TROCA PROCESSADA"
                     ? "success"
                     : "info"
               }
@@ -74,10 +74,33 @@ export function AdminExchangeDetailPage() {
             Pedido #{exchange.orderId} · {exchange.customer}
           </p>
         </div>
+        {status === "TROCA SOLICITADA" ? (
+          <div className="flex gap-2">
+            <Button
+              onClick={() => {
+                setStatus("TROCA ACEITA");
+                setMessage("Troca aceita.");
+              }}
+            >
+              Aceitar troca
+            </Button>
+            <Button
+              onClick={() => {
+                setStatus("TROCA NEGADA");
+                setMessage("Troca negada.");
+              }}
+              variant="destructive"
+            >
+              Negar troca
+            </Button>
+          </div>
+        ) : null}
         {next ? (
           <Button
             onClick={() =>
-              next[1] === "TROCADO" ? setConfirmingCompletion(true) : advance()
+              next[1] === "TROCA PROCESSADA"
+                ? setConfirmingCompletion(true)
+                : advance()
             }
           >
             <PackageCheck />
@@ -127,7 +150,7 @@ export function AdminExchangeDetailPage() {
               </div>
             </CardContent>
           </Card>
-          {status === "RECEBIDA" || status === "TROCADO" ? (
+          {status === "ITEM RECEBIDO" || status === "TROCA PROCESSADA" ? (
             <Card>
               <CardHeader>
                 <CardTitle>Destino do item</CardTitle>
@@ -152,7 +175,7 @@ export function AdminExchangeDetailPage() {
                     </span>
                   </span>
                 </label>
-                {status === "RECEBIDA" ? (
+                {status === "ITEM RECEBIDO" ? (
                   <div className="mt-4 rounded-lg bg-info p-3 text-sm text-info-foreground">
                     Cupom de troca de {exchange.value} gerado para o cliente.
                   </div>

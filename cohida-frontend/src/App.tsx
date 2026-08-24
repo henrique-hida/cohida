@@ -1,9 +1,8 @@
 import { lazy, Suspense } from "react";
-import { Route, Routes } from "react-router";
+import { Navigate, Route, Routes } from "react-router";
 
 import { AdminDataState } from "@/components/admin/AdminDataState";
 import { ChatbotFab } from "@/components/shared";
-import { AdminLoginPage } from "@/pages/AdminLoginPage";
 import { AdminAdministrationPage } from "@/pages/AdminAdministrationPage";
 import { AdminDashboardPage } from "@/pages/AdminDashboardPage";
 import { AdminCustomerCreatePage } from "@/pages/AdminCustomerCreatePage";
@@ -14,6 +13,7 @@ import { AdminProductDetailPage } from "@/pages/AdminProductDetailPage";
 import { AdminProductEditPage } from "@/pages/AdminProductEditPage";
 import { AdminOrderDetailPage } from "@/pages/AdminOrderDetailPage";
 import { AdminExchangeDetailPage } from "@/pages/AdminExchangeDetailPage";
+import { AdminCouponsPage } from "@/pages/AdminCouponsPage";
 const AdminAnalyticsPage = lazy(() =>
   import("@/pages/AdminAnalyticsPage").then((module) => ({
     default: module.AdminAnalyticsPage,
@@ -31,6 +31,7 @@ import { OrdersPage } from "@/pages/OrdersPage";
 import { OrderDetailPage } from "@/pages/OrderDetailPage";
 import { ExchangesPage } from "@/pages/ExchangesPage";
 import { RecommendationsPage } from "@/pages/RecommendationsPage";
+import { CouponsPage } from "@/pages/CouponsPage";
 import { HomePage } from "@/pages/HomePage";
 import { ProductDetailPage } from "@/pages/ProductDetailPage";
 
@@ -49,7 +50,11 @@ function App() {
         <Route element={<OrderDetailPage />} path="/pedidos/:orderId" />
         <Route element={<ExchangesPage />} path="/trocas" />
         <Route element={<RecommendationsPage />} path="/recomendacoes" />
-        <Route element={<AdminLoginPage />} path="/admin/login" />
+        <Route element={<CouponsPage />} path="/cupons" />
+        <Route
+          element={<Navigate replace to="/entrar" />}
+          path="/admin/login"
+        />
         <Route element={<AdminDashboardPage />} path="/admin" />
         <Route
           element={<AdminResourcePage resource="produtos" />}
@@ -111,6 +116,7 @@ function App() {
           element={<AdminExchangeDetailPage />}
           path="/admin/trocas/:exchangeId"
         />
+        <Route element={<AdminCouponsPage />} path="/admin/cupons" />
         <Route
           element={
             <Suspense
