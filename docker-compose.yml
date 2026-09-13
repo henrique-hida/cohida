@@ -1,0 +1,53 @@
+services:
+  frontend:
+    build:
+      context: ./cohida-frontend
+    ports:
+      - "5173:5173"
+    environment:
+      VITE_API_BASE_URL: http://localhost:8080/api
+      VITE_ENABLE_MOCKS: "false"
+      CHOKIDAR_USEPOLLING: "true"
+    volumes:
+      - ./cohida-frontend:/app
+      - frontend_node_modules:/app/node_modules
+    depends_on:
+      - backend
+
+  backend:
+    build:
+      context: ./cohida-backend
+    ports:
+      - "8080:8080"
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-cohida}?currentSchema=cohida
+      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-cohida}
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-cohida_dev_password}
+    volumes:
+      - ./cohida-backend:/app
+      - maven_repository:/root/.m2
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-cohida}
+      POSTGRES_USER: ${POSTGRES_USER:-cohida}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-cohida_dev_password}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  frontend_node_modules:
+  maven_repository:
+  postgres_data:
