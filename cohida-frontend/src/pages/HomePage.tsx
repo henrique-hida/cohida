@@ -25,12 +25,13 @@ import {
   homeGuide,
   homeTestimonials,
   homeTrustMetrics,
-  products,
 } from "@/mocks";
+import { useCommerce } from "@/data/useCommerce";
 
 const categoryIcons = [Trophy, Footprints, Dumbbell, Mountain, Medal];
 
 export function HomePage() {
+  const { state } = useCommerce();
   const [cartItemCount, setCartItemCount] = useState(0);
 
   function addToCart() {
@@ -165,7 +166,7 @@ export function HomePage() {
               </Button>
             </div>
             <div className="mt-8 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
-              {products.map((product) => (
+              {state.products.map((product) => (
                 <ProductCard
                   categoryName={
                     categories.find(
@@ -196,7 +197,9 @@ export function HomePage() {
             </div>
             <div className="mt-8 grid gap-4 md:grid-cols-3">
               {homeBestSellerProductIds.map((productId, index) => {
-                const product = products.find((item) => item.id === productId);
+                const product = state.products.find(
+                  (item) => item.id === productId,
+                );
                 return product ? (
                   <Link
                     className="group flex gap-4 rounded-xl border border-border bg-card p-4 transition-all hover:-translate-y-0.5 hover:border-primary hover:shadow-lg"
@@ -237,7 +240,7 @@ export function HomePage() {
             </div>
             <div className="mt-8 grid gap-4 lg:grid-cols-3">
               {homeGoalCollections.map((collection) => {
-                const firstProduct = products.find(
+                const firstProduct = state.products.find(
                   (product) => product.id === collection.productIds[0],
                 );
                 return (

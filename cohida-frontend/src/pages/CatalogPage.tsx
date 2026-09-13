@@ -4,16 +4,18 @@ import { useSearchParams } from "react-router";
 
 import { PageContainer, ProductCard, StoreHeader } from "@/components/shared";
 import { Button } from "@/components/ui/button";
-import { categories, products } from "@/mocks";
+import { categories } from "@/mocks";
+import { useCommerce } from "@/data/useCommerce";
 
 export function CatalogPage() {
+  const { state } = useCommerce();
   const [searchParams, setSearchParams] = useSearchParams();
   const [query, setQuery] = useState("");
   const [cartItemCount, setCartItemCount] = useState(0);
   const category = searchParams.get("categoria") ?? "todas";
   const filteredProducts = useMemo(() => {
     const normalizedQuery = query.trim().toLocaleLowerCase("pt-BR");
-    return products.filter((product) => {
+    return state.products.filter((product) => {
       const matchesCategory =
         category === "todas" || product.categoryIds.includes(category);
       const matchesQuery =
@@ -23,7 +25,7 @@ export function CatalogPage() {
         );
       return matchesCategory && matchesQuery;
     });
-  }, [category, query]);
+  }, [category, query, state.products]);
 
   return (
     <div className="min-h-svh bg-background">

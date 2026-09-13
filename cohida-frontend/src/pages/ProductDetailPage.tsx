@@ -6,17 +6,17 @@ import { PageContainer, Price, StoreHeader } from "@/components/shared";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { categories, products } from "@/mocks";
+import { categories } from "@/mocks";
 import { useCommerce } from "@/data/useCommerce";
 
 export function ProductDetailPage() {
   const { productSlug } = useParams();
   const navigate = useNavigate();
-  const product = products.find((item) => item.slug === productSlug);
+  const { addCartItem, startBuyNow, state } = useCommerce();
+  const product = state.products.find((item) => item.slug === productSlug);
   const [selectedVariantId, setSelectedVariantId] = useState(
     product?.variants[0]?.id ?? "",
   );
-  const { addCartItem, startBuyNow, state } = useCommerce();
   const cartItemCount = state.cartItems.reduce(
     (total, item) => total + item.quantity,
     0,

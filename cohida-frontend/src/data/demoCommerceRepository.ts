@@ -9,6 +9,8 @@ import {
 import { adminOrders, type AdminOrderStatus } from "@/mocks/admin";
 import type { ExchangeRequest } from "@/mocks/commerce";
 import type { CartItem, Order } from "@/types";
+import type { Product } from "@/types";
+import { products as seededProducts } from "@/mocks/products";
 
 const storageKey = "cohida-demo-commerce-v1";
 
@@ -76,6 +78,7 @@ export interface DemoCommerceState {
   customer: DemoCustomer | null;
   exchanges: DemoExchange[];
   orders: Order[];
+  products: Product[];
   sessionCustomerId: string | null;
 }
 
@@ -152,6 +155,7 @@ function createInitialState(): DemoCommerceState {
     customer: null,
     exchanges: clone(exchangeRequests),
     orders: clone(customerOrders),
+    products: clone(seededProducts),
     sessionCustomerId: null,
   };
 }
@@ -170,6 +174,7 @@ function createEmptyState(): DemoCommerceState {
     customer: null,
     exchanges: [],
     orders: [],
+    products: [],
     sessionCustomerId: null,
   };
 }
@@ -371,6 +376,24 @@ export const demoCommerceRepository = {
               : current,
           )
         : [...state.cartItems, item],
+    });
+  },
+  saveProduct(product: Product) {
+    save({
+      ...state,
+      products: state.products.some((item) => item.id === product.id)
+        ? state.products.map((item) =>
+            item.id === product.id ? product : item,
+          )
+        : [...state.products, product],
+    });
+  },
+  setProductStatus(id: string, status: Product["status"]) {
+    save({
+      ...state,
+      products: state.products.map((product) =>
+        product.id === id ? { ...product, status } : product,
+      ),
     });
   },
   startBuyNow(item: CartItem) {
