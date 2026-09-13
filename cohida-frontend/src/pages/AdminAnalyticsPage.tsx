@@ -62,11 +62,37 @@ function toIsoDate(date: Date) {
   return date.toISOString().slice(0, 10);
 }
 
+function isMonthInRange(month: string, startDate: string, endDate: string) {
+  const monthStart = toDate(month);
+  const monthEnd = new Date(
+    monthStart.getFullYear(),
+    monthStart.getMonth() + 1,
+    0,
+  );
+
+  return monthStart <= toDate(endDate) && monthEnd >= toDate(startDate);
+}
+
 export function AdminAnalyticsPage() {
   const [selected, setSelected] = useState(adminAnalyticsData.categories);
   const [startDate, setStartDate] = useState("2026-06-01");
   const [endDate, setEndDate] = useState("2026-08-31");
+  const [appliedRange, setAppliedRange] = useState({
+    startDate: "2026-06-01",
+    endDate: "2026-08-31",
+  });
   const [error, setError] = useState("");
+  const visibleMonths = useMemo(
+    () =>
+      adminAnalyticsData.months.filter((month) =>
+        isMonthInRange(
+          month.date,
+          appliedRange.startDate,
+          appliedRange.endDate,
+        ),
+      ),
+    [appliedRange],
+  );
   const selectedSeries = useMemo(
     () =>
       adminAnalyticsData.series.filter((series) =>
@@ -76,24 +102,45 @@ export function AdminAnalyticsPage() {
   );
   const chartData = useMemo(
     () =>
-      adminAnalyticsData.months.map((month, index) =>
-        Object.fromEntries([
-          ["month", month],
+      visibleMonths.map((month) => {
+        const index = adminAnalyticsData.months.indexOf(month);
+
+        return Object.fromEntries([
+          ["month", month.label],
           ...adminAnalyticsData.series.map((series) => [
             series.category,
             series.values[index],
           ]),
-        ]),
-      ),
-    [],
+        ]);
+      }),
+    [visibleMonths],
   );
   const categoryDistribution = useMemo(
     () =>
       selectedSeries.map((series) => ({
         name: series.category,
-        value: series.values.reduce((total, value) => total + value, 0),
+        value: visibleMonths.reduce(
+          (total, month) =>
+            total + series.values[adminAnalyticsData.months.indexOf(month)],
+          0,
+        ),
       })),
-    [selectedSeries],
+    [selectedSeries, visibleMonths],
+  );
+  const topProducts = useMemo(
+    () =>
+      adminAnalyticsData.topProducts
+        .map((product) => ({
+          ...product,
+          units: visibleMonths.reduce(
+            (total, month) =>
+              total +
+              product.monthlyUnits[adminAnalyticsData.months.indexOf(month)],
+            0,
+          ),
+        }))
+        .sort((first, second) => second.units - first.units),
+    [visibleMonths],
   );
   function validateRange(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -110,16 +157,24 @@ export function AdminAnalyticsPage() {
       setError("Escolha um período contínuo entre 1 e 24 meses.");
       return;
     }
+    setAppliedRange({ startDate, endDate });
     setError("");
   }
   function exportReport() {
     const rows = [
-      ["Categoria", ...adminAnalyticsData.months],
+      ["Categoria", ...visibleMonths.map((month) => month.label)],
       ...selectedSeries.map((series) => [
         series.category,
-        ...series.values.map((value) =>
-          value.toLocaleString("pt-BR", { style: "currency", currency: "BRL" }),
-        ),
+        ...visibleMonths
+          .map(
+            (month) => series.values[adminAnalyticsData.months.indexOf(month)],
+          )
+          .map((value) =>
+            value.toLocaleString("pt-BR", {
+              style: "currency",
+              currency: "BRL",
+            }),
+          ),
       ]),
     ];
     const url = URL.createObjectURL(
@@ -330,7 +385,7 @@ export function AdminAnalyticsPage() {
             <div className="h-80">
               <ResponsiveContainer height="100%" width="100%">
                 <BarChart
-                  data={adminAnalyticsData.topProducts}
+                  data={topProducts}
                   layout="vertical"
                   margin={{ left: 20, right: 24 }}
                 >

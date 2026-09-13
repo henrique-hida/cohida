@@ -479,18 +479,47 @@ export const adminStockMovements = [
 
 export const adminAnalyticsData = {
   categories: ["Futebol", "Corrida", "Treino"],
-  months: ["Jun.", "Jul.", "Ago."],
+  months: [
+    { date: "2026-06-01", label: "Jun." },
+    { date: "2026-07-01", label: "Jul." },
+    { date: "2026-08-01", label: "Ago." },
+  ],
   series: [
     { category: "Futebol", values: [8420, 9310, 11900] },
     { category: "Corrida", values: [7200, 8100, 9870] },
     { category: "Treino", values: [5900, 6420, 7340] },
   ],
   topProducts: [
-    { name: "Bola Pro X", revenue: 9995, units: 50 },
-    { name: "Tênis Run Flow", revenue: 9198, units: 20 },
-    { name: "Kit Resistance", revenue: 5712, units: 48 },
-    { name: "Caneleira Pro", revenue: 3596, units: 40 },
-    { name: "Munhequeira", revenue: 1890, units: 63 },
+    {
+      name: "Bola Pro X",
+      revenue: 9995,
+      monthlyUnits: [20, 12, 18],
+      units: 50,
+    },
+    {
+      name: "Tênis Run Flow",
+      revenue: 9198,
+      monthlyUnits: [7, 6, 7],
+      units: 20,
+    },
+    {
+      name: "Kit Resistance",
+      revenue: 5712,
+      monthlyUnits: [15, 16, 17],
+      units: 48,
+    },
+    {
+      name: "Caneleira Pro",
+      revenue: 3596,
+      monthlyUnits: [13, 12, 15],
+      units: 40,
+    },
+    {
+      name: "Munhequeira",
+      revenue: 1890,
+      monthlyUnits: [21, 20, 22],
+      units: 63,
+    },
   ],
 };
 
