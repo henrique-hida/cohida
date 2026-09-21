@@ -28,8 +28,6 @@ export interface Address {
   id: string;
   label: string;
   type: "billing" | "delivery";
-  residenceType: string;
-  streetType: string;
   street: string;
   number: string;
   neighborhood: string;
@@ -37,7 +35,6 @@ export interface Address {
   city: string;
   state: string;
   country: string;
-  notes?: string;
 }
 
 export interface Customer {
@@ -45,7 +42,6 @@ export interface Customer {
   code: string;
   name: string;
   email: string;
-  ranking: number;
   addresses: Address[];
 }
 

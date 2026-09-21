@@ -41,6 +41,7 @@ interface AdminLayoutProps {
 }
 
 export function AdminLayout({ children }: AdminLayoutProps) {
+  const adminName = localStorage.getItem("cohida-admin-name") ?? "Administradora";
   const { pathname } = useLocation();
   const itemRefs = useRef(new Map<string, HTMLAnchorElement>());
   const [indicator, setIndicator] = useState<{
@@ -157,7 +158,7 @@ export function AdminLayout({ children }: AdminLayoutProps) {
               <UserRound />
             </PopoverTrigger>
             <PopoverContent align="end" className="w-56 gap-1 p-2">
-              <p className="px-2 pt-1 font-medium">Marina Costa</p>
+              <p className="px-2 pt-1 font-medium">{adminName}</p>
               <p className="px-2 text-xs text-muted-foreground">
                 Administradora
               </p>

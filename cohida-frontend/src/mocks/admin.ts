@@ -193,11 +193,7 @@ export const adminProductDeactivationOptions = [
 ];
 
 export const adminCustomerFormOptions = {
-  genders: ["Feminino", "Masculino", "Não informar"],
-  phoneTypes: ["Celular", "Residencial", "Comercial"],
-  residenceTypes: ["Casa", "Apartamento", "Condomínio", "Outro"],
   states: ["SP", "RJ", "MG", "PR", "SC", "RS"],
-  streetTypes: ["Rua", "Avenida", "Alameda", "Travessa", "Rodovia"],
 };
 
 export const adminStockEntryFormOptions = {

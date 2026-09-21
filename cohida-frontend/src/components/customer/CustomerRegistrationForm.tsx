@@ -1,13 +1,32 @@
 import { Eye, EyeOff } from "lucide-react";
-import { useState, type FormEvent } from "react";
+import { useState, type FormEvent, type ReactNode } from "react";
 
 import { Button } from "@/components/ui/button";
-import type { RegisterCustomerInput } from "@/data/demoCommerceRepository";
+import { Toast } from "@/components/ui/toast";
 import { lookupCep } from "@/lib/cep";
+import type { CustomerCreateInput } from "@/lib/customerApi";
 
-type RegistrationInput = RegisterCustomerInput;
+type RegistrationInput = CustomerCreateInput;
+type FieldErrors = Record<string, string>;
+
+const inputClassName = (hasError: boolean, className = "") =>
+  `h-9 rounded-md border bg-background px-3 ${
+    hasError
+      ? "border-destructive focus-visible:ring-destructive"
+      : "border-input"
+  } ${className}`;
+
+function FieldError({ message }: { message?: string }) {
+  return message ? (
+    <span className="text-xs text-destructive">{message}</span>
+  ) : null;
+}
 
 interface CustomerRegistrationFormProps {
+  cancelAction?: ReactNode;
+  compactActions?: boolean;
+  includePassword?: boolean;
+  initialValues?: Partial<RegistrationInput>;
   onSubmit: (input: RegistrationInput) => Promise<void> | void;
   submitLabel: string;
 }
@@ -33,13 +52,18 @@ function formatCep(value: string) {
 }
 
 function AddressFields({
+  initialValue,
   prefix,
   title,
+  fieldErrors,
 }: {
+  initialValue?: Partial<RegistrationInput["billingAddress"]>;
   prefix: "billing" | "delivery";
   title: string;
+  fieldErrors: FieldErrors;
 }) {
   const [cepError, setCepError] = useState("");
+  const field = (name: string) => `${prefix}${name}`;
 
   async function completeAddress(event: React.FocusEvent<HTMLInputElement>) {
     const form = event.currentTarget.form;
@@ -67,76 +91,101 @@ function AddressFields({
       <label className="grid gap-1 text-sm">
         Apelido
         <input
-          className="h-9 rounded-md border border-input bg-background px-3"
-          defaultValue={prefix === "billing" ? "Cobrança" : "Casa"}
-          name={`${prefix}Label`}
+          aria-invalid={Boolean(fieldErrors[field("Label")])}
+          className={inputClassName(Boolean(fieldErrors[field("Label")]))}
+          defaultValue={
+            initialValue?.label ?? (prefix === "billing" ? "Cobrança" : "Casa")
+          }
+          name={field("Label")}
           required
         />
+        <FieldError message={fieldErrors[field("Label")]} />
       </label>
       <label className="grid gap-1 text-sm">
         CEP
         <input
-          className="h-9 rounded-md border border-input bg-background px-3"
+          aria-invalid={Boolean(fieldErrors[field("PostalCode")] || cepError)}
+          className={inputClassName(
+            Boolean(fieldErrors[field("PostalCode")] || cepError),
+          )}
           inputMode="numeric"
-          name={`${prefix}PostalCode`}
+          name={field("PostalCode")}
+          defaultValue={initialValue?.postalCode}
           onBlur={completeAddress}
           onInput={(event) => {
             event.currentTarget.value = formatCep(event.currentTarget.value);
           }}
           required
         />
+        <FieldError message={fieldErrors[field("PostalCode")] || cepError} />
       </label>
       <label className="grid gap-1 text-sm sm:col-span-2">
         Logradouro
         <input
-          className="h-9 rounded-md border border-input bg-background px-3"
-          name={`${prefix}Street`}
+          aria-invalid={Boolean(fieldErrors[field("Street")])}
+          className={inputClassName(Boolean(fieldErrors[field("Street")]))}
+          name={field("Street")}
+          defaultValue={initialValue?.street}
           required
         />
+        <FieldError message={fieldErrors[field("Street")]} />
       </label>
-      {cepError ? (
-        <p className="text-sm text-destructive sm:col-span-2">{cepError}</p>
-      ) : null}
       <label className="grid gap-1 text-sm">
         Número
         <input
-          className="h-9 rounded-md border border-input bg-background px-3"
-          name={`${prefix}Number`}
+          aria-invalid={Boolean(fieldErrors[field("Number")])}
+          className={inputClassName(Boolean(fieldErrors[field("Number")]))}
+          name={field("Number")}
+          defaultValue={initialValue?.number}
           required
         />
+        <FieldError message={fieldErrors[field("Number")]} />
       </label>
       <label className="grid gap-1 text-sm">
         Bairro
         <input
-          className="h-9 rounded-md border border-input bg-background px-3"
-          name={`${prefix}Neighborhood`}
+          aria-invalid={Boolean(fieldErrors[field("Neighborhood")])}
+          className={inputClassName(
+            Boolean(fieldErrors[field("Neighborhood")]),
+          )}
+          name={field("Neighborhood")}
+          defaultValue={initialValue?.neighborhood}
           required
         />
+        <FieldError message={fieldErrors[field("Neighborhood")]} />
       </label>
       <label className="grid gap-1 text-sm">
         Cidade
         <input
-          className="h-9 rounded-md border border-input bg-background px-3"
-          name={`${prefix}City`}
+          aria-invalid={Boolean(fieldErrors[field("City")])}
+          className={inputClassName(Boolean(fieldErrors[field("City")]))}
+          name={field("City")}
+          defaultValue={initialValue?.city}
           required
         />
+        <FieldError message={fieldErrors[field("City")]} />
       </label>
       <label className="grid gap-1 text-sm">
         Estado
         <input
-          className="h-9 rounded-md border border-input bg-background px-3"
-          name={`${prefix}State`}
+          aria-invalid={Boolean(fieldErrors[field("State")])}
+          className={inputClassName(Boolean(fieldErrors[field("State")]))}
+          name={field("State")}
+          defaultValue={initialValue?.state}
           required
         />
+        <FieldError message={fieldErrors[field("State")]} />
       </label>
       <label className="grid gap-1 text-sm sm:col-span-2">
         País
         <input
-          className="h-9 rounded-md border border-input bg-background px-3"
-          defaultValue="Brasil"
-          name={`${prefix}Country`}
+          aria-invalid={Boolean(fieldErrors[field("Country")])}
+          className={inputClassName(Boolean(fieldErrors[field("Country")]))}
+          defaultValue={initialValue?.country ?? "Brasil"}
+          name={field("Country")}
           required
         />
+        <FieldError message={fieldErrors[field("Country")]} />
       </label>
     </fieldset>
   );
@@ -152,21 +201,88 @@ function addressFrom(formData: FormData, prefix: "billing" | "delivery") {
     neighborhood: value("Neighborhood"),
     number: value("Number"),
     postalCode: value("PostalCode"),
-    residenceType: "Não informado",
     state: value("State"),
     street: value("Street"),
-    streetType: "Logradouro",
   };
 }
 
+function addressesMatch(
+  billingAddress?: Partial<RegistrationInput["billingAddress"]>,
+  deliveryAddress?: Partial<RegistrationInput["deliveryAddress"]>,
+) {
+  if (!billingAddress || !deliveryAddress) {
+    return false;
+  }
+
+  const fields = [
+    "street",
+    "number",
+    "neighborhood",
+    "postalCode",
+    "city",
+    "state",
+    "country",
+  ] as const;
+  const normalize = (value?: string) =>
+    value?.trim().replaceAll(/\W/g, "").toLocaleLowerCase("pt-BR") ?? "";
+
+  return fields.every(
+    (field) =>
+      normalize(billingAddress[field]) === normalize(deliveryAddress[field]),
+  );
+}
+
+function errorStep(message: string) {
+  const firstStepTerms = [
+    "nome",
+    "name",
+    "e-mail",
+    "email",
+    "cpf",
+    "telefone",
+    "phone",
+    "nascimento",
+    "senha",
+    "password",
+  ];
+  return firstStepTerms.some((term) => message.toLowerCase().includes(term))
+    ? 1
+    : 2;
+}
+
+function errorField(message: string) {
+  const value = message.toLowerCase();
+  if (value.includes("e-mail") || value.includes("email")) return "email";
+  if (value.includes("cpf")) return "cpf";
+  if (value.includes("telefone") || value.includes("phone")) return "phone";
+  if (value.includes("nascimento")) return "birthDate";
+  if (value.includes("nome") || value.includes("name")) return "name";
+  if (value.includes("senha") || value.includes("password")) return "password";
+  if (value.includes("cep") || value.includes("postal"))
+    return "deliveryPostalCode";
+  return undefined;
+}
+
 export function CustomerRegistrationForm({
+  cancelAction,
+  compactActions = false,
+  includePassword = true,
+  initialValues,
   onSubmit,
   submitLabel,
 }: CustomerRegistrationFormProps) {
   const [step, setStep] = useState(1);
   const [error, setError] = useState("");
+  const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [useDeliveryForBilling, setUseDeliveryForBilling] = useState(true);
+  const [useDeliveryForBilling, setUseDeliveryForBilling] = useState(
+    () =>
+      !initialValues?.billingAddress ||
+      addressesMatch(
+        initialValues.billingAddress,
+        initialValues.deliveryAddress,
+      ),
+  );
   const [isPasswordVisible, setIsPasswordVisible] = useState(false);
   const [isConfirmationVisible, setIsConfirmationVisible] = useState(false);
 
@@ -179,8 +295,7 @@ export function CustomerRegistrationForm({
             "birthDate",
             "phone",
             "email",
-            "password",
-            "passwordConfirmation",
+            ...(includePassword ? ["password", "passwordConfirmation"] : []),
           ]
         : [
             "deliveryLabel",
@@ -191,23 +306,43 @@ export function CustomerRegistrationForm({
             "deliveryCity",
             "deliveryState",
             "deliveryCountry",
+            ...(!useDeliveryForBilling
+              ? [
+                  "billingLabel",
+                  "billingPostalCode",
+                  "billingStreet",
+                  "billingNumber",
+                  "billingNeighborhood",
+                  "billingCity",
+                  "billingState",
+                  "billingCountry",
+                ]
+              : []),
           ];
     const missing = required.filter(
       (name) => !String(new FormData(form).get(name) ?? "").trim(),
     );
     if (missing.length) {
-      setError("Preencha os campos obrigatórios para continuar.");
+      setFieldErrors(
+        Object.fromEntries(missing.map((name) => [name, "Campo obrigatório."])),
+      );
+      setError("");
       return;
     }
     if (
+      includePassword &&
       step === 1 &&
       String(new FormData(form).get("password")) !==
         String(new FormData(form).get("passwordConfirmation"))
     ) {
-      setError("A confirmação de senha não corresponde.");
+      setFieldErrors({
+        passwordConfirmation: "A confirmação de senha não corresponde.",
+      });
+      setError("");
       return;
     }
     setError("");
+    setFieldErrors({});
     setStep(2);
   }
 
@@ -215,17 +350,29 @@ export function CustomerRegistrationForm({
     event.preventDefault();
     const formData = new FormData(event.currentTarget);
     const password = String(formData.get("password") ?? "");
-    if (password !== String(formData.get("passwordConfirmation") ?? "")) {
-      setError("A confirmação de senha não corresponde.");
+    if (
+      includePassword &&
+      password !== String(formData.get("passwordConfirmation") ?? "")
+    ) {
+      setFieldErrors({
+        passwordConfirmation: "A confirmação de senha não corresponde.",
+      });
+      setError("");
       return;
     }
-    if (!/(?=.*[a-z])(?=.*[A-Z])(?=.*[^A-Za-z0-9]).{8,}/.test(password)) {
-      setError(
-        "Use ao menos 8 caracteres, com maiúscula, minúscula e caractere especial.",
-      );
+    if (
+      includePassword &&
+      !/(?=.*[a-z])(?=.*[A-Z])(?=.*[^A-Za-z0-9]).{8,}/.test(password)
+    ) {
+      setFieldErrors({
+        password:
+          "Use ao menos 8 caracteres, com maiúscula, minúscula e caractere especial.",
+      });
+      setError("");
       return;
     }
     setError("");
+    setFieldErrors({});
     setIsSubmitting(true);
     try {
       const deliveryAddress = addressFrom(formData, "delivery");
@@ -237,17 +384,22 @@ export function CustomerRegistrationForm({
         cpf: String(formData.get("cpf") ?? ""),
         deliveryAddress,
         email: String(formData.get("email") ?? ""),
-        gender: "Não informado",
         name: String(formData.get("name") ?? ""),
         password,
+        passwordConfirmation: String(
+          formData.get("passwordConfirmation") ?? "",
+        ),
         phone: String(formData.get("phone") ?? ""),
       });
     } catch (reason) {
-      setError(
+      const message =
         reason instanceof Error
           ? reason.message
-          : "Não foi possível concluir o cadastro.",
-      );
+          : "Não foi possível concluir o cadastro.";
+      const field = errorField(message);
+      setFieldErrors(field ? { [field]: message } : {});
+      setError(field ? "" : message);
+      setStep(errorStep(message));
     } finally {
       setIsSubmitting(false);
     }
@@ -259,38 +411,55 @@ export function CustomerRegistrationForm({
         <label className="grid gap-2 text-sm font-medium">
           Nome completo
           <input
-            className="h-9 rounded-md border border-input bg-background px-3 font-normal"
+            aria-invalid={Boolean(fieldErrors.name)}
+            className={inputClassName(Boolean(fieldErrors.name), "font-normal")}
             name="name"
+            defaultValue={initialValues?.name}
             required
           />
+          <FieldError message={fieldErrors.name} />
         </label>
         <label className="grid gap-2 text-sm font-medium">
           CPF
           <input
-            className="h-9 rounded-md border border-input bg-background px-3 font-normal"
+            aria-invalid={Boolean(fieldErrors.cpf)}
+            className={inputClassName(Boolean(fieldErrors.cpf), "font-normal")}
             inputMode="numeric"
             name="cpf"
+            defaultValue={initialValues?.cpf}
             onInput={(event) => {
               event.currentTarget.value = formatCpf(event.currentTarget.value);
             }}
             required
           />
+          <FieldError message={fieldErrors.cpf} />
         </label>
         <label className="grid gap-2 text-sm font-medium">
           Data de nascimento
           <input
-            className="h-9 rounded-md border border-input bg-background px-3 font-normal"
+            aria-invalid={Boolean(fieldErrors.birthDate)}
+            className={inputClassName(
+              Boolean(fieldErrors.birthDate),
+              "font-normal",
+            )}
             name="birthDate"
+            defaultValue={initialValues?.birthDate}
             required
             type="date"
           />
+          <FieldError message={fieldErrors.birthDate} />
         </label>
         <label className="grid gap-2 text-sm font-medium">
           Telefone
           <input
-            className="h-9 rounded-md border border-input bg-background px-3 font-normal"
+            aria-invalid={Boolean(fieldErrors.phone)}
+            className={inputClassName(
+              Boolean(fieldErrors.phone),
+              "font-normal",
+            )}
             inputMode="tel"
             name="phone"
+            defaultValue={initialValues?.phone}
             onInput={(event) => {
               event.currentTarget.value = formatPhone(
                 event.currentTarget.value,
@@ -298,69 +467,95 @@ export function CustomerRegistrationForm({
             }}
             required
           />
+          <FieldError message={fieldErrors.phone} />
         </label>
         <label className="grid gap-2 text-sm font-medium">
           E-mail
           <input
-            className="h-9 rounded-md border border-input bg-background px-3 font-normal"
+            aria-invalid={Boolean(fieldErrors.email)}
+            className={inputClassName(
+              Boolean(fieldErrors.email),
+              "font-normal",
+            )}
             name="email"
+            defaultValue={initialValues?.email}
             required
             type="email"
           />
+          <FieldError message={fieldErrors.email} />
         </label>
-        <label className="grid gap-2 text-sm font-medium">
-          Senha
-          <span className="relative">
-            <input
-              className="h-9 w-full rounded-md border border-input bg-background px-3 pr-10 font-normal"
-              minLength={8}
-              name="password"
-              required
-              type={isPasswordVisible ? "text" : "password"}
-            />
-            <Button
-              aria-label={
-                isPasswordVisible ? "Ocultar senha" : "Visualizar senha"
-              }
-              className="absolute top-1/2 right-0 -translate-y-1/2"
-              onClick={() => setIsPasswordVisible((visible) => !visible)}
-              size="icon-sm"
-              type="button"
-              variant="ghost"
-            >
-              {isPasswordVisible ? <EyeOff /> : <Eye />}
-            </Button>
-          </span>
-        </label>
-        <label className="grid gap-2 text-sm font-medium sm:col-span-2">
-          Confirmar senha
-          <span className="relative">
-            <input
-              className="h-9 w-full rounded-md border border-input bg-background px-3 pr-10 font-normal"
-              minLength={8}
-              name="passwordConfirmation"
-              required
-              type={isConfirmationVisible ? "text" : "password"}
-            />
-            <Button
-              aria-label={
-                isConfirmationVisible
-                  ? "Ocultar confirmação de senha"
-                  : "Visualizar confirmação de senha"
-              }
-              className="absolute top-1/2 right-0 -translate-y-1/2"
-              onClick={() => setIsConfirmationVisible((visible) => !visible)}
-              size="icon-sm"
-              type="button"
-              variant="ghost"
-            >
-              {isConfirmationVisible ? <EyeOff /> : <Eye />}
-            </Button>
-          </span>
-        </label>
+        {includePassword ? (
+          <label className="grid gap-2 text-sm font-medium">
+            Senha
+            <span className="relative">
+              <input
+                aria-invalid={Boolean(fieldErrors.password)}
+                className={inputClassName(
+                  Boolean(fieldErrors.password),
+                  "w-full pr-10 font-normal",
+                )}
+                minLength={8}
+                name="password"
+                required
+                type={isPasswordVisible ? "text" : "password"}
+              />
+              <Button
+                aria-label={
+                  isPasswordVisible ? "Ocultar senha" : "Visualizar senha"
+                }
+                className="absolute top-1/2 right-0 -translate-y-1/2"
+                onClick={() => setIsPasswordVisible((visible) => !visible)}
+                size="icon-sm"
+                type="button"
+                variant="ghost"
+              >
+                {isPasswordVisible ? <EyeOff /> : <Eye />}
+              </Button>
+            </span>
+            <FieldError message={fieldErrors.password} />
+          </label>
+        ) : null}
+        {includePassword ? (
+          <label className="grid gap-2 text-sm font-medium sm:col-span-2">
+            Confirmar senha
+            <span className="relative">
+              <input
+                aria-invalid={Boolean(fieldErrors.passwordConfirmation)}
+                className={inputClassName(
+                  Boolean(fieldErrors.passwordConfirmation),
+                  "w-full pr-10 font-normal",
+                )}
+                minLength={8}
+                name="passwordConfirmation"
+                required
+                type={isConfirmationVisible ? "text" : "password"}
+              />
+              <Button
+                aria-label={
+                  isConfirmationVisible
+                    ? "Ocultar confirmação de senha"
+                    : "Visualizar confirmação de senha"
+                }
+                className="absolute top-1/2 right-0 -translate-y-1/2"
+                onClick={() => setIsConfirmationVisible((visible) => !visible)}
+                size="icon-sm"
+                type="button"
+                variant="ghost"
+              >
+                {isConfirmationVisible ? <EyeOff /> : <Eye />}
+              </Button>
+            </span>
+            <FieldError message={fieldErrors.passwordConfirmation} />
+          </label>
+        ) : null}
       </div>
       <div className={step === 2 ? "space-y-4" : "hidden"}>
-        <AddressFields prefix="delivery" title="Endereço de entrega" />
+        <AddressFields
+          initialValue={initialValues?.deliveryAddress}
+          fieldErrors={fieldErrors}
+          prefix="delivery"
+          title="Endereço de entrega"
+        />
         <div className="rounded-lg border border-border bg-muted/35 p-3">
           <label className="flex cursor-pointer items-center gap-3 text-sm font-medium">
             <input
@@ -378,20 +573,30 @@ export function CustomerRegistrationForm({
           </p>
         </div>
         {!useDeliveryForBilling ? (
-          <AddressFields prefix="billing" title="Endereço de cobrança" />
+          <AddressFields
+            initialValue={initialValues?.billingAddress}
+            fieldErrors={fieldErrors}
+            prefix="billing"
+            title="Endereço de cobrança"
+          />
         ) : null}
       </div>
       {error ? (
-        <div className="rounded-lg bg-destructive/10 p-3 text-sm text-destructive">
-          {error}
-        </div>
+        <Toast message={error} onClose={() => setError("")} variant="error" />
       ) : null}
-      <div className="mt-2 grid gap-2">
+      <div
+        className={
+          compactActions
+            ? "mt-2 flex flex-wrap justify-end gap-2"
+            : "mt-2 grid gap-2"
+        }
+      >
         {step > 1 ? (
           <Button
-            className="w-full"
+            className={compactActions ? "w-fit" : "w-full"}
             onClick={() => {
               setError("");
+              setFieldErrors({});
               setStep(1);
             }}
             type="button"
@@ -400,23 +605,25 @@ export function CustomerRegistrationForm({
             Voltar
           </Button>
         ) : null}
+        {cancelAction}
         {step === 1 ? (
           <Button
-            className="w-full"
+            className={compactActions ? "w-fit" : "w-full"}
             onClick={(event) => {
+              event.preventDefault();
               const form = event.currentTarget.form;
               if (form) advance(form);
             }}
-            size="lg"
+            size={compactActions ? "default" : "lg"}
             type="button"
           >
             Continuar
           </Button>
         ) : (
           <Button
-            className="w-full"
+            className={compactActions ? "w-fit" : "w-full"}
             disabled={isSubmitting}
-            size="lg"
+            size={compactActions ? "default" : "lg"}
             type="submit"
           >
             {isSubmitting ? "Salvando..." : submitLabel}

@@ -14,8 +14,11 @@ import { PageContainer, StoreHeader } from "@/components/shared";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { Toast } from "@/components/ui/toast";
+import { ConfirmDialog } from "@/components/admin/ConfirmDialog";
 import { useCommerce } from "@/data/useCommerce";
 import { formatCurrency } from "@/lib/currency";
+import { customerApi } from "@/lib/customerApi";
 import {
   cardBrands,
   formatCardNumber,
@@ -41,14 +44,22 @@ export function AccountPage() {
     addAddress,
     addCard,
     removeCard,
+    removeAddress,
+    logout,
     setPreferredCard,
     state,
     updateCard,
+    updateAddress,
     updateCustomer,
   } = useCommerce();
   const [searchParams, setSearchParams] = useSearchParams();
   const [isEditing, setIsEditing] = useState(false);
   const [isChangingPassword, setIsChangingPassword] = useState(false);
+  const [isDeactivatingAccount, setIsDeactivatingAccount] = useState(false);
+  const [isDeactivationDialogOpen, setIsDeactivationDialogOpen] =
+    useState(false);
+  const [deactivationError, setDeactivationError] = useState("");
+  const [addressRemovalError, setAddressRemovalError] = useState("");
   const [isAdding, setIsAdding] = useState(false);
   const activeSection =
     (searchParams.get("secao") as AccountSection) || "profile";
@@ -63,6 +74,37 @@ export function AccountPage() {
     setIsEditing(false);
     setIsChangingPassword(false);
     setSearchParams(section === "profile" ? {} : { secao: section });
+  }
+
+  async function deactivateAccount() {
+    setDeactivationError("");
+    setIsDeactivatingAccount(true);
+    try {
+      await customerApi.deactivateOwnAccount();
+      logout();
+    } catch (reason) {
+      setDeactivationError(
+        reason instanceof Error
+          ? reason.message
+          : "Não foi possível desativar sua conta.",
+      );
+      setIsDeactivationDialogOpen(false);
+    } finally {
+      setIsDeactivatingAccount(false);
+    }
+  }
+
+  async function removeCustomerAddress(addressId: string) {
+    try {
+      await removeAddress(addressId);
+    } catch (reason) {
+      const message = reason instanceof Error ? reason.message : "";
+      setAddressRemovalError(
+        message.includes("manter um endereço")
+          ? "É necessário manter pelo menos um endereço de cobrança e um de entrega."
+          : "Não foi possível remover este endereço.",
+      );
+    }
   }
 
   return (
@@ -152,21 +194,38 @@ export function AccountPage() {
                     ) : null}
                   </form>
                   <div className="mt-6 border-t border-border pt-5">
-                    <Button
-                      onClick={() =>
-                        setIsChangingPassword((changing) => !changing)
-                      }
-                      variant="outline"
-                    >
-                      {isChangingPassword
-                        ? "Cancelar alteração de senha"
-                        : "Alterar senha"}
-                    </Button>
+                    <div className="flex flex-wrap gap-3">
+                      <Button
+                        onClick={() =>
+                          setIsChangingPassword((changing) => !changing)
+                        }
+                        variant="outline"
+                      >
+                        {isChangingPassword
+                          ? "Cancelar alteração de senha"
+                          : "Alterar senha"}
+                      </Button>
+                      <Button
+                        disabled={isDeactivatingAccount}
+                        onClick={() => setIsDeactivationDialogOpen(true)}
+                        variant="destructive"
+                      >
+                        Desativar conta
+                      </Button>
+                    </div>
                     {isChangingPassword ? (
                       <form
                         className="mt-4 grid max-w-md gap-3"
-                        onSubmit={(event) => {
+                        onSubmit={async (event) => {
                           event.preventDefault();
+                          const formData = new FormData(event.currentTarget);
+                          await customerApi.changePassword(
+                            String(formData.get("currentPassword") ?? ""),
+                            String(formData.get("newPassword") ?? ""),
+                            String(
+                              formData.get("newPasswordConfirmation") ?? "",
+                            ),
+                          );
                           setIsChangingPassword(false);
                         }}
                       >
@@ -174,6 +233,7 @@ export function AccountPage() {
                           Senha atual
                           <input
                             className="h-9 rounded-lg border border-input bg-background px-3"
+                            name="currentPassword"
                             required
                             type="password"
                           />
@@ -182,7 +242,17 @@ export function AccountPage() {
                           Nova senha
                           <input
                             className="h-9 rounded-lg border border-input bg-background px-3"
+                            name="newPassword"
                             minLength={8}
+                            required
+                            type="password"
+                          />
+                        </label>
+                        <label className="grid gap-1 text-sm">
+                          Confirmar nova senha
+                          <input
+                            className="h-9 rounded-lg border border-input bg-background px-3"
+                            name="newPasswordConfirmation"
                             required
                             type="password"
                           />
@@ -193,6 +263,11 @@ export function AccountPage() {
                       </form>
                     ) : null}
                   </div>
+                  {deactivationError ? (
+                    <p className="mt-3 text-sm text-destructive">
+                      {deactivationError}
+                    </p>
+                  ) : null}
                 </CardContent>
               </Card>
             ) : null}
@@ -201,6 +276,8 @@ export function AccountPage() {
                 addresses={state.addresses}
                 isAdding={isAdding}
                 onAdd={addAddress}
+                onRemove={removeCustomerAddress}
+                onUpdate={updateAddress}
                 setIsAdding={setIsAdding}
               />
             ) : null}
@@ -221,6 +298,22 @@ export function AccountPage() {
           </section>
         </div>
       </PageContainer>
+      {isDeactivationDialogOpen ? (
+        <ConfirmDialog
+          confirmLabel="Desativar conta"
+          description="Sua sessão será encerrada e sua conta deixará de aparecer na lista ativa."
+          onCancel={() => setIsDeactivationDialogOpen(false)}
+          onConfirm={() => void deactivateAccount()}
+          title="Desativar minha conta?"
+        />
+      ) : null}
+      {addressRemovalError ? (
+        <Toast
+          message={addressRemovalError}
+          onClose={() => setAddressRemovalError("")}
+          variant="error"
+        />
+      ) : null}
     </div>
   );
 }
@@ -273,13 +366,26 @@ function AccountAddresses({
   addresses,
   isAdding,
   onAdd,
+  onRemove,
+  onUpdate,
   setIsAdding,
 }: {
   addresses: ReturnType<typeof useCommerce>["state"]["addresses"];
   isAdding: boolean;
   onAdd: ReturnType<typeof useCommerce>["addAddress"];
+  onRemove: ReturnType<typeof useCommerce>["removeAddress"];
+  onUpdate: ReturnType<typeof useCommerce>["updateAddress"];
   setIsAdding: (value: boolean) => void;
 }) {
+  const [editingAddress, setEditingAddress] = useState<
+    (typeof addresses)[number] | null
+  >(null);
+
+  const closeForm = () => {
+    setEditingAddress(null);
+    setIsAdding(false);
+  };
+
   return (
     <Card>
       <CardContent className="p-5 sm:p-6">
@@ -290,13 +396,29 @@ function AccountAddresses({
               Escolha um endereço para cada entrega.
             </p>
           </div>
-          <Button onClick={() => setIsAdding(!isAdding)}>
+          <Button
+            onClick={() => {
+              setEditingAddress(null);
+              setIsAdding(!isAdding);
+            }}
+          >
             <Plus />
             Adicionar endereço
           </Button>
         </div>
-        {isAdding ? (
-          <AddressForm onAdd={onAdd} onCancel={() => setIsAdding(false)} />
+        {isAdding || editingAddress ? (
+          <AddressForm
+            initialAddress={editingAddress ?? undefined}
+            onCancel={closeForm}
+            onSave={async (address) => {
+              if (editingAddress) {
+                await onUpdate(editingAddress.id, address);
+              } else {
+                await onAdd(address);
+              }
+              closeForm();
+            }}
+          />
         ) : (
           <div className="mt-6 grid gap-3">
             {addresses.map((address) => (
@@ -306,13 +428,26 @@ function AccountAddresses({
               >
                 <div className="flex justify-between gap-3">
                   <p className="font-medium">{address.label}</p>
-                  <Button size="sm" variant="ghost">
-                    Editar
-                  </Button>
+                  <div className="flex items-center gap-1">
+                    <Button
+                      onClick={() => setEditingAddress(address)}
+                      size="sm"
+                      variant="ghost"
+                    >
+                      <Pencil />
+                      Editar
+                    </Button>
+                    <Button
+                      onClick={() => void onRemove(address.id)}
+                      size="sm"
+                      variant="ghost"
+                    >
+                      Remover
+                    </Button>
+                  </div>
                 </div>
                 <p className="mt-2 text-sm leading-6 text-muted-foreground">
                   {address.street}, {address.number}
-                  {address.notes ? ` · ${address.notes}` : ""}
                   <br />
                   {address.neighborhood} · {address.city} - {address.state}
                 </p>
@@ -326,33 +461,37 @@ function AccountAddresses({
 }
 
 function AddressForm({
-  onAdd,
+  initialAddress,
   onCancel,
+  onSave,
 }: {
-  onAdd: ReturnType<typeof useCommerce>["addAddress"];
+  initialAddress?: ReturnType<typeof useCommerce>["state"]["addresses"][number];
   onCancel: () => void;
+  onSave: (
+    address: Omit<
+      ReturnType<typeof useCommerce>["state"]["addresses"][number],
+      "id"
+    >,
+  ) => Promise<void>;
 }) {
   return (
     <form
       className="mt-6 grid gap-3 rounded-xl border border-dashed border-border p-4 sm:grid-cols-2"
-      onSubmit={(event) => {
+      onSubmit={async (event) => {
         event.preventDefault();
         const formData = new FormData(event.currentTarget);
         const value = (field: string) => String(formData.get(field) ?? "");
-        onAdd({
+        await onSave({
           city: value("city"),
-          country: "Brasil",
+          country: value("country"),
           label: value("label"),
           neighborhood: value("neighborhood"),
           number: value("number"),
           postalCode: value("postalCode"),
-          residenceType: "Casa",
           state: value("state"),
           street: value("street"),
-          streetType: "Rua",
-          type: "delivery",
+          type: value("type") as "billing" | "delivery",
         });
-        onCancel();
       }}
     >
       <label className="grid gap-1 text-sm">
@@ -362,6 +501,7 @@ function AddressForm({
           name="label"
           placeholder="Ex.: Academia"
           required
+          defaultValue={initialAddress?.label}
         />
       </label>
       <label className="grid gap-1 text-sm">
@@ -370,6 +510,7 @@ function AddressForm({
           className="h-9 rounded-lg border border-input bg-background px-3"
           name="postalCode"
           required
+          defaultValue={initialAddress?.postalCode}
         />
       </label>
       <label className="grid gap-1 text-sm sm:col-span-2">
@@ -378,6 +519,7 @@ function AddressForm({
           className="h-9 rounded-lg border border-input bg-background px-3"
           required
           name="street"
+          defaultValue={initialAddress?.street}
         />
       </label>
       <label className="grid gap-1 text-sm">
@@ -386,6 +528,7 @@ function AddressForm({
           className="h-9 rounded-lg border border-input bg-background px-3"
           name="number"
           required
+          defaultValue={initialAddress?.number}
         />
       </label>
       <label className="grid gap-1 text-sm">
@@ -394,6 +537,7 @@ function AddressForm({
           className="h-9 rounded-lg border border-input bg-background px-3"
           name="neighborhood"
           required
+          defaultValue={initialAddress?.neighborhood}
         />
       </label>
       <label className="grid gap-1 text-sm">
@@ -402,6 +546,7 @@ function AddressForm({
           className="h-9 rounded-lg border border-input bg-background px-3"
           name="city"
           required
+          defaultValue={initialAddress?.city}
         />
       </label>
       <label className="grid gap-1 text-sm">
@@ -410,7 +555,28 @@ function AddressForm({
           className="h-9 rounded-lg border border-input bg-background px-3"
           name="state"
           required
+          defaultValue={initialAddress?.state}
         />
+      </label>
+      <label className="grid gap-1 text-sm">
+        País
+        <input
+          className="h-9 rounded-lg border border-input bg-background px-3"
+          defaultValue={initialAddress?.country ?? "Brasil"}
+          name="country"
+          required
+        />
+      </label>
+      <label className="grid gap-1 text-sm">
+        Tipo de endereço
+        <select
+          className="h-9 rounded-lg border border-input bg-background px-3"
+          defaultValue={initialAddress?.type ?? "delivery"}
+          name="type"
+        >
+          <option value="delivery">Entrega</option>
+          <option value="billing">Cobrança</option>
+        </select>
       </label>
       <Button className="w-fit" type="submit">
         Salvar endereço

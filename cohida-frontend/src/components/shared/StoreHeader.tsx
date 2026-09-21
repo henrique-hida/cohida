@@ -1,4 +1,5 @@
 import {
+  CircleUserRound,
   LogIn,
   LogOut,
   Database,
@@ -23,6 +24,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { useCommerce } from "@/data/useCommerce";
+import { logout as logoutApi } from "@/lib/customerApi";
 import { cn } from "@/lib/utils";
 
 import { PageContainer } from "./PageContainer";
@@ -47,6 +49,11 @@ export function StoreHeader({ cartItemCount = 0 }: StoreHeaderProps) {
   const signedIn = Boolean(
     state.customer && state.sessionCustomerId === state.customer.id,
   );
+
+  function handleLogout() {
+    logoutApi();
+    logout();
+  }
 
   return (
     <header className="sticky top-0 z-30 border-b border-border bg-background/90 backdrop-blur">
@@ -85,13 +92,13 @@ export function StoreHeader({ cartItemCount = 0 }: StoreHeaderProps) {
             <PopoverTrigger
               render={
                 <Button
-                  aria-label="Menu do perfil"
+                  aria-label={signedIn ? "Menu da conta" : "Entrar ou criar conta"}
                   size="icon"
                   variant="outline"
                 />
               }
             >
-              <UserRound />
+              {signedIn ? <CircleUserRound /> : <LogIn />}
             </PopoverTrigger>
             <PopoverContent align="end" className="w-56 gap-1 p-2">
               {signedIn ? (
@@ -133,7 +140,7 @@ export function StoreHeader({ cartItemCount = 0 }: StoreHeaderProps) {
                   </Button>
                   <Button
                     className="w-full justify-start"
-                    onClick={logout}
+                    onClick={handleLogout}
                     render={<Link to="/" />}
                     variant="ghost"
                   >

@@ -146,7 +146,6 @@ export function CheckoutPage() {
                       <span className="font-medium">{address.label}</span>
                       <span className="mt-1 block text-sm text-muted-foreground">
                         {address.street}, {address.number}
-                        {address.notes ? ` · ${address.notes}` : ""}
                         <br />
                         {address.neighborhood} · {address.city} -{" "}
                         {address.state}
@@ -166,10 +165,10 @@ export function CheckoutPage() {
               {isAddingAddress ? (
                 <form
                   className="mt-3 grid gap-3 rounded-xl border border-dashed border-border p-4 sm:grid-cols-2"
-                  onSubmit={(event) => {
+                  onSubmit={async (event) => {
                     event.preventDefault();
                     const formData = new FormData(event.currentTarget);
-                    const address = addAddress({
+                    const address = await addAddress({
                       city: String(formData.get("city") ?? "").trim(),
                       country: "Brasil",
                       label: String(formData.get("label") ?? "").trim(),
@@ -180,10 +179,8 @@ export function CheckoutPage() {
                       postalCode: String(
                         formData.get("postalCode") ?? "",
                       ).trim(),
-                      residenceType: "Não informado",
                       state: String(formData.get("state") ?? "").trim(),
                       street: String(formData.get("street") ?? "").trim(),
-                      streetType: "Logradouro",
                       type: "delivery",
                     });
                     setAddressId(address.id);

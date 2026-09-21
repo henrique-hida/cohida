@@ -8,6 +8,7 @@ import { AdminDashboardPage } from "@/pages/AdminDashboardPage";
 import { AdminCustomerCreatePage } from "@/pages/AdminCustomerCreatePage";
 import { AdminCustomerDetailPage } from "@/pages/AdminCustomerDetailPage";
 import { AdminCustomerEditPage } from "@/pages/AdminCustomerEditPage";
+import { AdminCustomersPage } from "@/pages/AdminCustomersPage";
 import { AdminProductCreatePage } from "@/pages/AdminProductCreatePage";
 import { AdminProductDetailPage } from "@/pages/AdminProductDetailPage";
 import { AdminProductEditPage } from "@/pages/AdminProductEditPage";
@@ -92,10 +93,7 @@ function App() {
           element={<AdminOrderDetailPage />}
           path="/admin/pedidos/:orderId"
         />
-        <Route
-          element={<AdminResourcePage resource="clientes" />}
-          path="/admin/clientes"
-        />
+        <Route element={<AdminCustomersPage />} path="/admin/clientes" />
         <Route
           element={<AdminCustomerCreatePage />}
           path="/admin/clientes/novo"

@@ -11,6 +11,9 @@ import type { ExchangeRequest } from "@/mocks/commerce";
 import type { CartItem, Order } from "@/types";
 import type { Product } from "@/types";
 import { products as seededProducts } from "@/mocks/products";
+import type { CustomerResponse as ApiCustomerResponse } from "@/lib/customerApi";
+import { customerApi } from "@/lib/customerApi";
+import { logout as clearApiSession } from "@/lib/customerApi";
 
 const storageKey = "cohida-demo-commerce-v1";
 
@@ -20,13 +23,10 @@ export interface DemoAddress {
   id: string;
   label: string;
   neighborhood: string;
-  notes?: string;
   number: string;
   postalCode: string;
-  residenceType: string;
   state: string;
   street: string;
-  streetType: string;
   type: "billing" | "delivery";
 }
 
@@ -42,7 +42,6 @@ export interface DemoCustomer {
   birthDate: string;
   cpf: string;
   email: string;
-  gender: string;
   id: string;
   name: string;
   passwordHash: string;
@@ -88,9 +87,9 @@ export interface RegisterCustomerInput {
   cpf: string;
   deliveryAddress: Omit<DemoAddress, "id" | "type">;
   email: string;
-  gender: string;
   name: string;
   password: string;
+  passwordConfirmation: string;
   phone: string;
 }
 
@@ -118,13 +117,10 @@ function createInitialState(): DemoCommerceState {
       id: address.id,
       label: address.label,
       neighborhood: address.neighborhood,
-      notes: address.complement,
       number: address.number,
       postalCode: index === 0 ? "04118-010" : "",
-      residenceType: "Casa",
       state: address.state,
       street: address.street,
-      streetType: "Logradouro",
       type: index === 0 ? "billing" : "delivery",
     })),
     adminCustomerActive: {},
@@ -221,7 +217,6 @@ export const demoCommerceRepository = {
       birthDate: input.birthDate,
       cpf: input.cpf,
       email: input.email.trim().toLowerCase(),
-      gender: input.gender,
       id: id("customer"),
       name: input.name.trim(),
       passwordHash: await hashPassword(input.password),
@@ -250,7 +245,35 @@ export const demoCommerceRepository = {
     save({ ...state, sessionCustomerId: state.customer.id });
   },
   logout() {
+    clearApiSession();
     save({ ...state, sessionCustomerId: null });
+  },
+  startApiSession(customer: ApiCustomerResponse) {
+    save({
+      ...state,
+      addresses: customer.addresses.map((address) => ({
+        city: address.city,
+        country: address.country,
+        id: String(address.id),
+        label: address.label,
+        neighborhood: address.neighborhood,
+        number: address.number,
+        postalCode: address.postalCode,
+        state: address.state,
+        street: address.street,
+        type: address.type === "BILLING" ? "billing" : "delivery",
+      })),
+      customer: {
+        birthDate: customer.birthDate,
+        cpf: customer.cpf,
+        email: customer.email,
+        id: String(customer.id),
+        name: customer.name,
+        passwordHash: "",
+        phone: customer.phone,
+      },
+      sessionCustomerId: String(customer.id),
+    });
   },
   async addDemo() {
     const demo = createInitialState();
@@ -258,7 +281,6 @@ export const demoCommerceRepository = {
       birthDate: customerProfile.birthDate,
       cpf: "123.456.789-09",
       email: customerProfile.email,
-      gender: "",
       id: "customer-henrique",
       name: customerProfile.name,
       passwordHash: await hashPassword("Demo@123"),
@@ -266,19 +288,52 @@ export const demoCommerceRepository = {
     };
     save({ ...demo, customer, sessionCustomerId: customer.id });
   },
-  updateCustomer(
+  async updateCustomer(
     values: Pick<DemoCustomer, "birthDate" | "email" | "name" | "phone">,
   ) {
     if (!state.customer) return;
-    save({ ...state, customer: { ...state.customer, ...values } });
+    const customer = await customerApi.updateProfile(values);
+    save({
+      ...state,
+      customer: {
+        ...state.customer,
+        birthDate: customer.birthDate,
+        email: customer.email,
+        name: customer.name,
+        phone: customer.phone,
+      },
+    });
   },
-  addAddress(address: Omit<DemoAddress, "id">) {
-    const createdAddress = { ...address, id: id("address") };
+  async addAddress(address: Omit<DemoAddress, "id">) {
+    const saved = await customerApi.addAddress({
+      ...address,
+      type: address.type === "billing" ? "BILLING" : "DELIVERY",
+    });
+    const createdAddress = { ...address, id: String(saved.id) };
     save({
       ...state,
       addresses: [...state.addresses, createdAddress],
     });
     return createdAddress;
+  },
+  async removeAddress(addressId: string) {
+    await customerApi.removeAddress(addressId);
+    save({
+      ...state,
+      addresses: state.addresses.filter((address) => address.id !== addressId),
+    });
+  },
+  async updateAddress(addressId: string, address: Omit<DemoAddress, "id">) {
+    const saved = await customerApi.updateAddress(addressId, {
+      ...address,
+      type: address.type === "billing" ? "BILLING" : "DELIVERY",
+    });
+    save({
+      ...state,
+      addresses: state.addresses.map((item) =>
+        item.id === addressId ? { ...address, id: String(saved.id) } : item,
+      ),
+    });
   },
   addCard(card: Omit<DemoCard, "id" | "lastDigits">, cardNumber: string) {
     const digits = cardNumber.replace(/\D/g, "");

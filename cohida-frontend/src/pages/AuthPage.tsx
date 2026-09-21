@@ -7,6 +7,11 @@ import { PageContainer, StoreHeader } from "@/components/shared";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { useCommerce } from "@/data/useCommerce";
+import {
+  customerApi,
+  login as loginApi,
+  register as registerApi,
+} from "@/lib/customerApi";
 
 type AuthMode = "login" | "register" | "recovery";
 
@@ -35,7 +40,7 @@ export function AuthPage() {
   const [mode, setMode] = useState<AuthMode>("login");
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const { login, register } = useCommerce();
+  const { startApiSession } = useCommerce();
   const navigate = useNavigate();
   const copy = authCopy[mode];
 
@@ -49,10 +54,16 @@ export function AuthPage() {
     setError("");
     setIsSubmitting(true);
     try {
-      await login(
+      const authentication = await loginApi(
         String(formData.get("email") ?? ""),
         String(formData.get("password") ?? ""),
       );
+      if (authentication.role === "ADMIN") {
+        localStorage.setItem("cohida-admin-name", authentication.customerName ?? "Administradora");
+        navigate("/admin/clientes");
+        return;
+      }
+      startApiSession(await customerApi.me());
       navigate("/conta");
     } catch (reason) {
       setError(
@@ -123,7 +134,8 @@ export function AuthPage() {
             {mode === "register" ? (
               <CustomerRegistrationForm
                 onSubmit={async (input) => {
-                  await register(input);
+                  await registerApi(input);
+                  startApiSession(await customerApi.me());
                   navigate("/conta");
                 }}
                 submitLabel="Criar conta"

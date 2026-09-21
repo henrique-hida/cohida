@@ -12,7 +12,7 @@
     "preview": "vite preview",
     "cy:open": "cypress open",
     "cy:run": "cypress run",
-    "test:e2e": "start-server-and-test dev http://127.0.0.1:5173 cy:run"
+    "test:e2e": "start-server-and-test 'vite --host 127.0.0.1 --port 5174 --strictPort' http://127.0.0.1:5174 cy:run"
   },
   "dependencies": {
     "@base-ui/react": "^1.7.0",

@@ -1,130 +1,100 @@
-import { ChevronLeft, Pencil, Power } from "lucide-react";
+import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router";
 
 import { AdminLayout } from "@/components/admin/AdminLayout";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { adminCustomers } from "@/mocks";
-import { useCommerce } from "@/data/useCommerce";
+import { customerApi, type CustomerResponse } from "@/lib/customerApi";
 
 export function AdminCustomerDetailPage() {
-  const { state, toggleAdminCustomer } = useCommerce();
   const { customerId } = useParams();
-  const customer =
-    adminCustomers.find((item) => item.id === customerId) ?? adminCustomers[0];
-  const isActive = state.adminCustomerActive[customer.id] ?? true;
+  const [customer, setCustomer] = useState<CustomerResponse>();
+  const [error, setError] = useState("");
+  useEffect(() => {
+    if (!customerId) {
+      setError("Cliente inválido.");
+      return;
+    }
+    setCustomer(undefined);
+    setError("");
+    customerApi
+      .findById(customerId)
+      .then(setCustomer)
+      .catch((reason) => {
+        setError(
+          reason instanceof Error
+            ? reason.message
+            : "Não foi possível carregar o cliente.",
+        );
+      });
+  }, [customerId]);
+  async function deactivate() {
+    if (!customer || !customer.active) return;
+    if (!window.confirm("Excluir este cliente da lista ativa?")) return;
+    try {
+      await customerApi.deactivate(String(customer.id));
+      setCustomer({ ...customer, active: false });
+    } catch (reason) {
+      setError(
+        reason instanceof Error
+          ? reason.message
+          : "Não foi possível excluir o cliente.",
+      );
+    }
+  }
+  if (error && !customer)
+    return (
+      <AdminLayout>
+        <p className="text-destructive">{error}</p>
+        <Button
+          className="mt-4"
+          render={<Link to="/admin/clientes" />}
+          variant="outline"
+        >
+          Voltar para clientes
+        </Button>
+      </AdminLayout>
+    );
+  if (!customer) return <AdminLayout>Carregando cliente...</AdminLayout>;
   return (
     <AdminLayout>
-      <Button render={<Link to="/admin/clientes" />} size="sm" variant="ghost">
-        <ChevronLeft />
+      <Button render={<Link to="/admin/clientes" />} variant="ghost">
         Clientes
       </Button>
-      <div className="mt-4 flex flex-wrap items-start justify-between gap-4">
+      <div className="mt-4 flex justify-between">
         <div>
-          <div className="flex items-center gap-3">
-            <h1 className="text-3xl font-semibold tracking-tight">
-              {customer.name}
-            </h1>
-            <Badge variant={isActive ? "success" : "destructive"}>
-              {isActive ? "ATIVO" : "INATIVO"}
-            </Badge>
-          </div>
+          <h1 className="text-3xl font-semibold">{customer.name}</h1>
           <p className="mt-2 text-muted-foreground">
-            {customer.code} · Perfil de compra: {customer.profile}
+            {customer.code} · {customer.active ? "ATIVO" : "INATIVO"}
           </p>
         </div>
         <div className="flex gap-2">
           <Button
             render={<Link to={`/admin/clientes/${customer.id}/editar`} />}
           >
-            <Pencil />
-            Editar perfil
+            Editar
           </Button>
-          <Button
-            onClick={() => toggleAdminCustomer(customer.id)}
-            variant="outline"
-          >
-            <Power />
-            {isActive ? "Inativar" : "Reativar"}
-          </Button>
+          {customer.active ? (
+            <Button onClick={() => void deactivate()} variant="outline">
+              Excluir
+            </Button>
+          ) : null}
         </div>
       </div>
-      <div className="mt-8 grid gap-6 xl:grid-cols-[1.4fr_1fr]">
-        <div className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Contato</CardTitle>
-            </CardHeader>
-            <CardContent className="grid gap-5 sm:grid-cols-2">
-              <div>
-                <p className="text-xs text-muted-foreground">E-mail</p>
-                <p className="mt-1 font-medium">{customer.email}</p>
-              </div>
-              <div>
-                <p className="text-xs text-muted-foreground">Telefone</p>
-                <p className="mt-1 font-medium">{customer.phone}</p>
-              </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader>
-              <CardTitle>Histórico de transações</CardTitle>
-              <CardDescription>
-                {customer.orders} pedido(s) registrado(s).
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="rounded-lg border border-input p-4 text-sm">
-                <span className="font-medium">Último pedido</span>
-                <span className="mt-1 block text-muted-foreground">
-                  Pedido #COH-1048 · R$ 429,90 · EM PROCESSAMENTO
-                </span>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-        <div className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Endereços</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3 text-sm">
-              <div className="rounded-lg bg-muted p-3">
-                <span className="font-medium">Cobrança</span>
-                <span className="mt-1 block text-muted-foreground">
-                  Rua das Palmeiras, 240 · Mogi das Cruzes, SP
-                </span>
-              </div>
-              <div className="rounded-lg bg-muted p-3">
-                <span className="font-medium">Entrega preferida</span>
-                <span className="mt-1 block text-muted-foreground">
-                  Rua das Palmeiras, 240 · Mogi das Cruzes, SP
-                </span>
-              </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader>
-              <CardTitle>Cartões salvos</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="rounded-lg border border-input p-3 text-sm">
-                <span className="font-medium">Visa final 2048</span>
-                <span className="mt-1 block text-muted-foreground">
-                  Cartão preferido · dados protegidos
-                </span>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      </div>
+      <section className="mt-8 rounded-xl border p-5">
+        <p>E-mail: {customer.email}</p>
+        <p>Telefone: {customer.phone}</p>
+        <p>CPF: {customer.cpf}</p>
+      </section>
+      <section className="mt-4 rounded-xl border p-5">
+        <h2 className="font-semibold">Endereços</h2>
+        {customer.addresses.map((address) => (
+          <p className="mt-3" key={address.id}>
+            {address.type}: {address.street}, {address.number} · {address.city}/
+            {address.state} · CEP {address.postalCode}
+          </p>
+        ))}
+      </section>
+      {error ? <p className="mt-4 text-sm text-destructive">{error}</p> : null}
     </AdminLayout>
   );
 }
