@@ -1,4 +1,4 @@
-package com.hida.cohida.account;
+package com.hida.cohida.account.enums;
 
 public enum AccountRole {
     CUSTOMER,

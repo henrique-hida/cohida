@@ -1,14 +1,10 @@
-package com.hida.cohida.customer;
+package com.hida.cohida.customer.domain;
 
-import com.hida.cohida.account.Account;
+import com.hida.cohida.account.domain.Account;
 import com.hida.cohida.common.DomainEntity;
 import com.hida.cohida.customer.enums.AddressType;
-import jakarta.persistence.CascadeType;
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.OneToMany;
-import jakarta.persistence.OneToOne;
-import jakarta.persistence.Table;
+import com.hida.cohida.customer.exception.CustomerValidationException;
+import jakarta.persistence.*;
 import lombok.Getter;
 
 import java.time.LocalDate;
@@ -39,10 +35,6 @@ public class Customer extends DomainEntity {
     private String phone;
 
     @Getter
-    @Column(nullable = false)
-    private int purchaseProfileRanking = 0;
-
-    @Getter
     @OneToMany(mappedBy = "customer", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<CustomerAddress> addresses = new ArrayList<>();
 
@@ -50,7 +42,8 @@ public class Customer extends DomainEntity {
     @OneToOne(mappedBy = "customer", cascade = CascadeType.ALL, orphanRemoval = true, optional = false)
     private Account account;
 
-    protected Customer() { }
+    protected Customer() {
+    }
 
     public Customer(
             String code,
@@ -99,14 +92,14 @@ public class Customer extends DomainEntity {
 
     public CustomerAddress address(Long addressId) {
         return addresses.stream().filter(address -> address.getId().equals(addressId)).findFirst()
-                .orElseThrow(() -> new CustomerValidationException("Customer address not found"));
+                .orElseThrow(() -> new CustomerValidationException("Endereço do cliente não encontrado."));
     }
 
     public void removeAddress(Long addressId) {
         CustomerAddress address = address(addressId);
         long sameType = addresses.stream().filter(item -> item.getType() == address.getType()).count();
         if (sameType == 1) {
-            throw new CustomerValidationException("Customer must keep a billing and delivery address");
+            throw new CustomerValidationException("O cliente deve manter um endereço de cobrança e um de entrega.");
         }
         addresses.remove(address);
     }
@@ -115,7 +108,7 @@ public class Customer extends DomainEntity {
         boolean billing = addresses.stream().anyMatch(address -> address.getType() == AddressType.BILLING);
         boolean delivery = addresses.stream().anyMatch(address -> address.getType() == AddressType.DELIVERY);
         if (!billing || !delivery) {
-            throw new CustomerValidationException("Customer must keep a billing and delivery address");
+            throw new CustomerValidationException("O cliente deve manter um endereço de cobrança e um de entrega.");
         }
     }
 }
