@@ -17,12 +17,14 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { adminProductFormOptions, type AdminProduct } from "@/mocks";
+import { useCategories } from "@/data/useCategories";
 
 interface ProductFormProps {
   product?: AdminProduct;
 }
 
 export function ProductForm({ product }: ProductFormProps) {
+  const categories = useCategories();
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState("");
 
@@ -145,19 +147,19 @@ export function ProductForm({ product }: ProductFormProps) {
               Categorias esportivas
             </legend>
             <div className="flex flex-wrap gap-2">
-              {adminProductFormOptions.categories.map((category) => (
+              {categories.map((category) => (
                 <label
                   className="flex cursor-pointer items-center gap-2 rounded-lg border border-input px-3 py-2 text-sm has-checked:border-primary has-checked:bg-primary/15"
-                  key={category}
+                  key={category.id}
                 >
                   <input
                     className="accent-primary"
-                    defaultChecked={product?.categories.includes(category)}
+                    defaultChecked={product?.categories.includes(category.id)}
                     name="categories"
                     type="checkbox"
-                    value={category}
+                    value={category.id}
                   />
-                  {category}
+                  {category.name}
                 </label>
               ))}
             </div>

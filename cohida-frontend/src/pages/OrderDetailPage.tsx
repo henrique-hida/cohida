@@ -12,7 +12,6 @@ import { PageContainer, StoreHeader } from "@/components/shared";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { formatCurrency } from "@/lib/currency";
-import { products } from "@/mocks";
 import { useCommerce } from "@/data/useCommerce";
 
 const deliverySteps = [
@@ -109,18 +108,22 @@ export function OrderDetailPage() {
                 <h2 className="font-semibold">Itens do pedido</h2>
                 <div className="mt-5 grid gap-4">
                   {order.items.map((item) => {
-                    const product = products.find(
-                      (entry) => entry.id === item.productId,
+                    const product = state.products.find((entry) =>
+                      entry.variants.some(
+                        (variant) => variant.id === item.variantId,
+                      ),
                     );
-                    return product ? (
+                    return (
                       <div className="flex gap-4" key={item.id}>
                         <img
-                          alt={product.images[0]?.alt}
+                          alt={product?.images[0]?.alt ?? item.productId}
                           className="size-16 rounded-lg bg-muted object-cover"
-                          src={product.images[0]?.src}
+                          src={product?.images[0]?.src}
                         />
                         <div className="min-w-0 flex-1">
-                          <p className="font-medium">{product.name}</p>
+                          <p className="font-medium">
+                            {product?.name ?? item.productId}
+                          </p>
                           <p className="mt-1 text-sm text-muted-foreground">
                             Quantidade: {item.quantity}
                           </p>
@@ -129,7 +132,7 @@ export function OrderDetailPage() {
                           {formatCurrency(item.unitPriceCents * item.quantity)}
                         </p>
                       </div>
-                    ) : null;
+                    );
                   })}
                 </div>
               </CardContent>
@@ -165,7 +168,7 @@ export function OrderDetailPage() {
               {order.status === "in_transit" ? (
                 <Button
                   className="mt-3 w-full"
-                  onClick={() => confirmReceipt(order.id)}
+                  onClick={() => void confirmReceipt(order.id)}
                   variant="outline"
                 >
                   Confirmar recebimento
@@ -174,7 +177,7 @@ export function OrderDetailPage() {
               {order.status === "processing" ? (
                 <Button
                   className="mt-3 w-full"
-                  onClick={() => cancelOrder(order.id)}
+                  onClick={() => void cancelOrder(order.id)}
                   variant="destructive"
                 >
                   Cancelar pedido

@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { Check, CircleHelp, Plus, Save, X } from "lucide-react";
 
 import { AdminLayout } from "@/components/admin/AdminLayout";
@@ -18,6 +18,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { Table } from "@/components/ui/table";
+import { commerceApi, type ApiCategory } from "@/lib/commerceApi";
 import {
   adminConfigurationFormOptions,
   adminConfigurationRecords,
@@ -27,6 +28,16 @@ import {
 } from "@/mocks";
 
 type Draft = Record<string, boolean | string>;
+type AdministrationSectionId = AdminConfigurationSectionId | "categorias";
+
+const administrationSections = [
+  ...adminConfigurationSections,
+  {
+    id: "categorias" as const,
+    label: "Categorias",
+    description: "Categorias disponíveis no catálogo e nas análises.",
+  },
+];
 
 const inputClassName =
   "h-10 w-full rounded-lg border border-input bg-background px-3 text-sm outline-none focus-visible:ring-3 focus-visible:ring-ring/50";
@@ -64,8 +75,64 @@ function Field({
   );
 }
 
+function CategoryAdministration() {
+  const [categories, setCategories] = useState<ApiCategory[]>([]);
+  const [name, setName] = useState("");
+  const [description, setDescription] = useState("");
+  const [feedback, setFeedback] = useState("");
+  const [error, setError] = useState("");
+
+  async function loadCategories() {
+    setCategories(await commerceApi.adminCategories());
+  }
+
+  useEffect(() => {
+    void loadCategories().catch(() => setError("Não foi possível carregar as categorias."));
+  }, []);
+
+  async function createCategory(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setError("");
+    setFeedback("");
+    try {
+      await commerceApi.createCategory({ description, name });
+      setName("");
+      setDescription("");
+      await loadCategories();
+      setFeedback("Categoria cadastrada e disponível nos filtros.");
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : "Não foi possível cadastrar a categoria.");
+    }
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Categorias</CardTitle>
+        <CardDescription>
+          Categorias persistidas usadas no catálogo e nos filtros de análises.
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        <form className="grid gap-4 md:grid-cols-[1fr_2fr_auto]" onSubmit={createCategory}>
+          <input className={inputClassName} onChange={(event) => setName(event.target.value)} placeholder="Nome da categoria" required value={name} />
+          <input className={inputClassName} onChange={(event) => setDescription(event.target.value)} placeholder="Descrição para o catálogo" value={description} />
+          <Button type="submit"><Plus />Adicionar categoria</Button>
+        </form>
+        {feedback ? <p className="mt-4 text-sm text-success">{feedback}</p> : null}
+        {error ? <p className="mt-4 text-sm text-destructive">{error}</p> : null}
+        <div className="mt-5 flex flex-wrap gap-2">
+          {categories.map((category) => (
+            <span className="rounded-full bg-muted px-3 py-1 text-sm" key={category.id}>{category.name}</span>
+          ))}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
 export function AdminAdministrationPage() {
-  const [section, setSection] = useState<AdminConfigurationSectionId>("precos");
+  const [section, setSection] = useState<AdministrationSectionId>("precos");
   const [records, setRecords] = useState(adminConfigurationRecords);
   const [draft, setDraft] = useState<Draft>({});
   const [editing, setEditing] = useState<number | null>(null);
@@ -74,8 +141,8 @@ export function AdminAdministrationPage() {
   const [error, setError] = useState("");
   const [deleting, setDeleting] = useState<number | null>(null);
   const selected =
-    adminConfigurationSections.find((item) => item.id === section) ??
-    adminConfigurationSections[0];
+    administrationSections.find((item) => item.id === section) ??
+    administrationSections[0];
   const canManage = section !== "auditoria";
 
   function updateDraft(name: string, value: boolean | string) {
@@ -101,6 +168,7 @@ export function AdminAdministrationPage() {
   }
   function saveRecord(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (section === "categorias") return;
     const fields =
       section === "precos"
         ? ["name", "margin"]
@@ -155,12 +223,12 @@ export function AdminAdministrationPage() {
           aria-label="Áreas de administração"
           className="flex flex-col gap-1"
         >
-          {adminConfigurationSections.map((item) => (
+          {administrationSections.map((item) => (
             <button
               className={`rounded-lg px-3 py-2.5 text-left text-sm ${section === item.id ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted"}`}
               key={item.id}
               onClick={() => {
-                setSection(item.id as AdminConfigurationSectionId);
+                setSection(item.id as AdministrationSectionId);
                 closeForm();
                 setNotice("");
               }}
@@ -174,6 +242,7 @@ export function AdminAdministrationPage() {
           ))}
         </nav>
         <div className="space-y-6">
+          {section === "categorias" ? <CategoryAdministration /> : <>
           <Card>
             <CardHeader className="flex-row items-start justify-between gap-4">
               <div>
@@ -476,6 +545,7 @@ export function AdminAdministrationPage() {
               </CardContent>
             </Card>
           ) : null}
+          </>}
         </div>
       </div>
       {deleting !== null ? (
@@ -484,6 +554,7 @@ export function AdminAdministrationPage() {
           description="O cadastro será removido apenas desta sessão de demonstração."
           onCancel={() => setDeleting(null)}
           onConfirm={() => {
+            if (section === "categorias") return;
             setRecords((all) => ({
               ...all,
               [section]: all[section].filter((_, index) => index !== deleting),

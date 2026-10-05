@@ -1,4 +1,12 @@
-import { ArrowUpRight, CircleAlert, PackagePlus } from "lucide-react";
+import {
+  ArrowUpRight,
+  Boxes,
+  CircleAlert,
+  ClipboardCheck,
+  PackagePlus,
+  TrendingUp,
+} from "lucide-react";
+import { useEffect, useState } from "react";
 import { Link } from "react-router";
 
 import { AdminLayout } from "@/components/admin/AdminLayout";
@@ -12,15 +20,17 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import {
-  adminDashboardMetrics,
-  adminLowStockProducts,
-  adminRecentOrders,
-} from "@/mocks";
+  commerceApi,
+  type ApiOrder,
+  type ApiProduct,
+  type ApiReturn,
+} from "@/lib/commerceApi";
+import { formatCurrency } from "@/lib/currency";
 
 function statusVariant(status: string) {
-  return status === "EM PROCESSAMENTO"
+  return status === "EM_PROCESSAMENTO"
     ? "warning"
-    : status === "PAGAMENTO REALIZADO"
+    : status === "PAGAMENTO_REALIZADO"
       ? "success"
       : "info";
 }
@@ -33,6 +43,48 @@ function getGreeting(hour: number) {
 
 export function AdminDashboardPage() {
   const greeting = getGreeting(new Date().getHours());
+  const [orders, setOrders] = useState<ApiOrder[]>([]);
+  const [products, setProducts] = useState<ApiProduct[]>([]);
+  const [returns, setReturns] = useState<ApiReturn[]>([]);
+
+  useEffect(() => {
+    void Promise.all([
+      commerceApi.adminOrders(),
+      commerceApi.adminProducts(),
+      commerceApi.adminReturns(),
+    ]).then(([nextOrders, nextProducts, nextReturns]) => {
+      setOrders(nextOrders);
+      setProducts(nextProducts);
+      setReturns(nextReturns);
+    });
+  }, []);
+
+  const lowStockProducts = products.flatMap((product) => {
+    const quantity = product.variants.reduce(
+      (total, variant) => total + variant.stockQuantity,
+      0,
+    );
+    return quantity <= product.minimumStock
+      ? [{ minimum: product.minimumStock, name: product.name, quantity }]
+      : [];
+  });
+  const recentOrders = orders.slice(0, 3);
+  const revenueCents = orders
+    .filter((order) => order.status !== "CANCELADO")
+    .reduce((total, order) => total + order.totalCents, 0);
+  const todayOrders = orders.filter(
+    (order) =>
+      new Date(order.createdAt).toDateString() === new Date().toDateString(),
+  ).length;
+  const openReturns = returns.filter(
+    (request) => !["NEGADA", "PROCESSADA"].includes(request.status),
+  ).length;
+  const metrics = [
+    { detail: "Pedidos não cancelados", icon: TrendingUp, label: "Faturamento", to: "/admin/analises", value: formatCurrency(revenueCents) },
+    { detail: "Criados hoje", icon: ClipboardCheck, label: "Pedidos hoje", to: "/admin/pedidos", value: String(todayOrders) },
+    { detail: "No limite mínimo", icon: CircleAlert, label: "Alertas de estoque", to: "/admin/estoque", value: String(lowStockProducts.length) },
+    { detail: "Aguardando conclusão", icon: Boxes, label: "Trocas abertas", to: "/admin/trocas", value: String(openReturns) },
+  ];
 
   return (
     <AdminLayout>
@@ -55,7 +107,7 @@ export function AdminDashboardPage() {
       </div>
 
       <section className="mt-8 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        {adminDashboardMetrics.map(
+        {metrics.map(
           ({ detail, icon: Icon, label, to, value }) => (
             <Link
               className="group rounded-xl outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
@@ -107,20 +159,20 @@ export function AdminDashboardPage() {
                 </tr>
               </thead>
               <tbody>
-                {adminRecentOrders.map((order) => (
+                {recentOrders.map((order) => (
                   <tr
                     className="border-b border-border last:border-0"
                     key={order.id}
                   >
-                    <td className="py-4 font-medium">{order.id}</td>
-                    <td className="py-4">{order.customer}</td>
+                    <td className="py-4 font-medium">#{order.id}</td>
+                    <td className="py-4">{order.customerName}</td>
                     <td className="py-4">
                       <Badge variant={statusVariant(order.status)}>
                         {order.status}
                       </Badge>
                     </td>
                     <td className="py-4 text-right font-medium">
-                      {order.total}
+                      {formatCurrency(order.totalCents)}
                     </td>
                   </tr>
                 ))}
@@ -138,11 +190,11 @@ export function AdminDashboardPage() {
               Estoque pede atenção
             </CardTitle>
             <CardDescription className="text-warning-foreground/75">
-              Três itens estão abaixo do estoque mínimo configurado.
+              Itens no limite mínimo configurado.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
-            {adminLowStockProducts.map((product) => (
+            {lowStockProducts.map((product) => (
               <div
                 className="flex items-center justify-between border-b border-warning-foreground/15 pb-3 text-sm last:border-0"
                 key={product.name}

@@ -10,7 +10,7 @@ import {
 import { useState } from "react";
 import { Link, Navigate, useSearchParams } from "react-router";
 
-import { PageContainer, StoreHeader } from "@/components/shared";
+import { CardBrandIcon, PageContainer, StoreHeader } from "@/components/shared";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -20,7 +20,7 @@ import { useCommerce } from "@/data/useCommerce";
 import { formatCurrency } from "@/lib/currency";
 import { customerApi } from "@/lib/customerApi";
 import {
-  cardBrands,
+  detectCardBrand,
   formatCardNumber,
   formatCvv,
   formatExpiry,
@@ -64,6 +64,17 @@ export function AccountPage() {
   const activeSection =
     (searchParams.get("secao") as AccountSection) || "profile";
   const customer = state.customer;
+
+  if (!state.sessionHydrated) {
+    return (
+      <div className="min-h-svh bg-background">
+        <StoreHeader />
+        <PageContainer className="py-10 text-sm text-muted-foreground sm:py-14">
+          Carregando sua conta...
+        </PageContainer>
+      </div>
+    );
+  }
 
   if (!customer || state.sessionCustomerId !== customer.id) {
     return <Navigate replace to="/entrar" />;
@@ -328,34 +339,41 @@ function AccountOrders({
       <CardContent className="p-5 sm:p-6">
         <h2 className="text-lg font-semibold">Meus pedidos</h2>
         <div className="mt-5 grid gap-3">
-          {orders.map((order) => (
-            <div
-              className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border p-4"
-              key={order.id}
-            >
-              <div>
-                <p className="font-medium">{order.id}</p>
-                <p className="mt-1 text-sm text-muted-foreground">
-                  {new Intl.DateTimeFormat("pt-BR", {
-                    dateStyle: "medium",
-                  }).format(new Date(order.createdAt))}{" "}
-                  · {order.items.length} item(ns)
-                </p>
+          {orders.length ? (
+            orders.map((order) => (
+              <div
+                className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border p-4"
+                key={order.id}
+              >
+                <div>
+                  <p className="font-medium">{order.id}</p>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    {new Intl.DateTimeFormat("pt-BR", {
+                      dateStyle: "medium",
+                    }).format(new Date(order.createdAt))}{" "}
+                    · {order.items.length} item(ns)
+                  </p>
+                </div>
+                <div className="flex items-center gap-3">
+                  <span className="font-medium">
+                    {formatCurrency(order.totalCents)}
+                  </span>
+                  <Button
+                    render={<Link to={`/pedidos/${order.id}`} />}
+                    size="sm"
+                    variant="outline"
+                  >
+                    Ver pedido
+                  </Button>
+                </div>
               </div>
-              <div className="flex items-center gap-3">
-                <span className="font-medium">
-                  {formatCurrency(order.totalCents)}
-                </span>
-                <Button
-                  render={<Link to={`/pedidos/${order.id}`} />}
-                  size="sm"
-                  variant="outline"
-                >
-                  Ver pedido
-                </Button>
-              </div>
-            </div>
-          ))}
+            ))
+          ) : (
+            <p className="rounded-xl border border-dashed border-border bg-muted/30 px-4 py-6 text-sm text-muted-foreground">
+              Você ainda não fez nenhum pedido. Quando fizer sua primeira
+              compra, o acompanhamento aparecerá aqui.
+            </p>
+          )}
         </div>
       </CardContent>
     </Card>
@@ -611,6 +629,8 @@ function AccountCards({
   setIsAdding: (value: boolean) => void;
 }) {
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [newCardNumber, setNewCardNumber] = useState("");
+  const newCardBrand = detectCardBrand(newCardNumber);
   return (
     <Card>
       <CardContent className="p-5 sm:p-6">
@@ -621,7 +641,12 @@ function AccountCards({
               Os dados sensíveis são protegidos.
             </p>
           </div>
-          <Button onClick={() => setIsAdding(!isAdding)}>
+          <Button
+            onClick={() => {
+              setIsAdding(!isAdding);
+              setNewCardNumber("");
+            }}
+          >
             <Plus />
             Adicionar cartão
           </Button>
@@ -632,35 +657,49 @@ function AccountCards({
             onSubmit={(event) => {
               event.preventDefault();
               const formData = new FormData(event.currentTarget);
+              const number = String(formData.get("number") ?? "");
               onAdd(
                 {
-                  brand: String(formData.get("brand") ?? "Cartão"),
+                  brand: detectCardBrand(number) ?? "Cartão",
                   isPreferred: !cards.length,
                   label: String(formData.get("label") ?? "Novo cartão"),
                 },
-                String(formData.get("number") ?? ""),
+                number,
               );
               setIsAdding(false);
+              setNewCardNumber("");
             }}
           >
-            <label className="grid gap-1 text-sm sm:col-span-2">
+            <label className="grid gap-1 text-sm">
               Número do cartão
-              <input
-                className="h-9 rounded-lg border border-input bg-background px-3"
-                inputMode="numeric"
-                name="number"
-                onInput={(event) => {
-                  event.currentTarget.value = formatCardNumber(
-                    event.currentTarget.value,
-                  );
-                }}
-                required
-              />
+              <span className="relative">
+                {newCardBrand ? (
+                  <span className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2">
+                    <CardBrandIcon brand={newCardBrand} />
+                  </span>
+                ) : null}
+                <input
+                  className={`h-9 w-full rounded-lg border border-input bg-background pr-3 ${
+                    newCardBrand ? "pl-16" : "pl-3"
+                  }`}
+                  inputMode="numeric"
+                  name="number"
+                  onInput={(event) => {
+                    const formattedNumber = formatCardNumber(
+                      event.currentTarget.value,
+                    );
+                    event.currentTarget.value = formattedNumber;
+                    setNewCardNumber(formattedNumber);
+                  }}
+                  required
+                />
+              </span>
             </label>
             <label className="grid gap-1 text-sm">
-              Nome impresso
+              Nome do cartão
               <input
                 className="h-9 rounded-lg border border-input bg-background px-3"
+                placeholder="Ex.: Cartão principal"
                 required
                 name="label"
               />
@@ -692,113 +731,101 @@ function AccountCards({
                 required
               />
             </label>
-            <label className="grid gap-1 text-sm">
-              Bandeira
-              <select
-                className="h-9 rounded-lg border border-input bg-background px-3"
-                name="brand"
-                required
-              >
-                <option value="">Selecione</option>
-                {cardBrands.map((brand) => (
-                  <option key={brand}>{brand}</option>
-                ))}
-              </select>
-            </label>
             <Button className="w-fit" type="submit">
               Salvar cartão
             </Button>
           </form>
         ) : (
           <div className="mt-6 grid gap-3 sm:grid-cols-2">
-            {cards.map((card) => (
-              <div
-                className="rounded-xl border border-border bg-muted/35 p-4"
-                key={card.id}
-              >
-                <div className="flex justify-between gap-3">
-                  <p className="font-medium">
-                    {card.brand} · {card.lastDigits}
-                  </p>
-                  {card.isPreferred ? <Badge>Preferido</Badge> : null}
-                </div>
-                {editingId === card.id ? (
-                  <form
-                    className="mt-3 grid gap-2"
-                    onSubmit={(event) => {
-                      event.preventDefault();
-                      const formData = new FormData(event.currentTarget);
-                      onUpdate(card.id, {
-                        brand: String(formData.get("brand") ?? ""),
-                        label: String(formData.get("label") ?? ""),
-                      });
-                      setEditingId(null);
-                    }}
-                  >
-                    <input
-                      className="h-9 rounded-lg border border-input bg-background px-3 text-sm"
-                      defaultValue={card.label}
-                      name="label"
-                      required
-                    />
-                    <input
-                      className="h-9 rounded-lg border border-input bg-background px-3 text-sm"
-                      defaultValue={card.brand}
-                      name="brand"
-                      required
-                    />
-                    <div className="flex gap-2">
-                      <Button size="sm" type="submit">
-                        Salvar
-                      </Button>
-                      <Button
-                        onClick={() => setEditingId(null)}
-                        size="sm"
-                        type="button"
-                        variant="ghost"
-                      >
-                        Cancelar
-                      </Button>
-                    </div>
-                  </form>
-                ) : (
-                  <>
-                    <p className="mt-2 text-sm text-muted-foreground">
-                      {card.label}
+            {cards.length ? (
+              cards.map((card) => (
+                <div
+                  className="rounded-xl border border-border bg-muted/35 p-4"
+                  key={card.id}
+                >
+                  <div className="flex justify-between gap-3">
+                    <p className="font-medium">
+                      {card.brand} · {card.lastDigits}
                     </p>
-                    <div className="mt-4 flex gap-2">
-                      <Button
-                        disabled={card.isPreferred}
-                        onClick={() => onSetPreferred(card.id)}
-                        size="sm"
-                        variant={card.isPreferred ? "secondary" : "outline"}
-                      >
-                        <Star
-                          className={
-                            card.isPreferred ? "fill-current" : undefined
-                          }
-                        />
-                        {card.isPreferred ? "Favorito" : "Favoritar"}
-                      </Button>
-                      <Button
-                        onClick={() => setEditingId(card.id)}
-                        size="sm"
-                        variant="outline"
-                      >
-                        Editar
-                      </Button>
-                      <Button
-                        onClick={() => onRemove(card.id)}
-                        size="sm"
-                        variant="ghost"
-                      >
-                        Remover
-                      </Button>
-                    </div>
-                  </>
-                )}
-              </div>
-            ))}
+                    {card.isPreferred ? <Badge>Preferido</Badge> : null}
+                  </div>
+                  {editingId === card.id ? (
+                    <form
+                      className="mt-3 grid gap-2"
+                      onSubmit={(event) => {
+                        event.preventDefault();
+                        const formData = new FormData(event.currentTarget);
+                        onUpdate(card.id, {
+                          brand: card.brand,
+                          label: String(formData.get("label") ?? ""),
+                        });
+                        setEditingId(null);
+                      }}
+                    >
+                      <input
+                        className="h-9 rounded-lg border border-input bg-background px-3 text-sm"
+                        defaultValue={card.label}
+                        name="label"
+                        required
+                      />
+                      <div className="flex gap-2">
+                        <Button size="sm" type="submit">
+                          Salvar
+                        </Button>
+                        <Button
+                          onClick={() => setEditingId(null)}
+                          size="sm"
+                          type="button"
+                          variant="ghost"
+                        >
+                          Cancelar
+                        </Button>
+                      </div>
+                    </form>
+                  ) : (
+                    <>
+                      <p className="mt-2 text-sm text-muted-foreground">
+                        {card.label}
+                      </p>
+                      <div className="mt-4 flex gap-2">
+                        <Button
+                          disabled={card.isPreferred}
+                          onClick={() => onSetPreferred(card.id)}
+                          size="sm"
+                          variant={card.isPreferred ? "secondary" : "outline"}
+                        >
+                          <Star
+                            className={
+                              card.isPreferred ? "fill-current" : undefined
+                            }
+                          />
+                          {card.isPreferred ? "Favorito" : "Favoritar"}
+                        </Button>
+                        <Button
+                          onClick={() => setEditingId(card.id)}
+                          size="sm"
+                          variant="outline"
+                        >
+                          Editar
+                        </Button>
+                        <Button
+                          onClick={() => onRemove(card.id)}
+                          size="sm"
+                          variant="ghost"
+                        >
+                          Remover
+                        </Button>
+                      </div>
+                    </>
+                  )}
+                </div>
+              ))
+            ) : (
+              <p className="rounded-xl border border-dashed border-border bg-muted/30 px-4 py-6 text-sm text-muted-foreground sm:col-span-2">
+                Você ainda não cadastrou nenhum cartão. Adicione um cartão para
+                agilizar o pagamento das próximas compras.
+              </p>
+            )}
           </div>
         )}
       </CardContent>

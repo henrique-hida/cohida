@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { Button } from "@/components/ui/button";
@@ -13,8 +13,18 @@ import { formatCurrency } from "@/lib/currency";
 import { useCommerce } from "@/data/useCommerce";
 
 export function AdminCouponsPage() {
-  const { createCoupon, state, toggleCoupon } = useCommerce();
+  const { createCoupon, loadCoupons, state, toggleCoupon } = useCommerce();
   const [error, setError] = useState("");
+
+  useEffect(() => {
+    void loadCoupons().catch((reason: unknown) =>
+      setError(
+        reason instanceof Error
+          ? reason.message
+          : "Não foi possível carregar os cupons.",
+      ),
+    );
+  }, [loadCoupons]);
 
   return (
     <AdminLayout>
@@ -36,11 +46,11 @@ export function AdminCouponsPage() {
           <CardContent>
             <form
               className="grid gap-4"
-              onSubmit={(event) => {
+              onSubmit={async (event) => {
                 event.preventDefault();
                 const form = new FormData(event.currentTarget);
                 try {
-                  createCoupon({
+                  await createCoupon({
                     code: String(form.get("code") ?? ""),
                     kind: String(form.get("kind")) as
                       "exchange" | "promotional",
@@ -127,7 +137,7 @@ export function AdminCouponsPage() {
                     </td>
                     <td className="py-4 text-right">
                       <Button
-                        onClick={() => toggleCoupon(coupon.id)}
+                        onClick={() => void toggleCoupon(coupon.id)}
                         size="sm"
                         variant="outline"
                       >

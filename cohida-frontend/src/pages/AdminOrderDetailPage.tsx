@@ -33,12 +33,13 @@ export function AdminOrderDetailPage() {
   const order =
     adminOrders.find((item) => item.id === orderId) ?? adminOrders[0];
   const { state, updateAdminOrderStatus } = useCommerce();
-  const status = state.adminOrderStatuses[order.id] ?? order.status;
+  const status = (state.adminOrderStatuses[order.id] ??
+    order.status) as AdminOrderStatus;
   const [updated, setUpdated] = useState(false);
   const [confirmingDelivery, setConfirmingDelivery] = useState(false);
 
   function updateStatus(nextStatus: AdminOrderStatus) {
-    updateAdminOrderStatus(order.id, nextStatus);
+    void updateAdminOrderStatus(order.id, nextStatus);
     setUpdated(true);
   }
 

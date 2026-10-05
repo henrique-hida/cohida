@@ -1,10 +1,19 @@
-import { useLayoutEffect, useRef, useState, type ReactNode } from "react";
+import {
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
 import {
   BarChart3,
   Boxes,
   ChevronLeft,
   ClipboardList,
+  DatabaseZap,
+  House,
   Ticket,
+  Trash2,
   LayoutDashboard,
   Package,
   Repeat2,
@@ -13,10 +22,13 @@ import {
   UserRound,
   UsersRound,
 } from "lucide-react";
-import { Link, NavLink, useLocation } from "react-router";
+import { Link, Navigate, NavLink, useLocation } from "react-router";
 
 import { AppLogo, ThemeToggle } from "@/components/shared";
 import { Button } from "@/components/ui/button";
+import { Toast } from "@/components/ui/toast";
+import { useCommerce } from "@/data/useCommerce";
+import { apiRequest, hasAdminSession } from "@/lib/customerApi";
 import {
   Popover,
   PopoverContent,
@@ -41,9 +53,25 @@ interface AdminLayoutProps {
 }
 
 export function AdminLayout({ children }: AdminLayoutProps) {
-  const adminName = localStorage.getItem("cohida-admin-name") ?? "Administradora";
+  if (!hasAdminSession()) {
+    return <Navigate replace to="/entrar" />;
+  }
+
+  return <AdminLayoutContent>{children}</AdminLayoutContent>;
+}
+
+function AdminLayoutContent({ children }: AdminLayoutProps) {
+  const adminName =
+    localStorage.getItem("cohida-admin-name") ?? "Administradora";
   const { pathname } = useLocation();
+  const { loadAdminProducts } = useCommerce();
   const itemRefs = useRef(new Map<string, HTMLAnchorElement>());
+  const [demoPopulated, setDemoPopulated] = useState<boolean | null>(null);
+  const [isUpdatingDemo, setIsUpdatingDemo] = useState(false);
+  const [notice, setNotice] = useState<{
+    message: string;
+    variant: "error" | "success";
+  }>();
   const [indicator, setIndicator] = useState<{
     height: number;
     left: number;
@@ -79,11 +107,61 @@ export function AdminLayout({ children }: AdminLayoutProps) {
     return () => window.removeEventListener("resize", updateIndicator);
   }, [activeNavigation]);
 
+  useEffect(() => {
+    let cancelled = false;
+
+    void apiRequest<{ populated: boolean }>("/admin/demo/seed")
+      .then(({ populated }) => {
+        if (!cancelled) setDemoPopulated(populated);
+      })
+      .catch(() => {
+        if (!cancelled)
+          setNotice({
+            message: "Não foi possível verificar os dados demonstrativos.",
+            variant: "error",
+          });
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  async function toggleDemoPopulation() {
+    if (demoPopulated === null) return;
+
+    const remove = demoPopulated;
+    setIsUpdatingDemo(true);
+    try {
+      await apiRequest<void>("/admin/demo/seed", {
+        method: remove ? "DELETE" : "POST",
+      });
+      await loadAdminProducts();
+      setDemoPopulated(!remove);
+      setNotice({
+        message: remove
+          ? "Dados demonstrativos removidos."
+          : "Dados demonstrativos carregados.",
+        variant: "success",
+      });
+    } catch (reason) {
+      setNotice({
+        message:
+          reason instanceof Error
+            ? reason.message
+            : "Não foi possível atualizar os dados demonstrativos.",
+        variant: "error",
+      });
+    } finally {
+      setIsUpdatingDemo(false);
+    }
+  }
+
   return (
     <div className="min-h-svh bg-background lg:grid lg:grid-cols-[15rem_1fr]">
       <aside className="flex flex-col border-b border-border bg-card lg:min-h-svh lg:border-r lg:border-b-0">
         <div className="flex h-16 items-center justify-between px-5 lg:h-20">
-          <Link aria-label="coHida — início" to="/">
+          <Link aria-label="coHida — painel administrativo" to="/admin">
             <AppLogo className="dark:hidden" variant="dark" />
             <AppLogo className="hidden dark:block" variant="light" />
           </Link>
@@ -136,8 +214,8 @@ export function AdminLayout({ children }: AdminLayoutProps) {
             render={<Link to="/" />}
             variant="outline"
           >
-            <ChevronLeft aria-hidden="true" />
-            Voltar para a loja
+            <House aria-hidden="true" />
+            Ir para home
           </Button>
         </div>
       </aside>
@@ -168,6 +246,15 @@ export function AdminLayout({ children }: AdminLayoutProps) {
               </div>
               <Button
                 className="w-full justify-start"
+                disabled={demoPopulated === null || isUpdatingDemo}
+                onClick={() => void toggleDemoPopulation()}
+                variant="ghost"
+              >
+                {demoPopulated ? <Trash2 /> : <DatabaseZap />}
+                {demoPopulated ? "Remover demo" : "Carregar demo"}
+              </Button>
+              <Button
+                className="w-full justify-start"
                 render={<Link to="/entrar" />}
                 variant="ghost"
               >
@@ -181,6 +268,13 @@ export function AdminLayout({ children }: AdminLayoutProps) {
           {children}
         </main>
       </div>
+      {notice ? (
+        <Toast
+          message={notice.message}
+          onClose={() => setNotice(undefined)}
+          variant={notice.variant}
+        />
+      ) : null}
     </div>
   );
 }

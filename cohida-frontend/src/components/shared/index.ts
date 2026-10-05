@@ -1,7 +1,9 @@
 export { AppLogo } from "./AppLogo";
+export { CardBrandIcon } from "./CardBrandIcon";
 export { ChatbotFab } from "./ChatbotFab";
 export { PageContainer } from "./PageContainer";
 export { Price } from "./Price";
 export { ProductCard } from "./ProductCard";
 export { StoreHeader } from "./StoreHeader";
+export { StoreFooter } from "./StoreFooter";
 export { ThemeToggle } from "./ThemeToggle";

@@ -1,76 +1,8 @@
-import { Boxes, CircleAlert, ClipboardCheck, TrendingUp } from "lucide-react";
-
 export type AdminResource =
   "clientes" | "estoque" | "pedidos" | "produtos" | "trocas" | "analises";
 
-export const adminDashboardMetrics = [
-  {
-    detail: "+12,5% vs. mês anterior",
-    icon: TrendingUp,
-    label: "Vendas aprovadas",
-    to: "/admin/analises",
-    value: "R$ 48.760,00",
-  },
-  {
-    detail: "6 aguardam aprovação",
-    icon: ClipboardCheck,
-    label: "Pedidos hoje",
-    to: "/admin/pedidos",
-    value: "28",
-  },
-  {
-    detail: "3 produtos abaixo do mínimo",
-    icon: CircleAlert,
-    label: "Alertas de estoque",
-    to: "/admin/estoque",
-    value: "7",
-  },
-  {
-    detail: "2 aguardam recebimento",
-    icon: Boxes,
-    label: "Trocas abertas",
-    to: "/admin/trocas",
-    value: "5",
-  },
-];
-
-export const adminRecentOrders = [
-  {
-    customer: "Luana Martins",
-    id: "#COH-1048",
-    status: "EM PROCESSAMENTO",
-    total: "R$ 429,90",
-  },
-  {
-    customer: "Gabriel Souza",
-    id: "#COH-1047",
-    status: "PAGAMENTO REALIZADO",
-    total: "R$ 1.129,00",
-  },
-  {
-    customer: "Camila Rocha",
-    id: "#COH-1046",
-    status: "EM TRÂNSITO",
-    total: "R$ 289,90",
-  },
-];
-
-export const adminLowStockProducts = [
-  { minimum: 5, name: "Bola de Futebol Pro X", quantity: 1 },
-  { minimum: 5, name: "Tênis Run Flow", quantity: 4 },
-  { minimum: 4, name: "Kit Elástico Resistance", quantity: 1 },
-];
-
 export const adminProductFormOptions = {
   brands: ["Nike", "Adidas", "Puma", "Kipsta", "Vollo"],
-  categories: [
-    "Futebol",
-    "Corrida",
-    "Treino e academia",
-    "Artes marciais",
-    "Basquete",
-    "Vôlei",
-  ],
   pricingGroups: [
     { label: "Performance", margin: "40%" },
     { label: "Essentials", margin: "32%" },
@@ -191,10 +123,6 @@ export const adminProductDeactivationOptions = [
   "PROBLEMA DE FORNECIMENTO",
   "OUTRO",
 ];
-
-export const adminCustomerFormOptions = {
-  states: ["SP", "RJ", "MG", "PR", "SC", "RS"],
-};
 
 export const adminStockEntryFormOptions = {
   products: adminProducts.map(({ code, id, name }) => ({ code, id, name })),
@@ -473,52 +401,6 @@ export const adminStockMovements = [
   },
 ];
 
-export const adminAnalyticsData = {
-  categories: ["Futebol", "Corrida", "Treino"],
-  months: [
-    { date: "2026-06-01", label: "Jun." },
-    { date: "2026-07-01", label: "Jul." },
-    { date: "2026-08-01", label: "Ago." },
-  ],
-  series: [
-    { category: "Futebol", values: [8420, 9310, 11900] },
-    { category: "Corrida", values: [7200, 8100, 9870] },
-    { category: "Treino", values: [5900, 6420, 7340] },
-  ],
-  topProducts: [
-    {
-      name: "Bola Pro X",
-      revenue: 9995,
-      monthlyUnits: [20, 12, 18],
-      units: 50,
-    },
-    {
-      name: "Tênis Run Flow",
-      revenue: 9198,
-      monthlyUnits: [7, 6, 7],
-      units: 20,
-    },
-    {
-      name: "Kit Resistance",
-      revenue: 5712,
-      monthlyUnits: [15, 16, 17],
-      units: 48,
-    },
-    {
-      name: "Caneleira Pro",
-      revenue: 3596,
-      monthlyUnits: [13, 12, 15],
-      units: 40,
-    },
-    {
-      name: "Munhequeira",
-      revenue: 1890,
-      monthlyUnits: [21, 20, 22],
-      units: 63,
-    },
-  ],
-};
-
 export const adminConfigurationSections = [
   {
     id: "precos",
@@ -528,7 +410,7 @@ export const adminConfigurationSections = [
   {
     id: "catalogos",
     label: "Cadastros-base",
-    description: "Marcas, categorias, fornecedores e bandeiras.",
+    description: "Marcas, fornecedores e bandeiras.",
   },
   {
     id: "auditoria",
@@ -558,7 +440,7 @@ export type AdminConfigurationRecord = {
 };
 
 export const adminConfigurationFormOptions = {
-  catalogTypes: ["Marca", "Categoria", "Fornecedor", "Bandeira"],
+  catalogTypes: ["Marca", "Fornecedor", "Bandeira"],
   parameterUnits: ["minutos", "dias", "percentual", "unidades"],
   roles: ["Administradora", "Operação", "Gerência de vendas"],
 };
@@ -593,12 +475,6 @@ export const adminConfigurationRecords: Record<
       id: "catalog-nike",
       title: "Nike",
       values: { name: "Nike", type: "Marca" },
-    },
-    {
-      details: "Categoria esportiva disponível no catálogo",
-      id: "catalog-football",
-      title: "Futebol",
-      values: { name: "Futebol", type: "Categoria" },
     },
     {
       details: "Fornecedor disponível para entradas de estoque",

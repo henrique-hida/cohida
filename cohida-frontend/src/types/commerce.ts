@@ -55,4 +55,5 @@ export interface Order {
   discountCents: number;
   totalCents: number;
   createdAt: string;
+  issuedCoupon?: { code: string; valueCents: number };
 }

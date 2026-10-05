@@ -1,4 +1,5 @@
 import { Ticket } from "lucide-react";
+import { useEffect } from "react";
 import { Link } from "react-router";
 
 import { PageContainer, StoreHeader } from "@/components/shared";
@@ -9,7 +10,12 @@ import { useCommerce } from "@/data/useCommerce";
 import { formatCurrency } from "@/lib/currency";
 
 export function CouponsPage() {
-  const { state } = useCommerce();
+  const { loadCustomerCoupons, state } = useCommerce();
+
+  useEffect(() => {
+    void loadCustomerCoupons();
+  }, [loadCustomerCoupons]);
+
   return (
     <div className="min-h-svh bg-background">
       <StoreHeader />

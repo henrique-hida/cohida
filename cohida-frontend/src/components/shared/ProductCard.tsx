@@ -1,4 +1,4 @@
-import { ShoppingBag, Star } from "lucide-react";
+import { ShoppingCart, Star } from "lucide-react";
 import { Link } from "react-router";
 
 import { Badge } from "@/components/ui/badge";
@@ -89,7 +89,7 @@ export function ProductCard({
             onAddToCart?.(product, firstAvailableVariant)
           }
         >
-          <ShoppingBag aria-hidden="true" />
+          <ShoppingCart aria-hidden="true" />
           {isAvailable ? "Adicionar" : "Indisponível"}
         </Button>
       </CardFooter>

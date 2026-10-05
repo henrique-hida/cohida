@@ -8,6 +8,11 @@ const customer = {
   phone: "11999991234",
 };
 
+const adminToken =
+  "eyJhbGciOiJub25lIn0.eyJyb2xlIjoiQURNSU4iLCJleHAiOjQxMDI0NDQ4MDB9.signature";
+const customerToken =
+  "eyJhbGciOiJub25lIn0.eyJyb2xlIjoiQ1VTVE9NRVIiLCJleHAiOjQxMDI0NDQ4MDB9.signature";
+
 const deliveryAddress = {
   city: "São Paulo",
   country: "Brasil",
@@ -18,6 +23,50 @@ const deliveryAddress = {
   state: "SP",
   street: "Rua do Teste",
 };
+
+const catalog = [
+  {
+    id: 1,
+    code: "DEMO-CAMISA-M",
+    slug: "demo-camisa",
+    name: "Camisa de demonstração",
+    brand: "coHida",
+    description: "Produto usado pelos testes de clientes.",
+    minimumStock: 1,
+    active: true,
+    categories: ["Demo"],
+    variants: [
+      {
+        id: 1,
+        sku: "DEMO-CAMISA-M",
+        label: "Padrão",
+        color: "Azul",
+        size: "M",
+        priceCents: 12990,
+        stockQuantity: 20,
+      },
+    ],
+    createdAt: "2026-10-03T12:00:00",
+  },
+];
+
+const emptyCart = {
+  id: 1,
+  items: [],
+  couponCode: null,
+  subtotalCents: 0,
+  discountCents: 0,
+  shippingCents: 0,
+  totalCents: 0,
+};
+
+function stubCustomerCommerceData() {
+  cy.intercept("GET", "**/api/customers/me/cart", emptyCart);
+  cy.intercept("GET", "**/api/customers/me/cards", []);
+  cy.intercept("GET", "**/api/customers/me/orders", []);
+  cy.intercept("GET", "**/api/customers/me/orders/returns", []);
+  cy.intercept("GET", "**/api/customers/me/coupons", []);
+}
 
 function customerResponse(id: number) {
   return {
@@ -77,7 +126,7 @@ function expectCreateRequest(alias: `@${string}`) {
 
 function loginAsAdmin(customers = [customerResponse(2)]) {
   cy.intercept("POST", "**/api/auth/login", {
-    accessToken: "admin-token",
+    accessToken: adminToken,
     role: "ADMIN",
   }).as("adminLogin");
   cy.intercept(
@@ -97,6 +146,8 @@ describe("criação de clientes", () => {
   beforeEach(() => {
     cy.clearLocalStorage();
     cy.viewport(1440, 900);
+    cy.intercept("GET", "**/api/products*", catalog).as("catalog");
+    cy.intercept("GET", "**/api/admin/demo/seed", { populated: false });
     cy.intercept("GET", "https://viacep.com.br/ws/*/json/", {
       bairro: deliveryAddress.neighborhood,
       localidade: deliveryAddress.city,
@@ -106,6 +157,7 @@ describe("criação de clientes", () => {
   });
 
   it("cria uma conta pelo cadastro público", () => {
+    stubCustomerCommerceData();
     cy.intercept("POST", "**/api/auth/register", {
       accessToken: "customer-token",
       role: "CUSTOMER",
@@ -149,7 +201,7 @@ describe("criação de clientes", () => {
       { content: [], totalElements: 0 },
     ).as("customerList");
     cy.intercept("POST", "**/api/auth/login", {
-      accessToken: "admin-token",
+      accessToken: adminToken,
       role: "ADMIN",
     }).as("adminLogin");
     cy.intercept("POST", "**/api/customers", customerResponse(2)).as(
@@ -169,6 +221,36 @@ describe("criação de clientes", () => {
     expectCreateRequest("@adminCreate");
   });
 
+  it("mantém o acesso ao painel ao navegar para a loja", () => {
+    loginAsAdmin();
+    cy.visit("/");
+
+    cy.get('[aria-label="Menu da administradora"]').click();
+    cy.contains("Administradora").should("be.visible");
+    cy.get('a[href="/admin"]').contains("Ir para admin").should("be.visible");
+  });
+
+  it("impede que uma sessão de cliente abra o painel administrativo", () => {
+    cy.visit("/admin/clientes", {
+      onBeforeLoad(window) {
+        window.localStorage.setItem("cohida-access-token", customerToken);
+        window.localStorage.setItem("cohida-admin-name", "Administradora");
+      },
+    });
+
+    cy.location("pathname").should("eq", "/entrar");
+    cy.get('[aria-label="Menu da administradora"]').should("not.exist");
+  });
+
+  it("lista os produtos retornados pela API no painel", () => {
+    cy.intercept("GET", "**/api/admin/products", catalog).as("adminProducts");
+    loginAsAdmin();
+    cy.visit("/admin/produtos");
+
+    cy.wait("@adminProducts");
+    cy.contains("td", "Camisa de demonstração").should("be.visible");
+  });
+
   it("edita sem enviar CPF ou senha", () => {
     loginAsAdmin();
     cy.intercept("GET", "**/api/customers/2", customerResponse(2)).as(
@@ -178,7 +260,8 @@ describe("criação de clientes", () => {
       "customerUpdate",
     );
 
-    cy.get('[aria-label="Editar Cliente Cypress"]').click();
+    cy.get('[aria-label="Ações do Cliente Cypress"]').click();
+    cy.get('[role="menuitem"]').contains("Editar").click();
     cy.wait("@customerDetail");
     cy.get('input[name="name"]').clear().type("Cliente Editado");
     cy.contains("button", "Continuar").click();
@@ -206,7 +289,8 @@ describe("criação de clientes", () => {
       "customerUpdate",
     );
 
-    cy.get('[aria-label="Editar Cliente Cypress"]').click();
+    cy.get('[aria-label="Ações do Cliente Cypress"]').click();
+    cy.get('[role="menuitem"]').contains("Editar").click();
     cy.wait("@customerDetail");
     cy.contains("button", "Continuar").click();
     cy.get('input[name="billingStreet"]').should("not.exist");
@@ -232,7 +316,7 @@ describe("criação de clientes", () => {
       body: { message: "Cliente não encontrado." },
     }).as("missingCustomer");
 
-    cy.contains("a", "Cliente Cypress").click();
+    cy.get('[aria-label="Abrir Cliente Cypress"]').click();
     cy.wait("@missingCustomer");
     cy.contains("Cliente não encontrado.").should("be.visible");
     cy.contains("a", "Voltar para clientes").should("be.visible");
@@ -240,12 +324,13 @@ describe("criação de clientes", () => {
 
   it("inativa o cliente pela lista", () => {
     loginAsAdmin();
-    cy.on("window:confirm", () => true);
     cy.intercept("PATCH", "**/api/customers/2/deactivate", {
       statusCode: 204,
     }).as("customerDeactivation");
 
-    cy.get('[aria-label="Excluir Cliente Cypress"]').click();
+    cy.get('[aria-label="Ações do Cliente Cypress"]').click();
+    cy.get('[role="menuitem"]').contains("Excluir").click();
+    cy.get('[role="dialog"] button').contains("Excluir").click();
     cy.wait("@customerDeactivation");
   });
 });

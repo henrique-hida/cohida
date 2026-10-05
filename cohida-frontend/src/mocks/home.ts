@@ -10,12 +10,6 @@ export interface HomeTestimonial {
   sport: string;
 }
 
-export const homeBestSellerProductIds = [
-  "powerband-set",
-  "velocity-runner",
-  "ball-strike-pro",
-];
-
 export const homeGoalCollections: HomeGoalCollection[] = [
   {
     description: "O essencial para ganhar ritmo com conforto e consistência.",

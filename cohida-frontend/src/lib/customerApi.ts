@@ -2,6 +2,36 @@ const baseUrl =
   import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8080/api";
 const tokenKey = "cohida-access-token";
 
+type SessionRole = "ADMIN" | "CUSTOMER";
+
+export function getSessionRole(): SessionRole | null {
+  const token = localStorage.getItem(tokenKey);
+  const encodedPayload = token?.split(".")[1];
+  if (!encodedPayload) return null;
+
+  try {
+    const payload = JSON.parse(
+      atob(
+        encodedPayload
+          .replace(/-/g, "+")
+          .replace(/_/g, "/")
+          .padEnd(Math.ceil(encodedPayload.length / 4) * 4, "="),
+      ),
+    ) as { exp?: number; role?: string };
+
+    if (payload.exp && payload.exp * 1000 <= Date.now()) return null;
+    return payload.role === "ADMIN" || payload.role === "CUSTOMER"
+      ? payload.role
+      : null;
+  } catch {
+    return null;
+  }
+}
+
+export function hasAdminSession() {
+  return getSessionRole() === "ADMIN";
+}
+
 export interface CustomerAddressInput {
   label: string;
   street: string;
@@ -46,7 +76,10 @@ export interface CustomerResponse extends Omit<
   >;
 }
 
-async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
+export async function apiRequest<T>(
+  path: string,
+  options: RequestInit = {},
+): Promise<T> {
   const token = localStorage.getItem(tokenKey);
   const response = await fetch(`${baseUrl}${path}`, {
     ...options,
@@ -60,6 +93,13 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
     const body = (await response.json().catch(() => null)) as {
       message?: string;
     } | null;
+    if (response.status === 401 || response.status === 403) {
+      logout();
+      if (window.location.pathname !== "/entrar") {
+        window.location.replace("/entrar");
+      }
+      throw new Error("Sua sessão expirou. Entre novamente para continuar.");
+    }
     throw new Error(body?.message ?? "Não foi possível concluir a operação.");
   }
   return response.status === 204
@@ -68,7 +108,7 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
 }
 
 export async function login(email: string, password: string) {
-  const authentication = await request<{
+  const authentication = await apiRequest<{
     accessToken: string;
     role: string;
     customerName?: string;
@@ -77,18 +117,20 @@ export async function login(email: string, password: string) {
     method: "POST",
   });
   localStorage.setItem(tokenKey, authentication.accessToken);
+  localStorage.removeItem("cohida-admin-name");
   return authentication;
 }
 
 export async function register(input: CustomerCreateInput) {
-  const authentication = await request<{ accessToken: string; role: string }>(
-    "/auth/register",
-    {
-      body: JSON.stringify(input),
-      method: "POST",
-    },
-  );
+  const authentication = await apiRequest<{
+    accessToken: string;
+    role: string;
+  }>("/auth/register", {
+    body: JSON.stringify(input),
+    method: "POST",
+  });
   localStorage.setItem(tokenKey, authentication.accessToken);
+  localStorage.removeItem("cohida-admin-name");
   return authentication;
 }
 
@@ -99,20 +141,20 @@ export function logout() {
 
 export const customerApi = {
   list: (search = "", page = 0, size = 20) =>
-    request<{ content: CustomerResponse[]; totalElements: number }>(
+    apiRequest<{ content: CustomerResponse[]; totalElements: number }>(
       `/customers?search=${encodeURIComponent(search)}&page=${page}&size=${size}`,
     ),
   create: (input: CustomerCreateInput) =>
-    request<CustomerResponse>("/customers", {
+    apiRequest<CustomerResponse>("/customers", {
       body: JSON.stringify(input),
       method: "POST",
     }),
-  findById: (id: string) => request<CustomerResponse>(`/customers/${id}`),
-  me: () => request<CustomerResponse>("/customers/me"),
+  findById: (id: string) => apiRequest<CustomerResponse>(`/customers/${id}`),
+  me: () => apiRequest<CustomerResponse>("/customers/me"),
   updateProfile: (
     input: Pick<CustomerCreateInput, "name" | "birthDate" | "phone" | "email">,
   ) =>
-    request<CustomerResponse>("/customers/me", {
+    apiRequest<CustomerResponse>("/customers/me", {
       body: JSON.stringify(input),
       method: "PATCH",
     }),
@@ -121,7 +163,7 @@ export const customerApi = {
     newPassword: string,
     newPasswordConfirmation: string,
   ) =>
-    request<void>("/customers/me/password", {
+    apiRequest<void>("/customers/me/password", {
       body: JSON.stringify({
         currentPassword,
         newPassword,
@@ -130,11 +172,11 @@ export const customerApi = {
       method: "PATCH",
     }),
   deactivateOwnAccount: () =>
-    request<void>("/customers/me/deactivate", { method: "PATCH" }),
+    apiRequest<void>("/customers/me/deactivate", { method: "PATCH" }),
   addAddress: (
     input: CustomerAddressInput & { type: "BILLING" | "DELIVERY" },
   ) =>
-    request<
+    apiRequest<
       CustomerAddressInput & { id: number; type: "BILLING" | "DELIVERY" }
     >("/customers/me/addresses", {
       body: JSON.stringify(input),
@@ -144,19 +186,19 @@ export const customerApi = {
     id: string,
     input: CustomerAddressInput & { type: "BILLING" | "DELIVERY" },
   ) =>
-    request<
+    apiRequest<
       CustomerAddressInput & { id: number; type: "BILLING" | "DELIVERY" }
     >(`/customers/me/addresses/${id}`, {
       body: JSON.stringify(input),
       method: "PATCH",
     }),
   removeAddress: (id: string) =>
-    request<void>(`/customers/me/addresses/${id}`, { method: "DELETE" }),
+    apiRequest<void>(`/customers/me/addresses/${id}`, { method: "DELETE" }),
   update: (id: string, input: CustomerUpdateInput) =>
-    request<CustomerResponse>(`/customers/${id}`, {
+    apiRequest<CustomerResponse>(`/customers/${id}`, {
       body: JSON.stringify(input),
       method: "PUT",
     }),
   deactivate: (id: string) =>
-    request<void>(`/customers/${id}/deactivate`, { method: "PATCH" }),
+    apiRequest<void>(`/customers/${id}/deactivate`, { method: "PATCH" }),
 };

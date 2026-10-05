@@ -1,16 +1,16 @@
 import { useMemo, useState } from "react";
-import { Search } from "lucide-react";
 import { useSearchParams } from "react-router";
 
 import { PageContainer, ProductCard, StoreHeader } from "@/components/shared";
 import { Button } from "@/components/ui/button";
-import { categories } from "@/mocks";
 import { useCommerce } from "@/data/useCommerce";
+import { useCategories } from "@/data/useCategories";
 
 export function CatalogPage() {
   const { state } = useCommerce();
+  const categories = useCategories();
   const [searchParams, setSearchParams] = useSearchParams();
-  const [query, setQuery] = useState("");
+  const query = searchParams.get("busca") ?? "";
   const [cartItemCount, setCartItemCount] = useState(0);
   const category = searchParams.get("categoria") ?? "todas";
   const filteredProducts = useMemo(() => {
@@ -36,40 +36,6 @@ export function CatalogPage() {
           <h1 className="mt-2 text-3xl font-semibold tracking-tight sm:text-4xl">
             Encontre o equipamento para o seu próximo desafio.
           </h1>
-        </div>
-        <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-          <label className="relative flex-1">
-            <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
-            <input
-              aria-label="Pesquisar produtos"
-              className="h-10 w-full rounded-lg border border-input bg-background pl-9 pr-3 text-sm outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
-              onChange={(event) => setQuery(event.target.value)}
-              placeholder="Pesquisar por produto, marca ou modalidade"
-              value={query}
-            />
-          </label>
-          <label className="sr-only" htmlFor="catalog-category">
-            Categoria
-          </label>
-          <select
-            className="h-10 rounded-lg border border-input bg-background px-3 text-sm outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
-            id="catalog-category"
-            onChange={(event) =>
-              setSearchParams(
-                event.target.value === "todas"
-                  ? {}
-                  : { categoria: event.target.value },
-              )
-            }
-            value={category}
-          >
-            <option value="todas">Todas as categorias</option>
-            {categories.map((item) => (
-              <option key={item.id} value={item.id}>
-                {item.name}
-              </option>
-            ))}
-          </select>
         </div>
         <p className="mt-6 text-sm text-muted-foreground">
           {filteredProducts.length}{" "}
@@ -99,7 +65,6 @@ export function CatalogPage() {
             <Button
               className="mt-4"
               onClick={() => {
-                setQuery("");
                 setSearchParams({});
               }}
               variant="outline"

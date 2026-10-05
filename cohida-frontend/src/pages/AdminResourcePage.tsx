@@ -12,7 +12,6 @@ import { Link, useNavigate } from "react-router";
 
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { AdminDataState } from "@/components/admin/AdminDataState";
-import { RowActionsMenu } from "@/components/admin/RowActionsMenu";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -23,43 +22,45 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Table } from "@/components/ui/table";
+import { AdminProductsPage } from "@/pages/AdminProductsPage";
 import {
   adminCustomers,
   adminExchanges,
   adminOrders,
-  adminProducts,
   adminResourceContent,
   type AdminResource,
 } from "@/mocks";
 
 export function AdminResourcePage({ resource }: { resource: AdminResource }) {
+  if (resource === "produtos") return <AdminProductsPage />;
+
+  return <AdminMockResourcePage resource={resource} />;
+}
+
+function AdminMockResourcePage({
+  resource,
+}: {
+  resource: Exclude<AdminResource, "produtos">;
+}) {
   const navigate = useNavigate();
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("todos");
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
   const [currentPage, setCurrentPage] = useState(1);
-  const [deletedProductRows, setDeletedProductRows] = useState<number[]>([]);
   const [actionNotice, setActionNotice] = useState("");
   const page = adminResourceContent[resource];
   const isExport = page.action.startsWith("Exportar");
   const actionLink =
-    resource === "produtos"
-      ? "/admin/produtos/novo"
-      : resource === "estoque"
-        ? "/admin/estoque/entrada"
-        : resource === "clientes"
-          ? "/admin/clientes/novo"
-          : undefined;
-  const hasProductActions = resource === "produtos";
+    resource === "estoque"
+      ? "/admin/estoque/entrada"
+      : resource === "clientes"
+        ? "/admin/clientes/novo"
+        : undefined;
   const filteredRows = useMemo(() => {
     const normalizedSearch = search.trim().toLocaleLowerCase("pt-BR");
 
     return page.rows
       .map((row, index) => ({ index, row }))
-      .filter(
-        ({ index }) =>
-          resource !== "produtos" || !deletedProductRows.includes(index),
-      )
       .filter(
         ({ row }) =>
           !normalizedSearch ||
@@ -74,14 +75,7 @@ export function AdminResourcePage({ resource }: { resource: AdminResource }) {
         const result = first[0].localeCompare(second[0], "pt-BR");
         return sortDirection === "asc" ? result : -result;
       });
-  }, [
-    deletedProductRows,
-    page.rows,
-    resource,
-    search,
-    sortDirection,
-    statusFilter,
-  ]);
+  }, [page.rows, resource, search, sortDirection, statusFilter]);
   const pageSize = 5;
   const totalPages = Math.max(1, Math.ceil(filteredRows.length / pageSize));
   const safePage = Math.min(currentPage, totalPages);
@@ -221,9 +215,6 @@ export function AdminResourcePage({ resource }: { resource: AdminResource }) {
                       {column}
                     </th>
                   ))}
-                  {hasProductActions ? (
-                    <th className="pb-3 text-right font-medium">Ações</th>
-                  ) : null}
                 </tr>
               </thead>
               <tbody>
@@ -231,15 +222,13 @@ export function AdminResourcePage({ resource }: { resource: AdminResource }) {
                   visibleRows.map(({ index: rowIndex, row }) => {
                     const cells = row.slice(0, page.columns.length);
                     const detailPath =
-                      resource === "produtos"
-                        ? `/admin/produtos/${adminProducts[rowIndex]?.id ?? adminProducts[0].id}`
-                        : resource === "pedidos"
-                          ? `/admin/pedidos/${adminOrders[rowIndex]?.id ?? adminOrders[0].id}`
-                          : resource === "trocas"
-                            ? `/admin/trocas/${adminExchanges[rowIndex]?.id ?? adminExchanges[0].id}`
-                            : resource === "clientes"
-                              ? `/admin/clientes/${adminCustomers[rowIndex]?.id ?? adminCustomers[0].id}`
-                              : undefined;
+                      resource === "pedidos"
+                        ? `/admin/pedidos/${adminOrders[rowIndex]?.id ?? adminOrders[0].id}`
+                        : resource === "trocas"
+                          ? `/admin/trocas/${adminExchanges[rowIndex]?.id ?? adminExchanges[0].id}`
+                          : resource === "clientes"
+                            ? `/admin/clientes/${adminCustomers[rowIndex]?.id ?? adminCustomers[0].id}`
+                            : undefined;
                     return (
                       <tr
                         aria-label={detailPath ? `Abrir ${row[0]}` : undefined}
@@ -285,31 +274,12 @@ export function AdminResourcePage({ resource }: { resource: AdminResource }) {
                             )}
                           </td>
                         ))}
-                        {hasProductActions ? (
-                          <td className="py-4 text-right">
-                            <RowActionsMenu
-                              editTo={`${detailPath}/editar`}
-                              onDelete={() =>
-                                setDeletedProductRows((rows) => [
-                                  ...rows,
-                                  rowIndex,
-                                ])
-                              }
-                              viewTo={detailPath!}
-                            />
-                          </td>
-                        ) : null}
                       </tr>
                     );
                   })
                 ) : (
                   <tr>
-                    <td
-                      className="p-0"
-                      colSpan={
-                        page.columns.length + (hasProductActions ? 1 : 0)
-                      }
-                    >
+                    <td className="p-0" colSpan={page.columns.length}>
                       <AdminDataState
                         description={`Não encontramos registros para “${search || "os filtros selecionados"}”.`}
                         title="Nenhum resultado encontrado"
@@ -326,15 +296,13 @@ export function AdminResourcePage({ resource }: { resource: AdminResource }) {
               visibleRows.map(({ index: rowIndex, row }) => {
                 const cells = row.slice(0, page.columns.length);
                 const detailPath =
-                  resource === "produtos"
-                    ? `/admin/produtos/${adminProducts[rowIndex]?.id ?? adminProducts[0].id}`
-                    : resource === "pedidos"
-                      ? `/admin/pedidos/${adminOrders[rowIndex]?.id ?? adminOrders[0].id}`
-                      : resource === "trocas"
-                        ? `/admin/trocas/${adminExchanges[rowIndex]?.id ?? adminExchanges[0].id}`
-                        : resource === "clientes"
-                          ? `/admin/clientes/${adminCustomers[rowIndex]?.id ?? adminCustomers[0].id}`
-                          : undefined;
+                  resource === "pedidos"
+                    ? `/admin/pedidos/${adminOrders[rowIndex]?.id ?? adminOrders[0].id}`
+                    : resource === "trocas"
+                      ? `/admin/trocas/${adminExchanges[rowIndex]?.id ?? adminExchanges[0].id}`
+                      : resource === "clientes"
+                        ? `/admin/clientes/${adminCustomers[rowIndex]?.id ?? adminCustomers[0].id}`
+                        : undefined;
                 const cardContent = (
                   <>
                     <div className="flex items-start justify-between gap-3">

@@ -9,28 +9,28 @@ import {
 import { useState } from "react";
 import { Link } from "react-router";
 
-import { PageContainer, StoreHeader } from "@/components/shared";
+import { CardBrandIcon, PageContainer, StoreHeader } from "@/components/shared";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { formatCurrency } from "@/lib/currency";
-import { cartShippingCents, products } from "@/mocks";
 import { useCommerce } from "@/data/useCommerce";
 import type { Order } from "@/types";
 import {
-  cardBrands,
+  detectCardBrand,
   formatCardNumber,
   formatCvv,
   formatExpiry,
 } from "@/lib/card";
 
 export function CheckoutPage() {
-  const { addAddress, createOrder, state } = useCommerce();
+  const { addAddress, addCard, applyCoupon, createOrder, removeCoupon, state } =
+    useCommerce();
   const deliveryAddresses = state.addresses.filter(
     (address) => address.type === "delivery",
   );
   const [addressId, setAddressId] = useState(deliveryAddresses[0]?.id ?? "");
   const [selectedPayments, setSelectedPayments] = useState<string[]>(
-    state.cards[0] ? [state.cards[0].id] : ["pix"],
+    state.cards[0] ? [state.cards[0].id] : [],
   );
   const [paymentAmounts, setPaymentAmounts] = useState<Record<string, number>>(
     {},
@@ -38,32 +38,27 @@ export function CheckoutPage() {
   const [completedOrder, setCompletedOrder] = useState<Order | null>(null);
   const [isAddingAddress, setIsAddingAddress] = useState(false);
   const [isAddingCard, setIsAddingCard] = useState(false);
+  const [newCardNumber, setNewCardNumber] = useState("");
   const [coupon, setCoupon] = useState("");
   const [isCouponListOpen, setIsCouponListOpen] = useState(false);
-  const [appliedCouponCodes, setAppliedCouponCodes] = useState<string[]>([]);
   const [couponError, setCouponError] = useState("");
   const [checkoutError, setCheckoutError] = useState("");
-  const checkoutItems = state.buyNowItem ? [state.buyNowItem] : state.cartItems;
+  const checkoutItems = state.cartItems;
   const entries = checkoutItems.flatMap((item) => {
-    const product = products.find((entry) => entry.id === item.productId);
+    const product = state.products.find((entry) => entry.id === item.productId);
     const variant = product?.variants.find(
       (entry) => entry.id === item.variantId,
     );
     return product && variant ? [{ item, product, variant }] : [];
   });
-  const subtotalCents = entries.reduce(
-    (total, { item }) => total + item.unitPriceCents * item.quantity,
-    0,
-  );
-  const appliedCoupons = state.coupons.filter((entry) =>
-    appliedCouponCodes.includes(entry.code),
-  );
-  const discountCents = appliedCoupons.reduce(
-    (total, entry) => total + entry.valueCents,
-    0,
-  );
-  const shippingCents = entries.length ? cartShippingCents : 0;
-  const totalCents = Math.max(0, subtotalCents + shippingCents - discountCents);
+  const {
+    subtotalCents,
+    discountCents,
+    shippingCents,
+    totalCents,
+    couponCode,
+  } = state.cartTotals;
+  const newCardBrand = detectCardBrand(newCardNumber);
 
   if (completedOrder) {
     return (
@@ -89,6 +84,15 @@ export function CheckoutPage() {
                 <p className="mt-1 font-semibold">
                   {formatCurrency(completedOrder.totalCents)}
                 </p>
+                {completedOrder.issuedCoupon ? (
+                  <div className="mt-4 rounded-lg bg-primary/10 p-3">
+                    <p className="font-semibold">Cupom de troca emitido</p>
+                    <p className="mt-1">
+                      {completedOrder.issuedCoupon.code} ·{" "}
+                      {formatCurrency(completedOrder.issuedCoupon.valueCents)}
+                    </p>
+                  </div>
+                ) : null}
               </CardContent>
             </Card>
             <Button className="mt-7" render={<Link to="/produtos" />} size="lg">
@@ -269,11 +273,6 @@ export function CheckoutPage() {
                     label: card.brand,
                     description: `Final ${card.lastDigits} · ${card.label}`,
                   })),
-                  {
-                    id: "pix",
-                    label: "Pix",
-                    description: "Aprovação imediata após o pagamento",
-                  },
                 ].map((method) => (
                   <label
                     className="flex cursor-pointer gap-3 rounded-xl border border-border bg-card p-4 has-checked:border-primary has-checked:ring-1 has-checked:ring-primary"
@@ -305,9 +304,7 @@ export function CheckoutPage() {
                   {selectedPayments.map((id) => (
                     <label className="grid gap-1 text-sm" key={id}>
                       Valor para{" "}
-                      {id === "pix"
-                        ? "Pix"
-                        : state.cards.find((card) => card.id === id)?.brand}
+                      {state.cards.find((card) => card.id === id)?.brand}
                       <input
                         className="h-9 rounded-lg border border-input bg-background px-3"
                         min="10"
@@ -335,29 +332,54 @@ export function CheckoutPage() {
               {isAddingCard ? (
                 <form
                   className="mt-3 grid gap-3 rounded-xl border border-dashed border-border p-4 sm:grid-cols-2"
-                  onSubmit={(event) => {
+                  onSubmit={async (event) => {
                     event.preventDefault();
+                    const form = new FormData(event.currentTarget);
+                    const cardNumber = String(form.get("cardNumber") ?? "");
+                    await addCard(
+                      {
+                        brand: detectCardBrand(cardNumber) ?? "Cartão",
+                        isPreferred: !state.cards.length,
+                        label: String(form.get("label") ?? "").trim(),
+                      },
+                      cardNumber,
+                    );
                     setIsAddingCard(false);
+                    setNewCardNumber("");
                   }}
                 >
-                  <label className="grid gap-1 text-sm sm:col-span-2">
+                  <label className="grid gap-1 text-sm">
                     Número do cartão
-                    <input
-                      className="h-9 rounded-lg border border-input bg-background px-3"
-                      inputMode="numeric"
-                      onInput={(event) => {
-                        event.currentTarget.value = formatCardNumber(
-                          event.currentTarget.value,
-                        );
-                      }}
-                      required
-                    />
+                    <span className="relative">
+                      {newCardBrand ? (
+                        <span className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2">
+                          <CardBrandIcon brand={newCardBrand} />
+                        </span>
+                      ) : null}
+                      <input
+                        className={`h-9 w-full rounded-lg border border-input bg-background pr-3 ${
+                          newCardBrand ? "pl-16" : "pl-3"
+                        }`}
+                        inputMode="numeric"
+                        name="cardNumber"
+                        onInput={(event) => {
+                          const formattedNumber = formatCardNumber(
+                            event.currentTarget.value,
+                          );
+                          event.currentTarget.value = formattedNumber;
+                          setNewCardNumber(formattedNumber);
+                        }}
+                        required
+                      />
+                    </span>
                   </label>
                   <label className="grid gap-1 text-sm">
-                    Nome impresso
+                    Nome do cartão
                     <input
                       className="h-9 rounded-lg border border-input bg-background px-3"
+                      placeholder="Ex.: Cartão principal"
                       required
+                      name="label"
                     />
                   </label>
                   <label className="grid gap-1 text-sm">
@@ -370,6 +392,7 @@ export function CheckoutPage() {
                           event.currentTarget.value,
                         );
                       }}
+                      name="expiry"
                       required
                     />
                   </label>
@@ -386,18 +409,6 @@ export function CheckoutPage() {
                       }}
                       required
                     />
-                  </label>
-                  <label className="grid gap-1 text-sm">
-                    Bandeira
-                    <select
-                      className="h-9 rounded-lg border border-input bg-background px-3"
-                      required
-                    >
-                      <option value="">Selecione</option>
-                      {cardBrands.map((brand) => (
-                        <option key={brand}>{brand}</option>
-                      ))}
-                    </select>
                   </label>
                   <Button className="w-fit" type="submit">
                     Usar este cartão
@@ -447,33 +458,19 @@ export function CheckoutPage() {
               </dl>
               <form
                 className="mt-5 border-t border-border pt-5"
-                onSubmit={(event) => {
+                onSubmit={async (event) => {
                   event.preventDefault();
-                  const found = state.coupons.find(
-                    (entry) =>
-                      entry.active &&
-                      entry.code === coupon.trim().toUpperCase(),
-                  );
-                  if (!found) {
-                    setCouponError("Cupom inválido ou inativo.");
-                    return;
-                  }
-                  if (
-                    found.kind === "promotional" &&
-                    appliedCoupons.some((entry) => entry.kind === "promotional")
-                  ) {
+                  try {
+                    await applyCoupon(coupon);
+                    setCoupon("");
+                    setCouponError("");
+                  } catch (reason) {
                     setCouponError(
-                      "Apenas um cupom promocional pode ser usado por pedido.",
+                      reason instanceof Error
+                        ? reason.message
+                        : "Cupom inválido.",
                     );
-                    return;
                   }
-                  setAppliedCouponCodes((current) =>
-                    current.includes(found.code)
-                      ? current
-                      : [...current, found.code],
-                  );
-                  setCoupon("");
-                  setCouponError("");
                 }}
               >
                 <label className="text-sm font-medium" htmlFor="coupon">
@@ -505,60 +502,29 @@ export function CheckoutPage() {
                 </Button>
                 {isCouponListOpen ? (
                   <div className="mt-2 grid gap-2 rounded-lg bg-muted/50 p-3">
-                    {state.coupons
-                      .filter((entry) => entry.active)
-                      .map((entry) => (
-                        <button
-                          className="flex items-center justify-between rounded-md px-2 py-1.5 text-left text-sm hover:bg-background"
-                          key={entry.id}
-                          onClick={() => {
-                            setCoupon(entry.code);
-                            setCouponError("");
-                            setIsCouponListOpen(false);
-                          }}
-                          type="button"
-                        >
-                          <span>
-                            <span className="block font-medium">
-                              {entry.code}
-                            </span>
-                            <span className="text-xs text-muted-foreground">
-                              {entry.kind === "exchange"
-                                ? "Cupom de troca"
-                                : "Cupom promocional"}
-                            </span>
-                          </span>
-                          <span className="font-medium text-primary">
-                            {formatCurrency(entry.valueCents)}
-                          </span>
-                        </button>
-                      ))}
+                    <p className="text-sm text-muted-foreground">
+                      Digite o código do cupom recebido.
+                    </p>
                   </div>
                 ) : null}
-                {appliedCoupons.length ? (
+                {couponCode ? (
                   <div className="mt-2 flex flex-wrap gap-2">
-                    {appliedCoupons.map((entry) => (
-                      <span
-                        className="inline-flex items-center gap-1 rounded-md bg-primary/10 px-2 py-1 text-xs text-primary"
-                        key={entry.code}
+                    <span
+                      className="inline-flex items-center gap-1 rounded-md bg-primary/10 px-2 py-1 text-xs text-primary"
+                      key={couponCode}
+                    >
+                      {couponCode} · -{formatCurrency(discountCents)}
+                      <Button
+                        aria-label={`Remover cupom ${couponCode}`}
+                        className="size-4"
+                        onClick={() => void removeCoupon()}
+                        size="icon-xs"
+                        type="button"
+                        variant="ghost"
                       >
-                        {entry.code} · {formatCurrency(entry.valueCents)}
-                        <Button
-                          aria-label={`Remover cupom ${entry.code}`}
-                          className="size-4"
-                          onClick={() =>
-                            setAppliedCouponCodes((current) =>
-                              current.filter((code) => code !== entry.code),
-                            )
-                          }
-                          size="icon-xs"
-                          type="button"
-                          variant="ghost"
-                        >
-                          <X />
-                        </Button>
-                      </span>
-                    ))}
+                        <X />
+                      </Button>
+                    </span>
                   </div>
                 ) : couponError ? (
                   <p className="mt-2 text-xs text-destructive">{couponError}</p>
@@ -566,11 +532,16 @@ export function CheckoutPage() {
               </form>
               <Button
                 className="mt-6 w-full"
-                onClick={() => {
+                onClick={async () => {
+                  setCheckoutError("");
                   try {
                     if (!selectedPayments.length)
                       throw new Error(
                         "Selecione ao menos uma forma de pagamento.",
+                      );
+                    if (totalCents > 0 && totalCents < 1000)
+                      throw new Error(
+                        "O valor cobrado no cartão deve ser de no mínimo R$ 10,00.",
                       );
                     if (selectedPayments.length > 1) {
                       const sum = selectedPayments.reduce(
@@ -587,16 +558,21 @@ export function CheckoutPage() {
                           "Em pagamentos combinados, informe valores de ao menos R$ 10,00 que totalizem o pedido.",
                         );
                     }
-                    const order = createOrder(
-                      {
-                        discountCents,
-                        items: checkoutItems,
-                        shippingCents,
-                        subtotalCents,
-                        totalCents,
-                      },
-                      Boolean(state.buyNowItem),
-                    );
+                    const cardId = selectedPayments.find((id) => id !== "pix");
+                    if (!addressId || !cardId)
+                      throw new Error(
+                        "Selecione um endereço de entrega e um cartão.",
+                      );
+                    const order = await createOrder({
+                      deliveryAddressId: addressId,
+                      payments: selectedPayments.map((id) => ({
+                        paymentCardId: id,
+                        amountCents:
+                          selectedPayments.length === 1
+                            ? totalCents
+                            : (paymentAmounts[id] ?? 0),
+                      })),
+                    });
                     setCompletedOrder(order);
                   } catch (reason) {
                     setCheckoutError(

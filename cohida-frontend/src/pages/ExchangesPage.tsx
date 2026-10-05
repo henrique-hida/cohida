@@ -6,7 +6,6 @@ import { PageContainer, StoreHeader } from "@/components/shared";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { products } from "@/mocks";
 import { useCommerce } from "@/data/useCommerce";
 
 const exchangeStatus = {
@@ -15,6 +14,7 @@ const exchangeStatus = {
   received: "Recebimento confirmado",
   requested: "Solicitação enviada",
   sent: "Item despachado",
+  denied: "Solicitação negada",
 };
 
 export function ExchangesPage() {
@@ -82,18 +82,18 @@ export function ExchangesPage() {
                   </p>
                   <form
                     className="mt-6 grid gap-4"
-                    onSubmit={(event) => {
+                    onSubmit={async (event) => {
                       event.preventDefault();
                       const formData = new FormData(event.currentTarget);
                       const orderId = String(formData.get("orderId") ?? "");
                       const order = deliveredOrders.find(
                         (entry) => entry.id === orderId,
                       );
-                      const productId = order?.items[0]?.productId;
-                      if (!productId) return;
-                      requestExchange({
+                      const orderItemId = order?.items[0]?.id;
+                      if (!orderItemId) return;
+                      await requestExchange({
                         orderId,
-                        productId,
+                        orderItemId,
                         reason: String(formData.get("reason") ?? ""),
                       });
                       setIsSubmitted(true);
@@ -153,9 +153,6 @@ export function ExchangesPage() {
           <h2 className="text-lg font-semibold">Solicitações em andamento</h2>
           <div className="mt-4 grid gap-3">
             {state.exchanges.map((request) => {
-              const product = products.find(
-                (entry) => entry.id === request.productId,
-              );
               return (
                 <Card key={request.id}>
                   <CardContent className="p-5">
@@ -166,7 +163,7 @@ export function ExchangesPage() {
                         </span>
                         <div>
                           <p className="font-medium">
-                            {request.id} · {product?.name}
+                            Solicitação #{request.id}
                           </p>
                           <p className="mt-1 text-sm text-muted-foreground">
                             Pedido {request.orderId} · {request.reason}
@@ -193,10 +190,10 @@ export function ExchangesPage() {
                     {dispatchingId === request.id ? (
                       <form
                         className="mt-5 grid gap-3 border-t border-border pt-5 sm:grid-cols-2"
-                        onSubmit={(event) => {
+                        onSubmit={async (event) => {
                           event.preventDefault();
                           const form = new FormData(event.currentTarget);
-                          dispatchExchange(request.id, {
+                          await dispatchExchange(request.id, {
                             carrier: String(form.get("carrier") ?? "").trim(),
                             notes: String(form.get("notes") ?? "").trim(),
                             postedAt: String(form.get("postedAt") ?? ""),

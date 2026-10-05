@@ -1,22 +1,24 @@
 import { useMemo, useState } from "react";
-import { ChevronLeft, ShoppingBag, Star } from "lucide-react";
+import { ChevronLeft, ShoppingCart, Star } from "lucide-react";
 import { Link, useNavigate, useParams } from "react-router";
 
 import { PageContainer, Price, StoreHeader } from "@/components/shared";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { categories } from "@/mocks";
 import { useCommerce } from "@/data/useCommerce";
+import { useCategories } from "@/data/useCategories";
 
 export function ProductDetailPage() {
   const { productSlug } = useParams();
   const navigate = useNavigate();
   const { addCartItem, startBuyNow, state } = useCommerce();
+  const categories = useCategories();
   const product = state.products.find((item) => item.slug === productSlug);
   const [selectedVariantId, setSelectedVariantId] = useState(
     product?.variants[0]?.id ?? "",
   );
+  const [buyNowError, setBuyNowError] = useState("");
   const cartItemCount = state.cartItems.reduce(
     (total, item) => total + item.quantity,
     0,
@@ -58,6 +60,28 @@ export function ProductDetailPage() {
       unitPriceCents: product!.priceCents,
       variantId: selectedVariant.id,
     });
+  }
+
+  async function buyNow() {
+    if (!product || !selectedVariant) return;
+
+    setBuyNowError("");
+    try {
+      await startBuyNow({
+        id: `buy-now-${crypto.randomUUID()}`,
+        productId: product.id,
+        quantity: 1,
+        unitPriceCents: product.priceCents,
+        variantId: selectedVariant.id,
+      });
+      navigate("/checkout");
+    } catch (reason) {
+      setBuyNowError(
+        reason instanceof Error
+          ? reason.message
+          : "Não foi possível iniciar a compra.",
+      );
+    }
   }
 
   return (
@@ -138,28 +162,21 @@ export function ProductDetailPage() {
                 size="lg"
                 variant="outline"
               >
-                <ShoppingBag />
+                <ShoppingCart />
                 {isAvailable ? "Adicionar ao carrinho" : "Indisponível"}
               </Button>
               <Button
                 className="w-full sm:w-auto"
                 disabled={!isAvailable}
-                onClick={() => {
-                  if (!selectedVariant) return;
-                  startBuyNow({
-                    id: `buy-now-${crypto.randomUUID()}`,
-                    productId: product!.id,
-                    quantity: 1,
-                    unitPriceCents: product!.priceCents,
-                    variantId: selectedVariant.id,
-                  });
-                  navigate("/checkout");
-                }}
+                onClick={() => void buyNow()}
                 size="lg"
               >
                 Comprar agora
               </Button>
             </div>
+            {buyNowError ? (
+              <p className="mt-3 text-sm text-destructive">{buyNowError}</p>
+            ) : null}
             <Card className="mt-10">
               <CardContent className="grid gap-4 p-5 sm:grid-cols-2">
                 {Object.entries(product.attributes).map(([label, value]) => (

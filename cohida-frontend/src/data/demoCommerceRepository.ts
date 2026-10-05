@@ -1,21 +1,14 @@
-import {
-  cartDemoItems,
-  checkoutAddresses,
-  customerCards,
-  customerOrders,
-  customerProfile,
-  exchangeRequests,
-} from "@/mocks";
-import { adminOrders, type AdminOrderStatus } from "@/mocks/admin";
-import type { ExchangeRequest } from "@/mocks/commerce";
-import type { CartItem, Order } from "@/types";
-import type { Product } from "@/types";
-import { products as seededProducts } from "@/mocks/products";
+import type { CartItem, Order, Product } from "@/types";
 import type { CustomerResponse as ApiCustomerResponse } from "@/lib/customerApi";
-import { customerApi } from "@/lib/customerApi";
-import { logout as clearApiSession } from "@/lib/customerApi";
-
-const storageKey = "cohida-demo-commerce-v1";
+import { customerApi, logout as clearApiSession } from "@/lib/customerApi";
+import {
+  commerceApi,
+  type ApiCart,
+  type ApiCoupon,
+  type ApiOrder,
+  type ApiProduct,
+  type ApiReturn,
+} from "@/lib/commerceApi";
 
 export interface DemoAddress {
   city: string;
@@ -29,7 +22,6 @@ export interface DemoAddress {
   street: string;
   type: "billing" | "delivery";
 }
-
 export interface DemoCard {
   brand: string;
   id: string;
@@ -37,7 +29,6 @@ export interface DemoCard {
   label: string;
   lastDigits: string;
 }
-
 export interface DemoCustomer {
   birthDate: string;
   cpf: string;
@@ -47,7 +38,6 @@ export interface DemoCustomer {
   passwordHash: string;
   phone: string;
 }
-
 export interface DemoCoupon {
   active: boolean;
   code: string;
@@ -56,8 +46,14 @@ export interface DemoCoupon {
   kind: "exchange" | "promotional";
   valueCents: number;
 }
-
-export interface DemoExchange extends ExchangeRequest {
+export interface DemoExchange {
+  id: string;
+  orderId: string;
+  orderItemId: string;
+  productName?: string;
+  reason: string;
+  status:
+    "requested" | "authorized" | "sent" | "received" | "completed" | "denied";
   dispatch?: {
     carrier: string;
     notes?: string;
@@ -69,7 +65,7 @@ export interface DemoExchange extends ExchangeRequest {
 export interface DemoCommerceState {
   addresses: DemoAddress[];
   adminCustomerActive: Record<string, boolean>;
-  adminOrderStatuses: Record<string, AdminOrderStatus>;
+  adminOrderStatuses: Record<string, string>;
   buyNowItem: CartItem | null;
   cards: DemoCard[];
   cartItems: CartItem[];
@@ -79,92 +75,23 @@ export interface DemoCommerceState {
   orders: Order[];
   products: Product[];
   sessionCustomerId: string | null;
-}
-
-export interface RegisterCustomerInput {
-  billingAddress: Omit<DemoAddress, "id" | "type">;
-  birthDate: string;
-  cpf: string;
-  deliveryAddress: Omit<DemoAddress, "id" | "type">;
-  email: string;
-  name: string;
-  password: string;
-  passwordConfirmation: string;
-  phone: string;
-}
-
-function clone<T>(value: T): T {
-  return JSON.parse(JSON.stringify(value)) as T;
-}
-
-function id(prefix: string) {
-  return `${prefix}-${crypto.randomUUID()}`;
-}
-
-async function hashPassword(password: string) {
-  const bytes = new TextEncoder().encode(password);
-  const digest = await crypto.subtle.digest("SHA-256", bytes);
-  return Array.from(new Uint8Array(digest), (byte) =>
-    byte.toString(16).padStart(2, "0"),
-  ).join("");
-}
-
-function createInitialState(): DemoCommerceState {
-  return {
-    addresses: checkoutAddresses.map((address, index) => ({
-      city: address.city,
-      country: "Brasil",
-      id: address.id,
-      label: address.label,
-      neighborhood: address.neighborhood,
-      number: address.number,
-      postalCode: index === 0 ? "04118-010" : "",
-      state: address.state,
-      street: address.street,
-      type: index === 0 ? "billing" : "delivery",
-    })),
-    adminCustomerActive: {},
-    adminOrderStatuses: Object.fromEntries(
-      adminOrders.map((order) => [order.id, order.status]),
-    ),
-    cards: clone(customerCards),
-    buyNowItem: null,
-    cartItems: clone(cartDemoItems),
-    coupons: [
-      {
-        active: true,
-        code: "COHIDA15",
-        createdAt: "2026-08-01T12:00:00.000Z",
-        id: "coupon-cohida15",
-        kind: "promotional",
-        valueCents: 1500,
-      },
-      {
-        active: true,
-        code: "TROCA-2500",
-        createdAt: "2026-08-10T12:00:00.000Z",
-        id: "coupon-exchange",
-        kind: "exchange",
-        valueCents: 2500,
-      },
-    ],
-    customer: null,
-    exchanges: clone(exchangeRequests),
-    orders: clone(customerOrders),
-    products: clone(seededProducts),
-    sessionCustomerId: null,
+  sessionHydrated: boolean;
+  cartTotals: {
+    subtotalCents: number;
+    discountCents: number;
+    shippingCents: number;
+    totalCents: number;
+    couponCode: string | null;
   };
 }
 
-function createEmptyState(): DemoCommerceState {
+function emptyState(): DemoCommerceState {
   return {
     addresses: [],
     adminCustomerActive: {},
-    adminOrderStatuses: Object.fromEntries(
-      adminOrders.map((order) => [order.id, order.status]),
-    ),
-    cards: [],
+    adminOrderStatuses: {},
     buyNowItem: null,
+    cards: [],
     cartItems: [],
     coupons: [],
     customer: null,
@@ -172,379 +99,385 @@ function createEmptyState(): DemoCommerceState {
     orders: [],
     products: [],
     sessionCustomerId: null,
+    sessionHydrated: false,
+    cartTotals: {
+      subtotalCents: 0,
+      discountCents: 0,
+      shippingCents: 0,
+      totalCents: 0,
+      couponCode: null,
+    },
   };
 }
 
-function readState() {
-  if (typeof window === "undefined") return createEmptyState();
-  const stored = window.localStorage.getItem(storageKey);
-  if (!stored) return createEmptyState();
-  try {
-    return {
-      ...createEmptyState(),
-      ...JSON.parse(stored),
-    } as DemoCommerceState;
-  } catch {
-    return createEmptyState();
-  }
+function mapProduct(product: ApiProduct): Product {
+  const first = product.variants[0];
+  return {
+    id: String(product.id),
+    sku: product.code,
+    slug: product.slug,
+    name: product.name,
+    brand: product.brand,
+    description: product.description,
+    priceCents: first?.priceCents ?? 0,
+    rating: 0,
+    reviewCount: 0,
+    status: product.active ? "active" : "inactive",
+    categoryIds: product.categories,
+    images: product.imageUrl
+      ? [{ alt: product.name, id: `${product.id}-main`, src: product.imageUrl }]
+      : [],
+    attributes: {
+      marca: product.brand,
+      categorias: product.categories.join(", "),
+      estoque: `${product.variants.reduce(
+        (total, variant) => total + variant.stockQuantity,
+        0,
+      )} unidades disponíveis`,
+    },
+    createdAt: product.createdAt,
+    variants: product.variants.map((variant) => ({
+      id: String(variant.id),
+      sku: variant.sku,
+      label: variant.label,
+      color: variant.color ?? undefined,
+      size: variant.size ?? undefined,
+      stockQuantity: variant.stockQuantity,
+    })),
+  };
 }
 
-let state = readState();
-const listeners = new Set<() => void>();
+function mapOrder(order: ApiOrder): Order {
+  const statuses: Record<string, Order["status"]> = {
+    EM_ABERTO: "processing",
+    EM_PROCESSAMENTO: "processing",
+    PAGAMENTO_REALIZADO: "approved",
+    EM_TRANSITO: "in_transit",
+    ENTREGUE: "delivered",
+    CANCELADO: "rejected",
+  };
+  return {
+    id: String(order.id),
+    customerId: String(order.customerId),
+    status: statuses[order.status] ?? "processing",
+    items: order.items.map((item) => ({
+      id: `${order.id}-${item.variantId}`,
+      productId: item.productName,
+      variantId: String(item.variantId),
+      quantity: item.quantity,
+      unitPriceCents: item.unitPriceCents,
+    })),
+    subtotalCents: order.subtotalCents,
+    discountCents: order.discountCents,
+    shippingCents: order.shippingCents,
+    totalCents: order.totalCents,
+    createdAt: order.createdAt,
+    issuedCoupon:
+      order.issuedCouponCode && order.issuedCouponValueCents != null
+        ? {
+            code: order.issuedCouponCode,
+            valueCents: order.issuedCouponValueCents,
+          }
+        : undefined,
+  };
+}
 
-function save(nextState: DemoCommerceState) {
-  state = nextState;
-  window.localStorage.setItem(storageKey, JSON.stringify(state));
+function mapCart(cart: ApiCart) {
+  return {
+    cartItems: cart.items.map((item) => ({
+      id: String(item.id),
+      productId: String(item.productId),
+      variantId: String(item.variantId),
+      quantity: item.quantity,
+      unitPriceCents: item.unitPriceCents,
+    })),
+    cartTotals: {
+      subtotalCents: cart.subtotalCents,
+      discountCents: cart.discountCents,
+      shippingCents: cart.shippingCents,
+      totalCents: cart.totalCents,
+      couponCode: cart.couponCode,
+    },
+  };
+}
+
+function mapCoupon(coupon: ApiCoupon): DemoCoupon {
+  return {
+    id: String(coupon.id),
+    code: coupon.code,
+    active: coupon.active,
+    createdAt: coupon.createdAt,
+    kind: coupon.origin === "RETURN" ? "exchange" : "promotional",
+    valueCents:
+      coupon.origin === "RETURN"
+        ? (coupon.remainingCreditCents ?? coupon.discountCents ?? 0)
+        : (coupon.discountCents ??
+          Math.round((coupon.discountPercentage ?? 0) * 100)),
+  };
+}
+
+function mapReturn(item: ApiReturn): DemoExchange {
+  const statuses: Record<string, DemoExchange["status"]> = {
+    SOLICITADA: "requested",
+    ACEITA: "authorized",
+    NEGADA: "denied",
+    ITEM_ENVIADO: "sent",
+    ITEM_RECEBIDO: "received",
+    PROCESSADA: "completed",
+  };
+  return {
+    id: String(item.id),
+    orderId: String(item.orderId),
+    orderItemId: String(item.orderItemId),
+    reason: item.reason,
+    status: statuses[item.status] ?? "requested",
+    dispatch: item.trackingCode
+      ? { carrier: "", postedAt: "", trackingCode: item.trackingCode }
+      : undefined,
+  };
+}
+
+let state = emptyState();
+const listeners = new Set<() => void>();
+function save(next: DemoCommerceState) {
+  state = next;
   listeners.forEach((listener) => listener());
 }
+function patch(next: Partial<DemoCommerceState>) {
+  save({ ...state, ...next });
+}
 
-/**
- * Temporary browser-only repository. Replace this module's implementation with
- * API calls later; components consume only the provider/actions interface.
- * It is not a security boundary and must never be used for production auth.
- */
+async function refreshCustomerData() {
+  const [cart, cards, orders, returns, coupons] = await Promise.all([
+    commerceApi.cart(),
+    commerceApi.cards(),
+    commerceApi.orders(),
+    commerceApi.returns(),
+    commerceApi.customerCoupons(),
+  ]);
+  patch({
+    ...mapCart(cart),
+    cards: cards.map((card) => ({
+      id: String(card.id),
+      brand: card.brand,
+      lastDigits: card.lastDigits,
+      label: card.label,
+      isPreferred: card.preferred,
+    })),
+    orders: orders.map(mapOrder),
+    exchanges: returns.map(mapReturn),
+    coupons: coupons.map(mapCoupon),
+  });
+}
+
+async function refreshProducts(admin = false) {
+  patch({
+    products: (
+      await (admin ? commerceApi.adminProducts() : commerceApi.products())
+    ).map(mapProduct),
+  });
+}
+
 export const demoCommerceRepository = {
   getSnapshot: () => state,
   subscribe(listener: () => void) {
     listeners.add(listener);
     return () => listeners.delete(listener);
   },
-  async register(input: RegisterCustomerInput) {
-    if (state.customer?.email.toLowerCase() === input.email.toLowerCase()) {
-      throw new Error("Já existe uma conta cadastrada com este e-mail.");
-    }
-    const customer: DemoCustomer = {
-      birthDate: input.birthDate,
-      cpf: input.cpf,
-      email: input.email.trim().toLowerCase(),
-      id: id("customer"),
-      name: input.name.trim(),
-      passwordHash: await hashPassword(input.password),
-      phone: input.phone,
-    };
-    save({
-      ...state,
-      addresses: [
-        { ...input.billingAddress, id: id("address"), type: "billing" },
-        { ...input.deliveryAddress, id: id("address"), type: "delivery" },
-      ],
-      customer,
-      sessionCustomerId: customer.id,
+  async startApiSession(customer: ApiCustomerResponse) {
+    patch({
+      customer: {
+        id: String(customer.id),
+        name: customer.name,
+        email: customer.email,
+        cpf: customer.cpf,
+        phone: customer.phone,
+        birthDate: customer.birthDate,
+        passwordHash: "",
+      },
+      sessionCustomerId: String(customer.id),
+      addresses: customer.addresses.map((address) => ({
+        ...address,
+        id: String(address.id),
+        type: address.type === "BILLING" ? "billing" : "delivery",
+      })),
     });
+    await refreshCustomerData();
   },
-  async login(email: string, password: string) {
-    if (
-      !state.customer ||
-      state.customer.email !== email.trim().toLowerCase()
-    ) {
-      throw new Error("E-mail ou senha inválidos.");
-    }
-    if ((await hashPassword(password)) !== state.customer.passwordHash) {
-      throw new Error("E-mail ou senha inválidos.");
-    }
-    save({ ...state, sessionCustomerId: state.customer.id });
+  completeSessionHydration() {
+    patch({ sessionHydrated: true });
+  },
+  async loadCatalog() {
+    await refreshProducts();
+  },
+  async loadAdminProducts() {
+    await refreshProducts(true);
+  },
+  async loadCustomerCoupons() {
+    patch({ coupons: (await commerceApi.customerCoupons()).map(mapCoupon) });
   },
   logout() {
     clearApiSession();
-    save({ ...state, sessionCustomerId: null });
-  },
-  startApiSession(customer: ApiCustomerResponse) {
-    save({
-      ...state,
-      addresses: customer.addresses.map((address) => ({
-        city: address.city,
-        country: address.country,
-        id: String(address.id),
-        label: address.label,
-        neighborhood: address.neighborhood,
-        number: address.number,
-        postalCode: address.postalCode,
-        state: address.state,
-        street: address.street,
-        type: address.type === "BILLING" ? "billing" : "delivery",
-      })),
-      customer: {
-        birthDate: customer.birthDate,
-        cpf: customer.cpf,
-        email: customer.email,
-        id: String(customer.id),
-        name: customer.name,
-        passwordHash: "",
-        phone: customer.phone,
-      },
-      sessionCustomerId: String(customer.id),
-    });
-  },
-  async addDemo() {
-    const demo = createInitialState();
-    const customer: DemoCustomer = {
-      birthDate: customerProfile.birthDate,
-      cpf: "123.456.789-09",
-      email: customerProfile.email,
-      id: "customer-henrique",
-      name: customerProfile.name,
-      passwordHash: await hashPassword("Demo@123"),
-      phone: customerProfile.phone,
-    };
-    save({ ...demo, customer, sessionCustomerId: customer.id });
+    save({ ...emptyState(), products: state.products });
   },
   async updateCustomer(
     values: Pick<DemoCustomer, "birthDate" | "email" | "name" | "phone">,
   ) {
-    if (!state.customer) return;
-    const customer = await customerApi.updateProfile(values);
-    save({
-      ...state,
-      customer: {
-        ...state.customer,
-        birthDate: customer.birthDate,
-        email: customer.email,
-        name: customer.name,
-        phone: customer.phone,
-      },
-    });
+    await this.startApiSession(await customerApi.updateProfile(values));
   },
   async addAddress(address: Omit<DemoAddress, "id">) {
     const saved = await customerApi.addAddress({
       ...address,
       type: address.type === "billing" ? "BILLING" : "DELIVERY",
     });
-    const createdAddress = { ...address, id: String(saved.id) };
-    save({
-      ...state,
-      addresses: [...state.addresses, createdAddress],
-    });
-    return createdAddress;
+    const created = { ...address, id: String(saved.id) };
+    patch({ addresses: [...state.addresses, created] });
+    return created;
   },
-  async removeAddress(addressId: string) {
-    await customerApi.removeAddress(addressId);
-    save({
-      ...state,
-      addresses: state.addresses.filter((address) => address.id !== addressId),
+  async removeAddress(id: string) {
+    await customerApi.removeAddress(id);
+    patch({
+      addresses: state.addresses.filter((address) => address.id !== id),
     });
   },
-  async updateAddress(addressId: string, address: Omit<DemoAddress, "id">) {
-    const saved = await customerApi.updateAddress(addressId, {
+  async updateAddress(id: string, address: Omit<DemoAddress, "id">) {
+    const saved = await customerApi.updateAddress(id, {
       ...address,
       type: address.type === "billing" ? "BILLING" : "DELIVERY",
     });
-    save({
-      ...state,
+    patch({
       addresses: state.addresses.map((item) =>
-        item.id === addressId ? { ...address, id: String(saved.id) } : item,
+        item.id === id ? { ...address, id: String(saved.id) } : item,
       ),
     });
   },
-  addCard(card: Omit<DemoCard, "id" | "lastDigits">, cardNumber: string) {
-    const digits = cardNumber.replace(/\D/g, "");
-    save({
-      ...state,
-      cards: [
-        ...state.cards,
-        { ...card, id: id("card"), lastDigits: digits.slice(-4) },
-      ],
+  async addCard(card: Omit<DemoCard, "id" | "lastDigits">, cardNumber: string) {
+    await commerceApi.createCard({
+      cardNumber,
+      label: card.label,
+      expiryMonth: 1,
+      expiryYear: new Date().getFullYear() + 3,
     });
+    await refreshCustomerData();
   },
-  updateCard(id: string, values: Pick<DemoCard, "brand" | "label">) {
-    save({
-      ...state,
-      cards: state.cards.map((card) =>
-        card.id === id ? { ...card, ...values } : card,
-      ),
+  async updateCard(id: string, values: Pick<DemoCard, "brand" | "label">) {
+    await commerceApi.updateCard(id, values.label);
+    await refreshCustomerData();
+  },
+  async setPreferredCard(id: string) {
+    await commerceApi.preferCard(id);
+    await refreshCustomerData();
+  },
+  async removeCard(id: string) {
+    await commerceApi.removeCard(id);
+    await refreshCustomerData();
+  },
+  async createCoupon(input: Pick<DemoCoupon, "code" | "kind" | "valueCents">) {
+    await commerceApi.createCoupon({
+      code: input.code,
+      description:
+        input.kind === "exchange" ? "Crédito de troca" : "Cupom promocional",
+      discountType: "FIXED",
+      discountCents: input.valueCents,
+      active: true,
     });
+    patch({ coupons: (await commerceApi.coupons()).map(mapCoupon) });
   },
-  setPreferredCard(id: string) {
-    if (!state.cards.some((card) => card.id === id)) return;
-    save({
-      ...state,
-      cards: state.cards.map((card) => ({
-        ...card,
-        isPreferred: card.id === id,
-      })),
-    });
+  async toggleCoupon(id: string) {
+    await commerceApi.deactivateCoupon(id);
+    patch({ coupons: (await commerceApi.coupons()).map(mapCoupon) });
   },
-  removeCard(id: string) {
-    const remaining = state.cards.filter((card) => card.id !== id);
-    save({
-      ...state,
-      cards: remaining.map((card, index) => ({
-        ...card,
-        isPreferred:
-          card.isPreferred ||
-          (index === 0 && !remaining.some((entry) => entry.isPreferred)),
-      })),
-    });
+  async loadCoupons() {
+    patch({ coupons: (await commerceApi.coupons()).map(mapCoupon) });
   },
-  createCoupon(input: Pick<DemoCoupon, "code" | "kind" | "valueCents">) {
-    const code = input.code.trim().toUpperCase();
-    if (!code) throw new Error("Informe o código do cupom.");
-    if (state.coupons.some((coupon) => coupon.code === code))
-      throw new Error("Este código de cupom já existe.");
-    save({
-      ...state,
-      coupons: [
-        ...state.coupons,
-        {
-          ...input,
-          active: true,
-          code,
-          createdAt: new Date().toISOString(),
-          id: id("coupon"),
-        },
-      ],
-    });
-  },
-  toggleCoupon(id: string) {
-    save({
-      ...state,
-      coupons: state.coupons.map((coupon) =>
-        coupon.id === id ? { ...coupon, active: !coupon.active } : coupon,
-      ),
-    });
-  },
-  updateCartItem(item: CartItem) {
-    save({
-      ...state,
-      cartItems: state.cartItems.map((current) =>
-        current.id === item.id ? item : current,
-      ),
-    });
-  },
-  removeCartItem(itemId: string) {
-    save({
-      ...state,
-      cartItems: state.cartItems.filter((item) => item.id !== itemId),
-    });
-  },
-  addCartItem(item: CartItem) {
-    const existing = state.cartItems.find(
-      (current) =>
-        current.productId === item.productId &&
-        current.variantId === item.variantId,
+  async addCartItem(item: CartItem) {
+    patch(
+      mapCart(await commerceApi.addCartItem(item.variantId, item.quantity)),
     );
-    save({
-      ...state,
-      cartItems: existing
-        ? state.cartItems.map((current) =>
-            current.id === existing.id
-              ? { ...current, quantity: current.quantity + item.quantity }
-              : current,
-          )
-        : [...state.cartItems, item],
-    });
   },
-  saveProduct(product: Product) {
-    save({
-      ...state,
-      products: state.products.some((item) => item.id === product.id)
-        ? state.products.map((item) =>
-            item.id === product.id ? product : item,
-          )
-        : [...state.products, product],
-    });
+  async updateCartItem(item: CartItem) {
+    patch(mapCart(await commerceApi.updateCartItem(item.id, item.quantity)));
   },
-  setProductStatus(id: string, status: Product["status"]) {
-    save({
-      ...state,
-      products: state.products.map((product) =>
-        product.id === id ? { ...product, status } : product,
-      ),
-    });
+  async removeCartItem(id: string) {
+    await commerceApi.removeCartItem(id);
+    await refreshCustomerData();
   },
-  startBuyNow(item: CartItem) {
-    save({ ...state, buyNowItem: item });
+  async applyCoupon(code: string) {
+    patch(mapCart(await commerceApi.applyCoupon(code)));
   },
-  createOrder(
-    input: Pick<
-      Order,
-      | "discountCents"
-      | "items"
-      | "shippingCents"
-      | "subtotalCents"
-      | "totalCents"
-    >,
-    fromBuyNow = false,
-  ) {
-    if (!state.customer || !state.sessionCustomerId)
-      throw new Error("Entre em sua conta para finalizar o pedido.");
-    const order: Order = {
-      ...input,
-      createdAt: new Date().toISOString(),
-      customerId: state.customer.id,
-      id: `CH-${new Date().getFullYear()}-${String(state.orders.length + 841).padStart(4, "0")}`,
-      status: "processing",
-    };
-    save({
-      ...state,
-      buyNowItem: fromBuyNow ? null : state.buyNowItem,
-      cartItems: fromBuyNow ? state.cartItems : [],
-      orders: [order, ...state.orders],
-    });
-    return order;
+  async removeCoupon() {
+    patch(mapCart(await commerceApi.removeCoupon()));
   },
-  cancelOrder(orderId: string) {
-    save({
-      ...state,
-      orders: state.orders.map((order) =>
-        order.id === orderId && order.status === "processing"
-          ? { ...order, status: "rejected" }
-          : order,
-      ),
-    });
+  async startBuyNow(item: CartItem) {
+    await this.addCartItem(item);
   },
-  confirmReceipt(orderId: string) {
-    save({
-      ...state,
-      orders: state.orders.map((order) =>
-        order.id === orderId && order.status === "in_transit"
-          ? { ...order, status: "delivered" }
-          : order,
-      ),
-    });
+  async createOrder(input: {
+    deliveryAddressId: string;
+    payments: Array<{ paymentCardId: string; amountCents: number }>;
+  }) {
+    const order = await commerceApi.checkout(
+      input.deliveryAddressId,
+      input.payments,
+    );
+    await refreshCustomerData();
+    return mapOrder(order);
   },
-  requestExchange(input: {
+  async cancelOrder(id: string) {
+    await commerceApi.cancelOrder(id, "Cancelado pelo cliente");
+    await refreshCustomerData();
+  },
+  async confirmReceipt(id: string) {
+    await commerceApi.confirmReceipt(id);
+    await refreshCustomerData();
+  },
+  async requestExchange(input: {
     orderId: string;
-    productId: string;
+    orderItemId: string;
     reason: string;
   }) {
-    const request = {
-      ...input,
-      id: `EX-${new Date().getFullYear()}-${String(state.exchanges.length + 17).padStart(3, "0")}`,
-      requestedAt: new Date().toISOString(),
-      status: "requested" as const,
-    };
-    save({ ...state, exchanges: [request, ...state.exchanges] });
+    await commerceApi.requestReturn(
+      input.orderId,
+      input.orderItemId,
+      input.reason,
+    );
+    await refreshCustomerData();
   },
-  dispatchExchange(
-    exchangeId: string,
+  async dispatchExchange(
+    id: string,
     dispatch: NonNullable<DemoExchange["dispatch"]>,
   ) {
-    save({
-      ...state,
-      exchanges: state.exchanges.map((exchange) =>
-        exchange.id === exchangeId && exchange.status === "authorized"
-          ? { ...exchange, dispatch, status: "sent" as const }
-          : exchange,
-      ),
-    });
+    await commerceApi.dispatchReturn(id, dispatch.trackingCode);
+    await refreshCustomerData();
   },
-  updateAdminOrderStatus(id: string, status: AdminOrderStatus) {
-    save({
-      ...state,
-      adminOrderStatuses: { ...state.adminOrderStatuses, [id]: status },
-    });
+  async saveProduct(product: Product) {
+    const body = {
+      name: product.name,
+      brand: product.brand,
+      description: product.description,
+      categories: product.categoryIds,
+      minimumStock: 0,
+      active: product.status === "active",
+      variants: product.variants.map((variant) => ({
+        sku: variant.sku,
+        label: variant.label,
+        color: variant.color,
+        size: variant.size,
+        priceCents: product.priceCents,
+        stockQuantity: variant.stockQuantity,
+      })),
+    };
+    if (Number.isNaN(Number(product.id))) await commerceApi.createProduct(body);
+    else await commerceApi.updateProduct(product.id, body);
+    await refreshProducts(true);
   },
-  toggleAdminCustomer(id: string) {
-    save({
-      ...state,
-      adminCustomerActive: {
-        ...state.adminCustomerActive,
-        [id]: !(state.adminCustomerActive[id] ?? true),
-      },
-    });
+  async setProductStatus(id: string, status: Product["status"]) {
+    if (status === "inactive") await commerceApi.deactivateProduct(id);
+    await refreshProducts(true);
+  },
+  async updateAdminOrderStatus(id: string, status: string) {
+    await commerceApi.updateOrderStatus(id, status);
   },
   reset() {
-    window.localStorage.removeItem(storageKey);
-    save(createEmptyState());
+    this.logout();
   },
 };

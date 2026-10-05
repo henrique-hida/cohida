@@ -1,12 +1,8 @@
 export {
-  adminCustomerFormOptions,
-  adminAnalyticsData,
   adminConfigurationSections,
   adminConfigurationRecords,
   adminConfigurationFormOptions,
   adminCustomers,
-  adminDashboardMetrics,
-  adminLowStockProducts,
   adminOrders,
   adminExchanges,
   adminExchangeStatusSteps,
@@ -15,7 +11,6 @@ export {
   adminProductDeactivationOptions,
   adminProductFormOptions,
   adminProducts,
-  adminRecentOrders,
   adminResourceContent,
   adminStockEntryFormOptions,
   adminStockMovements,
@@ -27,27 +22,10 @@ export {
   type AdminConfigurationSectionId,
   type AdminResource,
 } from "./admin";
-export { categories } from "./categories";
 export {
-  homeBestSellerProductIds,
   homeGoalCollections,
   homeGuide,
   homeTestimonials,
   homeTrustMetrics,
 } from "./home";
-export {
-  cartDemoItems,
-  cartReservationNotice,
-  cartShippingCents,
-  chatbotSuggestions,
-  chatbotResponses,
-  checkoutAddresses,
-  checkoutCoupon,
-  checkoutPaymentMethods,
-  customerCards,
-  customerOrders,
-  customerProfile,
-  exchangeRequests,
-  recommendations,
-} from "./commerce";
-export { products } from "./products";
+export { chatbotSuggestions, chatbotResponses } from "./commerce";

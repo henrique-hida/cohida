@@ -1,4 +1,4 @@
-import { Clock3, Minus, Plus, ShoppingBag, Trash2 } from "lucide-react";
+import { Minus, Plus, ShoppingCart, Trash2 } from "lucide-react";
 import { Link } from "react-router";
 import { useMemo } from "react";
 
@@ -6,7 +6,6 @@ import { PageContainer, StoreHeader } from "@/components/shared";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { formatCurrency } from "@/lib/currency";
-import { cartReservationNotice, cartShippingCents, products } from "@/mocks";
 import { useCommerce } from "@/data/useCommerce";
 
 export function CartPage() {
@@ -15,28 +14,26 @@ export function CartPage() {
   const entries = useMemo(
     () =>
       items.flatMap((item) => {
-        const product = products.find((entry) => entry.id === item.productId);
+        const product = state.products.find(
+          (entry) => entry.id === item.productId,
+        );
         const variant = product?.variants.find(
           (entry) => entry.id === item.variantId,
         );
         return product && variant ? [{ item, product, variant }] : [];
       }),
-    [items],
+    [items, state.products],
   );
-  const subtotalCents = entries.reduce(
-    (total, { item }) => total + item.unitPriceCents * item.quantity,
-    0,
-  );
-  const shippingCents = entries.length ? cartShippingCents : 0;
-  const totalCents = subtotalCents + shippingCents;
+  const { subtotalCents, shippingCents, totalCents, discountCents } =
+    state.cartTotals;
 
   function updateQuantity(itemId: string, quantity: number) {
     const item = items.find((entry) => entry.id === itemId);
-    if (item) updateCartItem({ ...item, quantity });
+    if (item) void updateCartItem({ ...item, quantity });
   }
 
   function removeItem(itemId: string) {
-    removeCartItem(itemId);
+    void removeCartItem(itemId);
   }
 
   return (
@@ -46,7 +43,7 @@ export function CartPage() {
       <PageContainer className="py-10 sm:py-14">
         <div className="flex items-center gap-3">
           <span className="grid size-11 place-items-center rounded-xl bg-primary text-primary-foreground">
-            <ShoppingBag className="size-5" />
+            <ShoppingCart className="size-5" />
           </span>
           <div>
             <h1 className="text-3xl font-semibold tracking-tight">Carrinho</h1>
@@ -61,13 +58,6 @@ export function CartPage() {
         {entries.length ? (
           <div className="mt-8 grid gap-8 lg:grid-cols-[minmax(0,1fr)_22rem] lg:items-start">
             <div>
-              <div className="mb-4 flex items-center gap-3 rounded-xl border border-warning/70 bg-warning/75 px-4 py-3 text-sm dark:border-warning/45 dark:bg-warning/30">
-                <Clock3 className="size-4 shrink-0 text-warning-foreground" />
-                <p>
-                  {cartReservationNotice.text}{" "}
-                  <strong>{cartReservationNotice.remainingTime}</strong>.
-                </p>
-              </div>
               <div className="overflow-hidden rounded-xl border border-border bg-card">
                 {entries.map(({ item, product, variant }) => (
                   <article
@@ -148,6 +138,12 @@ export function CartPage() {
                     <dt>Subtotal</dt>
                     <dd>{formatCurrency(subtotalCents)}</dd>
                   </div>
+                  {discountCents ? (
+                    <div className="flex justify-between gap-4 text-muted-foreground">
+                      <dt>Desconto</dt>
+                      <dd>-{formatCurrency(discountCents)}</dd>
+                    </div>
+                  ) : null}
                   <div className="flex justify-between gap-4 text-muted-foreground">
                     <dt>Entrega</dt>
                     <dd>{formatCurrency(shippingCents)}</dd>
@@ -174,7 +170,7 @@ export function CartPage() {
           <div className="mt-8 grid min-h-72 place-items-center rounded-xl border border-dashed border-border p-8 text-center">
             <div>
               <span className="mx-auto grid size-12 place-items-center rounded-xl bg-muted text-muted-foreground">
-                <ShoppingBag className="size-5" />
+                <ShoppingCart className="size-5" />
               </span>
               <h2 className="mt-4 text-lg font-semibold">
                 Seu carrinho está vazio

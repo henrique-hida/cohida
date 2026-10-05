@@ -1,8 +1,8 @@
 import { lazy, Suspense } from "react";
-import { Navigate, Route, Routes } from "react-router";
+import { Navigate, Route, Routes, useLocation } from "react-router";
 
 import { AdminDataState } from "@/components/admin/AdminDataState";
-import { ChatbotFab } from "@/components/shared";
+import { ChatbotFab, StoreFooter } from "@/components/shared";
 import { AdminAdministrationPage } from "@/pages/AdminAdministrationPage";
 import { AdminDashboardPage } from "@/pages/AdminDashboardPage";
 import { AdminCustomerCreatePage } from "@/pages/AdminCustomerCreatePage";
@@ -31,7 +31,6 @@ import { AccountPage } from "@/pages/AccountPage";
 import { OrdersPage } from "@/pages/OrdersPage";
 import { OrderDetailPage } from "@/pages/OrderDetailPage";
 import { ExchangesPage } from "@/pages/ExchangesPage";
-import { RecommendationsPage } from "@/pages/RecommendationsPage";
 import { CouponsPage } from "@/pages/CouponsPage";
 import { HomePage } from "@/pages/HomePage";
 import { ProductDetailPage } from "@/pages/ProductDetailPage";
@@ -50,7 +49,6 @@ function App() {
         <Route element={<OrdersPage />} path="/pedidos" />
         <Route element={<OrderDetailPage />} path="/pedidos/:orderId" />
         <Route element={<ExchangesPage />} path="/trocas" />
-        <Route element={<RecommendationsPage />} path="/recomendacoes" />
         <Route element={<CouponsPage />} path="/cupons" />
         <Route
           element={<Navigate replace to="/entrar" />}
@@ -137,9 +135,16 @@ function App() {
         />
         <Route element={<HomePage />} path="*" />
       </Routes>
+      <StorefrontFooter />
       <ChatbotFab />
     </>
   );
+}
+
+function StorefrontFooter() {
+  const { pathname } = useLocation();
+
+  return pathname.startsWith("/admin") ? null : <StoreFooter />;
 }
 
 export default App;
