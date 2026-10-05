@@ -22,6 +22,8 @@ public class CheckoutController {
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public OrderResponse checkout(@AuthenticationPrincipal AuthenticatedCustomer p, @RequestBody CheckoutRequest request) {
+        if (request.payments() != null && !request.payments().isEmpty())
+            return OrderResponse.from(orders.checkout(p.customerId(), request.deliveryAddressId(), request.payments()));
         return OrderResponse.from(orders.checkout(p.customerId(), request.deliveryAddressId(), request.paymentCardId()));
     }
 }

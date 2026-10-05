@@ -19,6 +19,11 @@ public class ReturnController {
         this.returns = returns;
     }
 
+    @GetMapping("/returns")
+    public java.util.List<ReturnResponse> all(@AuthenticationPrincipal AuthenticatedCustomer p) {
+        return returns.customerReturns(p.customerId()).stream().map(ReturnResponse::from).toList();
+    }
+
     @PostMapping("/{orderId}/returns")
     public ReturnResponse create(@AuthenticationPrincipal AuthenticatedCustomer p, @PathVariable Long orderId, @RequestBody CreateReturnRequest r) {
         return ReturnResponse.from(returns.request(p.customerId(), orderId, r.orderItemId(), r.reason()));

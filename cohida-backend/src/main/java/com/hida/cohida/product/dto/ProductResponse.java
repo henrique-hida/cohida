@@ -13,6 +13,7 @@ public record ProductResponse(
         String name,
         String brand,
         String description,
+        String imageUrl,
         int minimumStock,
         boolean active,
         Set<String> categories,
@@ -21,7 +22,7 @@ public record ProductResponse(
 ) {
     public static ProductResponse from(Product product) {
         return new ProductResponse(product.getId(), product.getCode(), product.getSlug(), product.getName(),
-                product.getBrand(), product.getDescription(), product.getMinimumStock(), product.isActive(),
+                product.getBrand(), product.getDescription(), product.getImageUrl(), product.getMinimumStock(), product.isActive(),
                 Set.copyOf(product.getCategories()), product.getVariants().stream().map(ProductVariantResponse::from).toList(),
                 product.getCreatedAt());
     }

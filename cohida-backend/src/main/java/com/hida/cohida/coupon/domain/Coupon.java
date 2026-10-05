@@ -108,6 +108,10 @@ public class Coupon extends DomainEntity {
         active = false;
     }
 
+    public void activate() {
+        active = true;
+    }
+
     public void registerRedemption() {
         redeemedCount++;
     }

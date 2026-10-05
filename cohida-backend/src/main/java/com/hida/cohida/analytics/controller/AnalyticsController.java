@@ -24,17 +24,17 @@ public class AnalyticsController {
     }
 
     @GetMapping("/overview")
-    public AnalyticsOverviewResponse overview(@RequestParam(required = false) LocalDate from, @RequestParam(required = false) LocalDate to) {
-        return analytics.overview(from, to);
+    public AnalyticsOverviewResponse overview(@RequestParam(required = false) LocalDate from, @RequestParam(required = false) LocalDate to, @RequestParam(required = false) String category) {
+        return analytics.overview(from, to, category);
     }
 
     @GetMapping("/sales")
-    public List<SalesPointResponse> sales(@RequestParam(required = false) LocalDate from, @RequestParam(required = false) LocalDate to, @RequestParam(defaultValue = "day") String groupBy) {
-        return analytics.sales(from, to, groupBy);
+    public List<SalesPointResponse> sales(@RequestParam(required = false) LocalDate from, @RequestParam(required = false) LocalDate to, @RequestParam(defaultValue = "day") String groupBy, @RequestParam(required = false) String category) {
+        return analytics.sales(from, to, groupBy, category);
     }
 
     @GetMapping("/products/top")
-    public List<TopProductResponse> top(@RequestParam(required = false) LocalDate from, @RequestParam(required = false) LocalDate to) {
-        return analytics.top(from, to);
+    public List<TopProductResponse> top(@RequestParam(required = false) LocalDate from, @RequestParam(required = false) LocalDate to, @RequestParam(required = false) String category) {
+        return analytics.top(from, to, category);
     }
 }

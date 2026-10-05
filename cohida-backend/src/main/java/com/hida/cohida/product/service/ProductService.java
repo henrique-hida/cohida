@@ -57,7 +57,7 @@ public class ProductService {
         ValidatedProduct input = validate(request);
         assertVariantSkusAvailable(input.variants(), null);
         String slug = uniqueSlug(input.name());
-        Product product = new Product(nextCode(), slug, input.name(), input.brand(), input.description(),
+        Product product = new Product(nextCode(), slug, input.name(), input.brand(), input.description(), input.imageUrl(),
                 input.minimumStock(), input.active(), input.categories());
         input.variants().forEach(variant -> product.addVariant(toVariant(variant)));
         return products.save(product);
@@ -68,7 +68,7 @@ public class ProductService {
         Product product = findForAdmin(id);
         ValidatedProduct input = validate(request);
         assertVariantSkusAvailable(input.variants(), product.getId());
-        product.update(input.name(), input.brand(), input.description(), input.minimumStock(), input.active(), input.categories());
+        product.update(input.name(), input.brand(), input.description(), input.imageUrl(), input.minimumStock(), input.active(), input.categories());
         product.clearVariants();
         products.flush();
         input.variants().forEach(variant -> product.addVariant(toVariant(variant)));
@@ -117,7 +117,7 @@ public class ProductService {
                 throw new InvalidRequestException("Cada variação precisa de SKU único, nome, preço e estoque válidos.");
             }
         }
-        return new ValidatedProduct(request.name().trim(), request.brand().trim(), request.description().trim(),
+        return new ValidatedProduct(request.name().trim(), request.brand().trim(), request.description().trim(), trimToNull(request.imageUrl()),
                 request.minimumStock(), request.active() == null || request.active(), categories, variants);
     }
 
@@ -173,7 +173,7 @@ public class ProductService {
         return value == null || value.isBlank();
     }
 
-    private record ValidatedProduct(String name, String brand, String description, int minimumStock,
+    private record ValidatedProduct(String name, String brand, String description, String imageUrl, int minimumStock,
                                     boolean active, Set<String> categories, List<ProductVariantRequest> variants) {
     }
 }

@@ -1,12 +1,16 @@
 package com.hida.cohida.order.domain;
 
 import com.hida.cohida.common.DomainEntity;
+import com.hida.cohida.coupon.domain.Coupon;
 import com.hida.cohida.customer.domain.Customer;
+import com.hida.cohida.paymentcard.domain.PaymentCard;
 import jakarta.persistence.*;
 import lombok.Getter;
 
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 
 @Entity
 @Table(name = "orders")
@@ -34,6 +38,13 @@ public class SaleOrder extends DomainEntity {
     @Getter
     @Column(name = "coupon_code", length = 50)
     private String couponCode;
+    @Getter
+    @Column(name = "coupon_value_cents", nullable = false)
+    private long couponValueCents;
+    @Getter
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "issued_coupon_id")
+    private Coupon issuedCoupon;
     @Getter
     @Column(name = "card_brand", nullable = false, length = 40)
     private String cardBrand;
@@ -73,6 +84,9 @@ public class SaleOrder extends DomainEntity {
     @Getter
     @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<OrderItem> items = new ArrayList<>();
+    @Getter
+    @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true)
+    private Set<OrderPayment> payments = new LinkedHashSet<>();
 
     protected SaleOrder() {
     }
@@ -81,7 +95,7 @@ public class SaleOrder extends DomainEntity {
                      String cardLastDigits, String label, String street, String number, String neighborhood, String zip,
                      String city, String state, String country) {
         this.customer = customer;
-        this.status = OrderStatus.EM_ABERTO;
+        this.status = OrderStatus.EM_PROCESSAMENTO;
         this.subtotalCents = subtotal;
         this.discountCents = discount;
         this.shippingCents = shipping;
@@ -102,6 +116,18 @@ public class SaleOrder extends DomainEntity {
     public void addItem(OrderItem item) {
         item.assignTo(this);
         items.add(item);
+    }
+
+    public void addPayment(PaymentCard paymentCard, long amountCents) {
+        payments.add(new OrderPayment(this, paymentCard, amountCents, payments.size()));
+    }
+
+    public void issueCoupon(Coupon coupon) {
+        issuedCoupon = coupon;
+    }
+
+    public void setCouponValueCents(long couponValueCents) {
+        this.couponValueCents = couponValueCents;
     }
 
     public void changeStatus(OrderStatus next) {

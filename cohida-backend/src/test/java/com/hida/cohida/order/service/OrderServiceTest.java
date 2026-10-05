@@ -12,6 +12,7 @@ import com.hida.cohida.customer.enums.AddressType;
 import com.hida.cohida.customer.repository.CustomerRepository;
 import com.hida.cohida.order.domain.OrderStatus;
 import com.hida.cohida.order.domain.SaleOrder;
+import com.hida.cohida.order.dto.PaymentAllocationRequest;
 import com.hida.cohida.paymentcard.domain.PaymentCard;
 import com.hida.cohida.paymentcard.dto.PaymentCardCreateRequest;
 import com.hida.cohida.paymentcard.service.PaymentCardService;
@@ -59,7 +60,7 @@ class OrderServiceTest {
     void checksOutCartUsingServerPriceCouponAndStock() {
         Customer customer = customer();
         customers.save(customer);
-        Product product = products.create(new ProductUpsertRequest("Tênis de teste", "Cohida", "Tênis esportivo", List.of("Corrida"), 1, true,
+        Product product = products.create(new ProductUpsertRequest("Tênis de teste", "Cohida", "Tênis esportivo", null, List.of("Corrida"), 1, true,
                 List.of(new ProductVariantRequest("TENIS-TESTE-40", "40", "Preto", "40", 20_000L, 5))));
         Long variantId = product.getVariants().getFirst().getId();
         Coupon coupon = coupons.create(new CouponUpsertRequest("DESC10", "10%", CouponDiscountType.PERCENTAGE, null, new BigDecimal("10"), 3_000L, 10_000L,
@@ -72,7 +73,7 @@ class OrderServiceTest {
         Long addressId = customer.getAddresses().stream().filter(address -> address.getType() == AddressType.DELIVERY).findFirst().orElseThrow().getId();
         SaleOrder order = orders.checkout(customer.getId(), addressId, card.getId());
 
-        assertEquals(OrderStatus.EM_ABERTO, order.getStatus());
+        assertEquals(OrderStatus.EM_PROCESSAMENTO, order.getStatus());
         assertEquals(40_000L, order.getSubtotalCents());
         assertEquals(3_000L, order.getDiscountCents());
         assertEquals(37_000L, order.getTotalCents());
@@ -80,7 +81,6 @@ class OrderServiceTest {
         assertEquals(1, coupons.findById(coupon.getId()).getRedeemedCount());
         assertTrue(carts.view(customer.getId()).items().isEmpty());
 
-        assertEquals(OrderStatus.EM_PROCESSAMENTO, orders.changeStatus(order.getId(), OrderStatus.EM_PROCESSAMENTO).getStatus());
         orders.changeStatus(order.getId(), OrderStatus.PAGAMENTO_REALIZADO);
         orders.dispatch(order.getId(), "BR123");
         orders.changeStatus(order.getId(), OrderStatus.ENTREGUE);
@@ -94,6 +94,56 @@ class OrderServiceTest {
         assertEquals(5, variants.findById(variantId).orElseThrow().getStockQuantity());
         assertTrue(processed.getIssuedCoupon().isReturnCredit());
         assertEquals(40_000L, processed.getIssuedCoupon().getRemainingCreditCents());
+    }
+
+    @Test
+    void validatesAndRecordsSplitCardPayments() {
+        Customer customer = customer();
+        customers.save(customer);
+        Product product = products.create(new ProductUpsertRequest("Produto dividido", "Cohida", "Teste", null, List.of("Corrida"), 1, true,
+                List.of(new ProductVariantRequest("DIVIDIDO-1", "Único", "Preto", "Único", 20_000L, 4))));
+        Coupon coupon = coupons.create(new CouponUpsertRequest("DIVIDE5", "Desconto de teste", CouponDiscountType.FIXED_AMOUNT, 5_000L, null, null, null,
+                LocalDateTime.now().minusMinutes(1), LocalDateTime.now().plusDays(1), 5, true));
+        PaymentCard first = cards.create(customer.getId(), new PaymentCardCreateRequest("token-split-first", "4242 4242 4242 4242", "Pessoal", 12, 2030));
+        PaymentCard second = cards.create(customer.getId(), new PaymentCardCreateRequest("token-split-second", "5555 5555 5555 4444", "Trabalho", 12, 2030));
+        Long addressId = customer.getAddresses().stream().filter(address -> address.getType() == AddressType.DELIVERY).findFirst().orElseThrow().getId();
+
+        carts.add(customer.getId(), product.getVariants().getFirst().getId(), 1);
+        carts.applyCoupon(customer.getId(), coupon.getCode());
+        SaleOrder order = orders.checkout(customer.getId(), addressId, List.of(
+                new PaymentAllocationRequest(first.getId(), 7_000L),
+                new PaymentAllocationRequest(second.getId(), 8_000L)));
+
+        assertEquals(OrderStatus.EM_PROCESSAMENTO, order.getStatus());
+        assertEquals(15_000L, order.getTotalCents());
+        assertEquals(2, order.getPayments().size());
+        List<Long> allocations = order.getPayments().stream()
+                .sorted(java.util.Comparator.comparingInt(com.hida.cohida.order.domain.OrderPayment::getPaymentPosition))
+                .map(payment -> payment.getAmountCents())
+                .toList();
+        assertEquals(List.of(7_000L, 8_000L), allocations);
+    }
+
+    @Test
+    void issuesCustomerExchangeCreditForCouponValueAbovePurchase() {
+        Customer customer = customer();
+        customers.save(customer);
+        Product product = products.create(new ProductUpsertRequest("Produto cupom excedente", "Cohida", "Teste", null, List.of("Corrida"), 1, true,
+                List.of(new ProductVariantRequest("CUPOM-EXCEDENTE-1", "Único", "Preto", "Único", 20_000L, 4))));
+        coupons.create(new CouponUpsertRequest("EXCEDE27", "Cupom de teste", CouponDiscountType.FIXED_AMOUNT, 27_000L, null, null, null,
+                LocalDateTime.now().minusMinutes(1), LocalDateTime.now().plusDays(1), 5, true));
+        PaymentCard card = cards.create(customer.getId(), new PaymentCardCreateRequest("token-surplus", "4242 4242 4242 4242", "Pessoal", 12, 2030));
+        Long addressId = customer.getAddresses().stream().filter(address -> address.getType() == AddressType.DELIVERY).findFirst().orElseThrow().getId();
+
+        carts.add(customer.getId(), product.getVariants().getFirst().getId(), 1);
+        carts.applyCoupon(customer.getId(), "EXCEDE27");
+        SaleOrder order = orders.checkout(customer.getId(), addressId,
+                List.of(new PaymentAllocationRequest(card.getId(), 0L)));
+
+        assertEquals(0L, order.getTotalCents());
+        assertTrue(order.getIssuedCoupon().isReturnCredit());
+        assertEquals(7_000L, order.getIssuedCoupon().getRemainingCreditCents());
+        assertEquals(customer.getId(), order.getIssuedCoupon().getAssignedCustomer().getId());
     }
 
     private static Customer customer() {

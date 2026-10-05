@@ -33,4 +33,9 @@ public class CustomerOrderController {
     public OrderResponse cancel(@AuthenticationPrincipal AuthenticatedCustomer p, @PathVariable Long id, @RequestBody com.hida.cohida.order.dto.CancellationRequest request) {
         return OrderResponse.from(orders.cancel(p.customerId(), id, request.reason()));
     }
+
+    @PostMapping("/{id}/confirm-receipt")
+    public OrderResponse confirmReceipt(@AuthenticationPrincipal AuthenticatedCustomer p, @PathVariable Long id) {
+        return OrderResponse.from(orders.confirmReceipt(p.customerId(), id));
+    }
 }

@@ -32,6 +32,10 @@ public class Product extends DomainEntity {
     private String description;
 
     @Getter
+    @Column(name = "image_url", length = 500)
+    private String imageUrl;
+
+    @Getter
     @Column(name = "minimum_stock", nullable = false)
     private int minimumStock;
 
@@ -53,22 +57,24 @@ public class Product extends DomainEntity {
     }
 
     public Product(String code, String slug, String name, String brand, String description,
-                   int minimumStock, boolean active, Set<String> categories) {
+                   String imageUrl, int minimumStock, boolean active, Set<String> categories) {
         this.code = code;
         this.slug = slug;
         this.name = name;
         this.brand = brand;
         this.description = description;
+        this.imageUrl = imageUrl;
         this.minimumStock = minimumStock;
         this.active = active;
         this.categories = new LinkedHashSet<>(categories);
     }
 
-    public void update(String name, String brand, String description, int minimumStock,
+    public void update(String name, String brand, String description, String imageUrl, int minimumStock,
                        boolean active, Set<String> categories) {
         this.name = name;
         this.brand = brand;
         this.description = description;
+        this.imageUrl = imageUrl;
         this.minimumStock = minimumStock;
         this.active = active;
         this.categories.clear();
@@ -91,5 +97,13 @@ public class Product extends DomainEntity {
 
     public void deactivate() {
         active = false;
+    }
+
+    public void activate() {
+        active = true;
+    }
+
+    public void updateImageUrl(String imageUrl) {
+        this.imageUrl = imageUrl;
     }
 }

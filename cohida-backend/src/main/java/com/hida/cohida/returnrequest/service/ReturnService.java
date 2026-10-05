@@ -73,6 +73,11 @@ public class ReturnService {
     }
 
     @Transactional(readOnly = true)
+    public List<ReturnRequest> customerReturns(Long customerId) {
+        return returns.findByOrderItemOrderCustomerIdOrderByCreatedAtDesc(customerId);
+    }
+
+    @Transactional(readOnly = true)
     public ReturnRequest get(Long id) {
         return returns.findById(id).orElseThrow(() -> new InvalidRequestException("Devolução não encontrada."));
     }

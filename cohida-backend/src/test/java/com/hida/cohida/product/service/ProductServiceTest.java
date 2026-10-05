@@ -38,7 +38,7 @@ class ProductServiceTest {
     }
 
     private static ProductUpsertRequest request(String name, long priceCents, int stockQuantity) {
-        return new ProductUpsertRequest(name, "Cohida", "Camisa esportiva", List.of("Futebol"), 2, true,
+        return new ProductUpsertRequest(name, "Cohida", "Camisa esportiva", null, List.of("Futebol"), 2, true,
                 List.of(new ProductVariantRequest("CAMISA-OFICIAL-M", "M", "Azul", "M", priceCents, stockQuantity)));
     }
 }

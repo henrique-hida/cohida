@@ -21,12 +21,15 @@ public record CouponResponse(
         int redeemedCount,
         boolean active,
         boolean currentlyValid,
+        com.hida.cohida.coupon.domain.CouponOrigin origin,
+        Long remainingCreditCents,
         LocalDateTime createdAt
 ) {
     public static CouponResponse from(Coupon coupon) {
         return new CouponResponse(coupon.getId(), coupon.getCode(), coupon.getDescription(), coupon.getDiscountType(),
                 coupon.getDiscountCents(), coupon.getDiscountPercentage(), coupon.getMaximumDiscountCents(),
                 coupon.getMinimumOrderValueCents(), coupon.getValidFrom(), coupon.getExpiresAt(), coupon.getMaximumUses(),
-                coupon.getRedeemedCount(), coupon.isActive(), coupon.isCurrentlyValid(LocalDateTime.now()), coupon.getCreatedAt());
+                coupon.getRedeemedCount(), coupon.isActive(), coupon.isCurrentlyValid(LocalDateTime.now()),
+                coupon.getOrigin(), coupon.getRemainingCreditCents(), coupon.getCreatedAt());
     }
 }

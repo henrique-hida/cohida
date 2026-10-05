@@ -95,7 +95,7 @@ public class CartService {
         return CartResponse.from(carts.save(cart), 0);
     }
 
-    public long discount(Cart cart) {
+    public long couponValue(Cart cart) {
         long subtotal = cart.getItems().stream().mapToLong(item -> item.getVariant().getPriceCents() * item.getQuantity()).sum();
         Coupon coupon = cart.getCoupon();
         if (coupon == null) return 0;
@@ -105,7 +105,12 @@ public class CartService {
             throw new InvalidRequestException("O valor mínimo do cupom não foi atingido.");
         long value = coupon.isReturnCredit() ? coupon.getRemainingCreditCents() : coupon.getDiscountCents() == null ? BigDecimal.valueOf(subtotal).multiply(coupon.getDiscountPercentage()).divide(BigDecimal.valueOf(100), 0, RoundingMode.DOWN).longValue() : coupon.getDiscountCents();
         if (coupon.getMaximumDiscountCents() != null) value = Math.min(value, coupon.getMaximumDiscountCents());
-        return Math.min(value, subtotal);
+        return value;
+    }
+
+    public long discount(Cart cart) {
+        long subtotal = cart.getItems().stream().mapToLong(item -> item.getVariant().getPriceCents() * item.getQuantity()).sum();
+        return Math.min(couponValue(cart), subtotal);
     }
 
     public void ensureStock(Cart cart) {
