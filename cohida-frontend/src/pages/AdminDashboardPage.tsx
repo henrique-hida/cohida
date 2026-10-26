@@ -9,7 +9,7 @@ import {
 import { useEffect, useState } from "react";
 import { Link } from "react-router";
 
-import { AdminLayout } from "@/components/admin/AdminLayout";
+import { AdminPageLayout } from "@/components/admin/AdminPageLayout";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -26,14 +26,7 @@ import {
   type ApiReturn,
 } from "@/lib/commerceApi";
 import { formatCurrency } from "@/lib/currency";
-
-function statusVariant(status: string) {
-  return status === "EM_PROCESSAMENTO"
-    ? "warning"
-    : status === "PAGAMENTO_REALIZADO"
-      ? "success"
-      : "info";
-}
+import { commerceStatus } from "@/lib/commerceStatus";
 
 function getGreeting(hour: number) {
   if (hour < 12) return "Bom dia";
@@ -41,8 +34,23 @@ function getGreeting(hour: number) {
   return "Boa noite";
 }
 
+function getFormattedDate(date: Date) {
+  const formattedDate = new Intl.DateTimeFormat("pt-BR", {
+    day: "numeric",
+    month: "long",
+    weekday: "long",
+  }).format(date);
+
+  return (
+    formattedDate.charAt(0).toLocaleUpperCase("pt-BR") + formattedDate.slice(1)
+  );
+}
+
 export function AdminDashboardPage() {
-  const greeting = getGreeting(new Date().getHours());
+  const now = new Date();
+  const greeting = getGreeting(now.getHours());
+  const adminName = localStorage.getItem("cohida-admin-name")?.trim();
+  const firstName = adminName?.split(/\s+/)[0] || "Administradora";
   const [orders, setOrders] = useState<ApiOrder[]>([]);
   const [products, setProducts] = useState<ApiProduct[]>([]);
   const [returns, setReturns] = useState<ApiReturn[]>([]);
@@ -77,69 +85,80 @@ export function AdminDashboardPage() {
       new Date(order.createdAt).toDateString() === new Date().toDateString(),
   ).length;
   const openReturns = returns.filter(
-    (request) => !["NEGADA", "PROCESSADA"].includes(request.status),
+    (request) =>
+      ["EM_TROCA", "TROCA_AUTORIZADA"].includes(request.status),
   ).length;
   const metrics = [
-    { detail: "Pedidos não cancelados", icon: TrendingUp, label: "Faturamento", to: "/admin/analises", value: formatCurrency(revenueCents) },
-    { detail: "Criados hoje", icon: ClipboardCheck, label: "Pedidos hoje", to: "/admin/pedidos", value: String(todayOrders) },
-    { detail: "No limite mínimo", icon: CircleAlert, label: "Alertas de estoque", to: "/admin/estoque", value: String(lowStockProducts.length) },
-    { detail: "Aguardando conclusão", icon: Boxes, label: "Trocas abertas", to: "/admin/trocas", value: String(openReturns) },
+    {
+      detail: "Pedidos não cancelados",
+      icon: TrendingUp,
+      label: "Faturamento",
+      to: "/admin/analises",
+      value: formatCurrency(revenueCents),
+    },
+    {
+      detail: "Criados hoje",
+      icon: ClipboardCheck,
+      label: "Pedidos hoje",
+      to: "/admin/pedidos",
+      value: String(todayOrders),
+    },
+    {
+      detail: "No limite mínimo",
+      icon: CircleAlert,
+      label: "Alertas de estoque",
+      to: "/admin/estoque",
+      value: String(lowStockProducts.length),
+    },
+    {
+      detail: "Aguardando conclusão",
+      icon: Boxes,
+      label: "Trocas abertas",
+      to: "/admin/trocas",
+      value: String(openReturns),
+    },
   ];
 
   return (
-    <AdminLayout>
-      <div className="flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <p className="text-sm font-medium text-primary">
-            Domingo, 23 de agosto
-          </p>
-          <h1 className="mt-1 text-3xl font-semibold tracking-tight">
-            {greeting}, Marina.
-          </h1>
-          <p className="mt-2 text-muted-foreground">
-            Acompanhe o que precisa de atenção na operação.
-          </p>
-        </div>
+    <AdminPageLayout
+      action={
         <Button render={<Link to="/admin/produtos" />}>
           <PackagePlus aria-hidden="true" />
           Novo produto
         </Button>
-      </div>
-
+      }
+      description="Acompanhe o que precisa de atenção na operação."
+      eyebrow={getFormattedDate(now)}
+      title={`${greeting}, ${firstName}.`}
+    >
       <section className="mt-8 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        {metrics.map(
-          ({ detail, icon: Icon, label, to, value }) => (
-            <Link
-              className="group rounded-xl outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
-              key={label}
-              to={to}
-            >
-              <Card className="h-full transition-transform group-hover:-translate-y-0.5 group-hover:ring-primary/60">
-                <CardHeader>
-                  <div className="flex items-center justify-between">
-                    <CardDescription>{label}</CardDescription>
-                    <Icon aria-hidden="true" className="size-4 text-primary" />
-                  </div>
-                  <CardTitle className="text-2xl">{value}</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-xs text-muted-foreground">{detail}</p>
-                </CardContent>
-              </Card>
-            </Link>
-          ),
-        )}
+        {metrics.map(({ detail, icon: Icon, label, to, value }) => (
+          <Link
+            className="group rounded-xl outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
+            key={label}
+            to={to}
+          >
+            <Card className="h-full transition-transform group-hover:-translate-y-0.5 group-hover:ring-primary/60">
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <CardDescription>{label}</CardDescription>
+                  <Icon aria-hidden="true" className="size-4 text-primary" />
+                </div>
+                <CardTitle className="text-2xl">{value}</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-xs text-muted-foreground">{detail}</p>
+              </CardContent>
+            </Card>
+          </Link>
+        ))}
       </section>
 
-      <section className="mt-8 grid gap-6 xl:grid-cols-[1.4fr_1fr]">
+      <section
+        className={`mt-8 grid items-start gap-6 ${lowStockProducts.length > 0 ? "xl:grid-cols-[1.4fr_1fr]" : "grid-cols-1"}`}
+      >
         <Card>
           <CardHeader className="flex flex-row items-start justify-between">
-            <div>
-              <CardTitle>Pedidos recentes</CardTitle>
-              <CardDescription>
-                Pedidos que precisam de acompanhamento.
-              </CardDescription>
-            </div>
             <Button
               render={<Link to="/admin/pedidos" />}
               size="sm"
@@ -167,8 +186,8 @@ export function AdminDashboardPage() {
                     <td className="py-4 font-medium">#{order.id}</td>
                     <td className="py-4">{order.customerName}</td>
                     <td className="py-4">
-                      <Badge variant={statusVariant(order.status)}>
-                        {order.status}
+                      <Badge variant={commerceStatus(order.status).variant}>
+                        {commerceStatus(order.status).label}
                       </Badge>
                     </td>
                     <td className="py-4 text-right font-medium">
@@ -181,39 +200,50 @@ export function AdminDashboardPage() {
           </CardContent>
         </Card>
 
-        <Card className="bg-warning text-warning-foreground ring-0">
-          <CardHeader>
-            <span className="mb-2 grid size-10 place-items-center rounded-lg bg-warning-foreground text-warning">
-              <CircleAlert className="size-5" />
-            </span>
-            <CardTitle className="text-warning-foreground">
-              Estoque pede atenção
-            </CardTitle>
-            <CardDescription className="text-warning-foreground/75">
-              Itens no limite mínimo configurado.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {lowStockProducts.map((product) => (
-              <div
-                className="flex items-center justify-between border-b border-warning-foreground/15 pb-3 text-sm last:border-0"
-                key={product.name}
-              >
-                <span>{product.name}</span>
-                <span className="font-medium">
-                  {product.quantity} / mín. {product.minimum} un.
-                </span>
+        {lowStockProducts.length > 0 ? (
+          <Card className="h-fit border-warning-border/70 bg-warning-bg text-warning-foreground shadow-sm ring-0">
+            <CardHeader className="flex flex-row items-start gap-3 space-y-0">
+              <span className="grid size-10 shrink-0 place-items-center rounded-xl border border-warning-border/50 bg-background/70 text-warning-foreground">
+                <CircleAlert aria-hidden="true" className="size-5" />
+              </span>
+              <div className="min-w-0">
+                <CardTitle className="text-warning-foreground">
+                  Estoque pede atenção
+                </CardTitle>
+                <CardDescription className="mt-1 text-warning-foreground/75">
+                  {lowStockProducts.length === 1
+                    ? "1 produto no limite mínimo de estoque."
+                    : `${lowStockProducts.length} produtos no limite mínimo de estoque.`}
+                </CardDescription>
               </div>
-            ))}
-            <Button
-              className="mt-2 w-full bg-warning-foreground text-warning hover:bg-warning-foreground/90"
-              render={<Link to="/admin/estoque" />}
-            >
-              Ver estoque
-            </Button>
-          </CardContent>
-        </Card>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div className="space-y-2">
+                {lowStockProducts.map((product) => (
+                  <div
+                    className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 rounded-lg border border-warning-border/40 bg-background/50 px-3 py-2 text-sm"
+                    key={product.name}
+                  >
+                    <span className="min-w-0 flex-1 font-medium">
+                      {product.name}
+                    </span>
+                    <span className="shrink-0 text-warning-foreground/80">
+                      {product.quantity} / mín. {product.minimum} un.
+                    </span>
+                  </div>
+                ))}
+              </div>
+              <Button
+                className="w-full"
+                render={<Link to="/admin/estoque" />}
+                variant="outline"
+              >
+                Ver estoque
+              </Button>
+            </CardContent>
+          </Card>
+        ) : null}
       </section>
-    </AdminLayout>
+    </AdminPageLayout>
   );
 }

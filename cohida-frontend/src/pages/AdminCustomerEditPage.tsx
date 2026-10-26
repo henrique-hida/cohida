@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router";
 
-import { AdminLayout } from "@/components/admin/AdminLayout";
+import { AdminPageLayout } from "@/components/admin/AdminPageLayout";
 import { Button } from "@/components/ui/button";
 import { AdminCustomerFormPage } from "@/pages/AdminCustomerCreatePage";
 import { customerApi, type CustomerResponse } from "@/lib/customerApi";
@@ -27,7 +27,10 @@ export function AdminCustomerEditPage() {
 
   if (error)
     return (
-      <AdminLayout>
+      <AdminPageLayout
+        description="Atualize os dados cadastrais e endereços do cliente."
+        title="Editar cliente"
+      >
         <p className="text-destructive">{error}</p>
         <Button
           className="mt-4"
@@ -36,9 +39,17 @@ export function AdminCustomerEditPage() {
         >
           Voltar para clientes
         </Button>
-      </AdminLayout>
+      </AdminPageLayout>
     );
-  if (!customer) return <AdminLayout>Carregando cliente...</AdminLayout>;
+  if (!customer)
+    return (
+      <AdminPageLayout
+        description="Atualize os dados cadastrais e endereços do cliente."
+        title="Editar cliente"
+      >
+        Carregando cliente...
+      </AdminPageLayout>
+    );
 
   const billingAddress = customer.addresses.find(
     (address) => address.type === "BILLING",

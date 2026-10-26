@@ -1,176 +1,120 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { ChevronLeft, Pencil, Power } from "lucide-react";
-import { Link, useParams } from "react-router";
+import { Link, useNavigate, useParams } from "react-router";
 
-import { AdminLayout } from "@/components/admin/AdminLayout";
-import { ProductDeactivationDialog } from "@/components/admin/ProductDeactivationDialog";
+import { AdminPageLayout } from "@/components/admin/AdminPageLayout";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { adminProductAuditEntries, adminProducts } from "@/mocks";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useCommerce } from "@/data/useCommerce";
+import { formatCurrency } from "@/lib/currency";
 
 export function AdminProductDetailPage() {
   const { productId } = useParams();
-  const [deactivationOpen, setDeactivationOpen] = useState(false);
-  const product =
-    adminProducts.find((item) => item.id === productId) ?? adminProducts[0];
+  const navigate = useNavigate();
+  const { state, loadAdminProducts, setProductStatus } = useCommerce();
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    void loadAdminProducts().catch((cause: Error) => setError(cause.message));
+  }, [loadAdminProducts]);
+
+  const product = state.products.find((item) => item.id === productId);
+
+  async function deactivate() {
+    if (!product) return;
+    try {
+      await setProductStatus(product.id, "inactive");
+      navigate("/admin/produtos");
+    } catch (cause) {
+      setError(
+        cause instanceof Error ? cause.message : "Não foi possível desativar.",
+      );
+    }
+  }
+
+  if (!product) {
+    return (
+      <AdminPageLayout
+        description={
+          error
+            ? "Não foi possível abrir os dados deste produto."
+            : "Consulte os dados comerciais, as categorias e as variações do produto."
+        }
+        title="Produto"
+      >
+        <p className={error ? "text-destructive" : "text-muted-foreground"}>
+          {error || "Carregando produto..."}
+        </p>
+      </AdminPageLayout>
+    );
+  }
 
   return (
-    <AdminLayout>
-      <Button render={<Link to="/admin/produtos" />} size="sm" variant="ghost">
-        <ChevronLeft aria-hidden="true" />
-        Produtos
-      </Button>
-      <div className="mt-4 flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <div className="flex flex-wrap items-center gap-3">
-            <h1 className="text-3xl font-semibold tracking-tight">
-              {product.name}
-            </h1>
-            <Badge
-              variant={product.status === "ATIVO" ? "success" : "destructive"}
-            >
-              {product.status}
-            </Badge>
-          </div>
-          <p className="mt-2 text-muted-foreground">
-            {product.code} · {product.brand} · {product.barcode}
-          </p>
-        </div>
-        <div className="flex gap-2">
-          <Button onClick={() => setDeactivationOpen(true)} variant="outline">
+    <AdminPageLayout
+      action={
+        <div className="flex flex-wrap gap-2">
+          <Button
+            render={<Link to="/admin/produtos" />}
+            size="sm"
+            variant="outline"
+          >
+            <ChevronLeft />
+            Produtos
+          </Button>
+          <Button onClick={() => void deactivate()} size="sm" variant="outline">
             <Power />
             Desativar
           </Button>
-          <Button render={<Link to={`/admin/produtos/${product.id}/editar`} />}>
+          <Button
+            render={<Link to={`/admin/produtos/${product.id}/editar`} />}
+            size="sm"
+          >
             <Pencil />
-            Editar produto
+            Editar
           </Button>
         </div>
+      }
+      description={`${product.sku} · ${product.brand}`}
+      title={product.name}
+    >
+      <div className="mt-8 grid gap-6 md:grid-cols-2">
+        {error ? (
+          <p className="text-destructive md:col-span-2">{error}</p>
+        ) : null}
+        <Card>
+          <CardHeader>
+            <CardTitle>Informações</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <p>{product.description}</p>
+            <p>Categorias: {product.categoryIds.join(", ")}</p>
+            <Badge
+              variant={product.status === "active" ? "success" : "destructive"}
+            >
+              {product.status === "active" ? "Ativo" : "Inativo"}
+            </Badge>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader>
+            <CardTitle>Variações</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {product.variants.map((variant) => (
+              <div className="flex justify-between" key={variant.id}>
+                <span>
+                  {variant.label} · {variant.sku}
+                </span>
+                <span>
+                  {variant.stockQuantity} un. ·{" "}
+                  {formatCurrency(variant.priceCents ?? product.priceCents)}
+                </span>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
       </div>
-
-      <div className="mt-8 grid gap-6 xl:grid-cols-[1.45fr_1fr]">
-        <div className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Informações do produto</CardTitle>
-              <CardDescription>{product.description}</CardDescription>
-            </CardHeader>
-            <CardContent className="grid gap-5 sm:grid-cols-2">
-              <div>
-                <p className="text-xs text-muted-foreground">Categorias</p>
-                <p className="mt-1 font-medium">
-                  {product.categories.join(", ")}
-                </p>
-              </div>
-              <div>
-                <p className="text-xs text-muted-foreground">
-                  Grupo de precificação
-                </p>
-                <p className="mt-1 font-medium">{product.pricingGroup}</p>
-              </div>
-              <div>
-                <p className="text-xs text-muted-foreground">Preço de venda</p>
-                <p className="mt-1 text-lg font-semibold">
-                  {product.salePrice}
-                </p>
-              </div>
-              <div>
-                <p className="text-xs text-muted-foreground">Custo unitário</p>
-                <p className="mt-1 font-medium">{product.cost}</p>
-              </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader>
-              <CardTitle>Características</CardTitle>
-            </CardHeader>
-            <CardContent className="grid grid-cols-2 gap-5 sm:grid-cols-4">
-              {Object.entries(product.attributes).map(([label, value]) => (
-                <div key={label}>
-                  <p className="text-xs capitalize text-muted-foreground">
-                    {label}
-                  </p>
-                  <p className="mt-1 font-medium">{value}</p>
-                </div>
-              ))}
-              <div className="col-span-2 sm:col-span-4">
-                <p className="text-xs text-muted-foreground">Dimensões</p>
-                <p className="mt-1 font-medium">
-                  {product.dimensions.height} × {product.dimensions.width} ×{" "}
-                  {product.dimensions.depth} cm · {product.dimensions.weight} kg
-                </p>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-        <div className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Estoque</CardTitle>
-              <CardDescription>Visão atual de disponibilidade.</CardDescription>
-            </CardHeader>
-            <CardContent className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-              <div className="rounded-lg bg-success p-4 text-success-foreground">
-                <p className="text-xs">Disponível</p>
-                <p className="mt-1 text-2xl font-semibold">
-                  {product.stock.available} un.
-                </p>
-              </div>
-              <div className="rounded-lg bg-info p-4 text-info-foreground">
-                <p className="text-xs">Reservado</p>
-                <p className="mt-1 text-2xl font-semibold">
-                  {product.stock.reserved} un.
-                </p>
-              </div>
-              <div
-                className={`rounded-lg p-4 ${product.stock.available < product.stock.minimum ? "bg-warning text-warning-foreground" : "bg-muted text-foreground"}`}
-              >
-                <p className="text-xs">Estoque mínimo</p>
-                <p className="mt-1 text-2xl font-semibold">
-                  {product.stock.minimum} un.
-                </p>
-              </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader>
-              <CardTitle>Histórico de auditoria</CardTitle>
-              <CardDescription>
-                Dados demonstrativos até a integração com a API.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {adminProductAuditEntries.map((entry) => (
-                <div
-                  className="border-l-2 border-primary pl-3"
-                  key={entry.action}
-                >
-                  <p className="text-sm font-medium">{entry.action}</p>
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    {entry.detail}
-                  </p>
-                  <p className="mt-2 text-xs text-muted-foreground">
-                    {entry.actor} · {entry.date}
-                  </p>
-                </div>
-              ))}
-            </CardContent>
-          </Card>
-        </div>
-      </div>
-      {deactivationOpen ? (
-        <ProductDeactivationDialog
-          onClose={() => setDeactivationOpen(false)}
-          productName={product.name}
-        />
-      ) : null}
-    </AdminLayout>
+    </AdminPageLayout>
   );
 }

@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 interface RowActionsMenuProps {
   editTo?: string;
   label?: string;
-  onDelete: () => void;
+  onDelete?: () => void;
   onEdit?: () => void;
   viewTo?: string;
 }
@@ -136,7 +136,8 @@ export function RowActionsMenu({
               Editar
             </button>
           ) : null}
-          <button
+          {onDelete ? (
+            <button
             className="flex w-full items-center gap-2 rounded-md px-2.5 py-2 text-left text-sm text-destructive hover:bg-error"
             onClick={(event) => {
               event.stopPropagation();
@@ -151,7 +152,8 @@ export function RowActionsMenu({
           >
             <Trash2 className="size-4" />
             Excluir
-          </button>
+            </button>
+          ) : null}
         </div>
       ) : null}
       {confirming ? (
@@ -159,10 +161,10 @@ export function RowActionsMenu({
           confirmLabel="Excluir"
           description="Esta ação removerá o registro desta sessão de demonstração."
           onCancel={() => setConfirming(false)}
-          onConfirm={() => {
-            onDelete();
-            setConfirming(false);
-          }}
+            onConfirm={() => {
+              onDelete?.();
+              setConfirming(false);
+            }}
           title={`Excluir ${label}?`}
         />
       ) : null}

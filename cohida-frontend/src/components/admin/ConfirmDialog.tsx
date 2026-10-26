@@ -33,7 +33,7 @@ export function ConfirmDialog({
     >
       <div className="w-full max-w-md rounded-xl bg-card p-6 shadow-xl">
         <div className="flex items-start justify-between">
-          <span className="grid size-10 place-items-center rounded-lg bg-warning text-warning-foreground">
+          <span className="grid size-10 place-items-center rounded-lg bg-warning-bg text-warning-foreground">
             <AlertTriangle />
           </span>
           <Button

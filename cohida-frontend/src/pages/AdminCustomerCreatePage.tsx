@@ -2,7 +2,7 @@ import { useState } from "react";
 import { ChevronLeft } from "lucide-react";
 import { Link } from "react-router";
 
-import { AdminLayout } from "@/components/admin/AdminLayout";
+import { AdminPageLayout } from "@/components/admin/AdminPageLayout";
 import { CustomerRegistrationForm } from "@/components/customer/CustomerRegistrationForm";
 import { Button } from "@/components/ui/button";
 import { Toast } from "@/components/ui/toast";
@@ -29,21 +29,11 @@ export function AdminCustomerFormPage({
   const isEditing = Boolean(customer);
 
   return (
-    <AdminLayout>
-      <Button render={<Link to="/admin/clientes" />} size="sm" variant="ghost">
-        <ChevronLeft aria-hidden="true" />
-        Clientes
-      </Button>
-      <div className="mt-4">
-        <h1 className="text-3xl font-semibold tracking-tight">
-          {isEditing ? "Editar cliente" : "Novo cliente"}
-        </h1>
-        <p className="mt-2 text-muted-foreground">
-          {isEditing
-            ? `Atualize os dados de ${customer?.name}.`
-            : "Cadastre os dados do cliente."}
-        </p>
-      </div>
+    <AdminPageLayout
+      action={<Button render={<Link to="/admin/clientes" />} size="sm" variant="outline"><ChevronLeft aria-hidden="true" />Clientes</Button>}
+      description={isEditing ? `Atualize os dados de ${customer?.name}.` : "Cadastre os dados do cliente."}
+      title={isEditing ? "Editar cliente" : "Novo cliente"}
+    >
       <div className="max-w-3xl">
         <CustomerRegistrationForm
           cancelAction={
@@ -80,7 +70,7 @@ export function AdminCustomerFormPage({
       {successMessage ? (
         <Toast message={successMessage} onClose={() => setSuccessMessage("")} />
       ) : null}
-    </AdminLayout>
+    </AdminPageLayout>
   );
 }
 

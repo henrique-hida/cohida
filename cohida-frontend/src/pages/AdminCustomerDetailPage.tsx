@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router";
 
-import { AdminLayout } from "@/components/admin/AdminLayout";
+import { AdminPageLayout } from "@/components/admin/AdminPageLayout";
 import { Button } from "@/components/ui/button";
 import { customerApi, type CustomerResponse } from "@/lib/customerApi";
 
@@ -10,22 +10,30 @@ export function AdminCustomerDetailPage() {
   const [customer, setCustomer] = useState<CustomerResponse>();
   const [error, setError] = useState("");
   useEffect(() => {
-    if (!customerId) {
-      setError("Cliente inválido.");
-      return;
-    }
-    setCustomer(undefined);
-    setError("");
-    customerApi
-      .findById(customerId)
-      .then(setCustomer)
-      .catch((reason) => {
-        setError(
-          reason instanceof Error
-            ? reason.message
-            : "Não foi possível carregar o cliente.",
-        );
-      });
+    let active = true;
+    const timer = window.setTimeout(() => {
+      if (!customerId) {
+        setError("Cliente inválido.");
+        return;
+      }
+      setCustomer(undefined);
+      setError("");
+      customerApi
+        .findById(customerId)
+        .then((nextCustomer) => active && setCustomer(nextCustomer))
+        .catch((reason) => {
+          if (!active) return;
+          setError(
+            reason instanceof Error
+              ? reason.message
+              : "Não foi possível carregar o cliente.",
+          );
+        });
+    }, 0);
+    return () => {
+      active = false;
+      window.clearTimeout(timer);
+    };
   }, [customerId]);
   async function deactivate() {
     if (!customer || !customer.active) return;
@@ -43,7 +51,10 @@ export function AdminCustomerDetailPage() {
   }
   if (error && !customer)
     return (
-      <AdminLayout>
+      <AdminPageLayout
+        description="Não foi possível abrir os dados deste cliente."
+        title="Cliente"
+      >
         <p className="text-destructive">{error}</p>
         <Button
           className="mt-4"
@@ -52,22 +63,28 @@ export function AdminCustomerDetailPage() {
         >
           Voltar para clientes
         </Button>
-      </AdminLayout>
+      </AdminPageLayout>
     );
-  if (!customer) return <AdminLayout>Carregando cliente...</AdminLayout>;
+  if (!customer)
+    return (
+      <AdminPageLayout
+        description="Consulte os dados de contato e endereços do cliente."
+        title="Cliente"
+      >
+        Carregando cliente...
+      </AdminPageLayout>
+    );
   return (
-    <AdminLayout>
-      <Button render={<Link to="/admin/clientes" />} variant="ghost">
-        Clientes
-      </Button>
-      <div className="mt-4 flex justify-between">
-        <div>
-          <h1 className="text-3xl font-semibold">{customer.name}</h1>
-          <p className="mt-2 text-muted-foreground">
-            {customer.code} · {customer.active ? "ATIVO" : "INATIVO"}
-          </p>
-        </div>
-        <div className="flex gap-2">
+    <AdminPageLayout
+      action={
+        <div className="flex flex-wrap gap-2">
+          <Button
+            render={<Link to="/admin/clientes" />}
+            size="sm"
+            variant="outline"
+          >
+            Clientes
+          </Button>
           <Button
             render={<Link to={`/admin/clientes/${customer.id}/editar`} />}
           >
@@ -79,8 +96,11 @@ export function AdminCustomerDetailPage() {
             </Button>
           ) : null}
         </div>
-      </div>
-      <section className="mt-8 rounded-xl border p-5">
+      }
+      description={`${customer.code} · ${customer.active ? "ATIVO" : "INATIVO"}`}
+      title={customer.name}
+    >
+      <section className="rounded-xl border p-5">
         <p>E-mail: {customer.email}</p>
         <p>Telefone: {customer.phone}</p>
         <p>CPF: {customer.cpf}</p>
@@ -95,6 +115,6 @@ export function AdminCustomerDetailPage() {
         ))}
       </section>
       {error ? <p className="mt-4 text-sm text-destructive">{error}</p> : null}
-    </AdminLayout>
+    </AdminPageLayout>
   );
 }

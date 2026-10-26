@@ -1,375 +1,488 @@
-import { useState } from "react";
-import { Check, Save } from "lucide-react";
-import { Link } from "react-router";
+import { useEffect, useRef, useState, type FormEvent } from "react";
+import { Check, Plus, Save, Trash2, Upload } from "lucide-react";
+import { Link, useNavigate } from "react-router";
 
+import { AdminCategoryMultiSelect } from "@/components/admin/AdminCategoryMultiSelect";
 import {
   adminInputClassName as inputClassName,
   adminSuccessNoticeClassName,
   adminTextareaClassName,
 } from "@/components/admin/AdminFormField";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { adminProductFormOptions, type AdminProduct } from "@/mocks";
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { useCategories } from "@/data/useCategories";
+import { useCommerce } from "@/data/useCommerce";
+import { commerceApi, resolveProductImageUrl } from "@/lib/commerceApi";
+import type { Product, ProductStatus } from "@/types";
 
-interface ProductFormProps {
-  product?: AdminProduct;
+interface VariantDraft {
+  id?: string;
+  color: string;
+  price: string;
+  size: string;
+  sku: string;
+  stock: string;
 }
 
-export function ProductForm({ product }: ProductFormProps) {
+function blankVariant(): VariantDraft {
+  return { color: "", price: "", size: "", sku: "", stock: "0" };
+}
+
+function variantLabel(variant: Pick<VariantDraft, "color" | "size">) {
+  return (
+    [variant.color.trim(), variant.size.trim()].filter(Boolean).join(" · ") ||
+    "Padrão"
+  );
+}
+
+export function ProductForm({ product }: { product?: Product }) {
   const categories = useCategories();
+  const { saveProduct } = useCommerce();
+  const navigate = useNavigate();
+  const [selectedCategories, setSelectedCategories] = useState<string[]>(
+    product?.categoryIds ?? [],
+  );
+  const [status, setStatus] = useState<ProductStatus>(
+    product?.status === "inactive" ? "inactive" : "active",
+  );
+  const [variants, setVariants] = useState<VariantDraft[]>(() =>
+    product?.variants.length
+      ? product.variants.map((variant) => ({
+          id: variant.id,
+          color: variant.color ?? "",
+          price: String((variant.priceCents ?? product.priceCents) / 100),
+          size: variant.size ?? "",
+          sku: variant.sku,
+          stock: String(variant.stockQuantity),
+        }))
+      : [blankVariant()],
+  );
+  const [imageUrl, setImageUrl] = useState(product?.images[0]?.src ?? "");
+  const [selectedImage, setSelectedImage] = useState<File | null>(null);
+  const [localImagePreview, setLocalImagePreview] = useState("");
+  const [imagePreviewError, setImagePreviewError] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState("");
+  const imageInputRef = useRef<HTMLInputElement>(null);
+  const objectUrlRef = useRef<string | null>(null);
 
-  function submitForm(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    const formData = new FormData(event.currentTarget);
-    const categories = formData.getAll("categories");
-    const barcode = String(formData.get("barcode") ?? "").replace(/\D/g, "");
-    const dimensions = ["height", "width", "depth", "weight"];
-    const hasInvalidDimension = dimensions.some(
-      (dimension) => Number(formData.get(dimension)) < 0,
+  useEffect(
+    () => () => {
+      if (objectUrlRef.current) URL.revokeObjectURL(objectUrlRef.current);
+    },
+    [],
+  );
+
+  function updateVariant(
+    index: number,
+    field: keyof Omit<VariantDraft, "id">,
+    value: string,
+  ) {
+    setVariants((current) =>
+      current.map((variant, variantIndex) =>
+        variantIndex === index ? { ...variant, [field]: value } : variant,
+      ),
     );
-    if (!categories.length) {
-      setError("Selecione ao menos uma categoria esportiva.");
-      setSaved(false);
-      return;
-    }
-    if (barcode.length < 8 || barcode.length > 14) {
-      setError("Informe um código de barras válido, com 8 a 14 dígitos.");
-      setSaved(false);
-      return;
-    }
-    const minimumStock = Number(formData.get("minimumStock"));
-    if (
-      hasInvalidDimension ||
-      Number(formData.get("cost")) <= 0 ||
-      !Number.isInteger(minimumStock) ||
-      minimumStock < 0
-    ) {
-      setError(
-        "Dimensões e estoque mínimo não podem ser negativos; o custo deve ser maior que zero.",
-      );
-      setSaved(false);
-      return;
-    }
+  }
+
+  async function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
     setError("");
-    setSaved(true);
+    const form = new FormData(event.currentTarget);
+    if (!selectedCategories.length) {
+      setError("Selecione ao menos uma categoria.");
+      return;
+    }
+
+    const skus = variants.map((variant) =>
+      variant.sku.trim().toLocaleUpperCase("pt-BR"),
+    );
+    if (skus.some((sku) => !sku) || new Set(skus).size !== skus.length) {
+      setError("Cada variação precisa ter um SKU único.");
+      return;
+    }
+
+    const optionCombinations = variants.map((variant) =>
+      JSON.stringify([
+        variant.color.trim().toLocaleLowerCase("pt-BR"),
+        variant.size.trim().toLocaleLowerCase("pt-BR"),
+      ]),
+    );
+    if (new Set(optionCombinations).size !== optionCombinations.length) {
+      setError("As combinações de cor e tamanho devem ser únicas.");
+      return;
+    }
+
+    const parsedVariants = variants.map((variant) => ({
+      id: variant.id ?? "new",
+      sku: variant.sku.trim(),
+      label: variantLabel(variant),
+      color: variant.color.trim() || undefined,
+      size: variant.size.trim() || undefined,
+      priceCents: Math.round(Number(variant.price) * 100),
+      stockQuantity: Number(variant.stock),
+    }));
+    if (
+      parsedVariants.some(
+        (variant) =>
+          !Number.isInteger(variant.priceCents) ||
+          variant.priceCents <= 0 ||
+          !Number.isInteger(variant.stockQuantity) ||
+          variant.stockQuantity < 0,
+      )
+    ) {
+      setError("Informe preço e estoque válidos para todas as variações.");
+      return;
+    }
+
+    setSaving(true);
+    try {
+      const savedImageUrl = selectedImage
+        ? (await commerceApi.uploadProductImage(selectedImage)).imageUrl
+        : imageUrl.trim();
+      const next: Product = {
+        id: product?.id ?? "new",
+        sku: product?.sku ?? parsedVariants[0].sku,
+        slug: product?.slug ?? "new",
+        name: String(form.get("name")),
+        brand: String(form.get("brand")),
+        description: String(form.get("description")),
+        priceCents: Math.min(
+          ...parsedVariants.map((variant) => variant.priceCents),
+        ),
+        status,
+        categoryIds: selectedCategories,
+        images: savedImageUrl
+          ? [
+              {
+                alt: String(form.get("name")),
+                id: `${product?.id ?? "new"}-main`,
+                src: savedImageUrl,
+              },
+            ]
+          : [],
+        rating: product?.rating ?? 0,
+        reviewCount: product?.reviewCount ?? 0,
+        attributes: {
+          ...(product?.attributes ?? {}),
+          minimumStock: String(form.get("minimumStock") ?? 0),
+        },
+        createdAt: product?.createdAt ?? new Date().toISOString(),
+        variants: parsedVariants,
+      };
+      await saveProduct(next);
+      setSaved(true);
+      setTimeout(() => navigate("/admin/produtos"), 500);
+    } catch (cause) {
+      setError(
+        cause instanceof Error
+          ? cause.message
+          : "Não foi possível salvar o produto.",
+      );
+    } finally {
+      setSaving(false);
+    }
   }
 
   return (
-    <form className="space-y-6" onSubmit={submitForm}>
+    <form className="space-y-6" onSubmit={(event) => void submit(event)}>
       {saved ? (
         <div className={adminSuccessNoticeClassName}>
-          <Check aria-hidden="true" className="size-5" />
-          {product
-            ? "Alterações salvas apenas na interface."
-            : "Produto salvo apenas na interface."}{" "}
-          A persistência será conectada à API posteriormente.
+          <Check className="size-5" />
+          Produto salvo com sucesso.
         </div>
       ) : null}
       {error ? (
-        <p
-          className="rounded-lg bg-error p-3 text-sm text-error-foreground"
-          role="alert"
-        >
+        <p className="rounded-lg bg-error p-3 text-sm text-error-foreground">
           {error}
         </p>
       ) : null}
-
       <Card>
-        <CardHeader>
-          <CardTitle>Informações básicas</CardTitle>
-          <CardDescription>
-            Campos necessários para identificar o equipamento no catálogo.
-          </CardDescription>
-        </CardHeader>
         <CardContent className="grid gap-5 md:grid-cols-2">
-          <label className="space-y-2 md:col-span-2">
-            <span className="text-sm font-medium">Nome do produto</span>
+          <label>
+            Nome
             <input
               className={inputClassName}
               defaultValue={product?.name}
               name="name"
-              placeholder="Ex.: Bola de Futebol Pro X"
               required
             />
           </label>
-          <label className="space-y-2">
-            <span className="text-sm font-medium">Marca</span>
-            <select
-              className={inputClassName}
-              defaultValue={product?.brand ?? ""}
-              name="brand"
-              required
-            >
-              <option disabled value="">
-                Selecione uma marca
-              </option>
-              {adminProductFormOptions.brands.map((brand) => (
-                <option key={brand}>{brand}</option>
-              ))}
-            </select>
-          </label>
-          <label className="space-y-2">
-            <span className="text-sm font-medium">Código de barras</span>
+          <label>
+            Marca
             <input
               className={inputClassName}
-              defaultValue={product?.barcode}
-              inputMode="numeric"
-              name="barcode"
-              placeholder="7890000000000"
+              defaultValue={product?.brand}
+              name="brand"
               required
             />
-            <span className="block text-xs text-muted-foreground">
-              Entre 8 e 14 dígitos.
-            </span>
           </label>
-          <label className="space-y-2 md:col-span-2">
-            <span className="text-sm font-medium">Descrição</span>
+          <label className="md:col-span-2">
+            Descrição
             <textarea
               className={adminTextareaClassName}
               defaultValue={product?.description}
               name="description"
-              placeholder="Descreva os benefícios, uso e diferenciais do produto."
               required
             />
           </label>
-          <fieldset className="space-y-3 md:col-span-2">
-            <legend className="text-sm font-medium">
-              Categorias esportivas
-            </legend>
-            <div className="flex flex-wrap gap-2">
-              {categories.map((category) => (
-                <label
-                  className="flex cursor-pointer items-center gap-2 rounded-lg border border-input px-3 py-2 text-sm has-checked:border-primary has-checked:bg-primary/15"
-                  key={category.id}
+          <div className="grid gap-2 md:col-span-2">
+            <span className="text-sm font-medium">Foto do produto</span>
+            <input
+              accept="image/jpeg,image/png,image/webp"
+              aria-label="Selecionar foto do produto"
+              className="sr-only"
+              disabled={saving}
+              onChange={(event) => {
+                const file = event.currentTarget.files?.[0];
+                if (!file) return;
+                if (!file.type.match(/^image\/(jpeg|png|webp)$/)) {
+                  setError("Envie uma foto PNG, JPEG ou WebP.");
+                  event.currentTarget.value = "";
+                  return;
+                }
+                if (file.size > 8 * 1024 * 1024) {
+                  setError("A foto deve ter no máximo 8 MB.");
+                  event.currentTarget.value = "";
+                  return;
+                }
+                if (objectUrlRef.current) {
+                  URL.revokeObjectURL(objectUrlRef.current);
+                }
+                const previewUrl = URL.createObjectURL(file);
+                objectUrlRef.current = previewUrl;
+                setSelectedImage(file);
+                setLocalImagePreview(previewUrl);
+                setImagePreviewError(false);
+                setError("");
+                event.currentTarget.value = "";
+              }}
+              ref={imageInputRef}
+              type="file"
+            />
+            <div className="flex flex-wrap items-center gap-3">
+              <Button
+                disabled={saving}
+                onClick={() => imageInputRef.current?.click()}
+                type="button"
+                variant="outline"
+              >
+                <Upload aria-hidden="true" />
+                {selectedImage ? "Trocar foto" : "Enviar foto"}
+              </Button>
+              {selectedImage ? (
+                <span className="max-w-64 truncate text-sm text-muted-foreground">
+                  {selectedImage.name}
+                </span>
+              ) : null}
+              {selectedImage || imageUrl ? (
+                <Button
+                  aria-label="Remover foto do produto"
+                  disabled={saving}
+                  onClick={() => {
+                    if (objectUrlRef.current) {
+                      URL.revokeObjectURL(objectUrlRef.current);
+                      objectUrlRef.current = null;
+                    }
+                    setSelectedImage(null);
+                    setLocalImagePreview("");
+                    setImageUrl("");
+                    setImagePreviewError(false);
+                    if (imageInputRef.current) imageInputRef.current.value = "";
+                  }}
+                  size="icon-sm"
+                  type="button"
+                  variant="ghost"
                 >
-                  <input
-                    className="accent-primary"
-                    defaultChecked={product?.categories.includes(category.id)}
-                    name="categories"
-                    type="checkbox"
-                    value={category.id}
-                  />
-                  {category.name}
-                </label>
-              ))}
+                  <Trash2 aria-hidden="true" />
+                </Button>
+              ) : null}
             </div>
-            <p className="text-xs text-muted-foreground">
-              Selecione uma ou mais categorias.
-            </p>
-          </fieldset>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Características e dimensões</CardTitle>
-          <CardDescription>
-            Registre os atributos específicos do equipamento.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
-          <label className="space-y-2">
-            <span className="text-sm font-medium">Modelo</span>
-            <input
-              className={inputClassName}
-              defaultValue={product?.attributes.model}
-              name="model"
-              placeholder="Pro X"
-            />
-          </label>
-          <label className="space-y-2">
-            <span className="text-sm font-medium">Cor</span>
-            <input
-              className={inputClassName}
-              defaultValue={product?.attributes.color}
-              name="color"
-              placeholder="Branco e preto"
-            />
-          </label>
-          <label className="space-y-2">
-            <span className="text-sm font-medium">Material</span>
-            <input
-              className={inputClassName}
-              defaultValue={product?.attributes.material}
-              name="material"
-              placeholder="PU texturizado"
-            />
-          </label>
-          <label className="space-y-2">
-            <span className="text-sm font-medium">Tamanho</span>
-            <input
-              className={inputClassName}
-              defaultValue={product?.attributes.size}
-              name="size"
-              placeholder="5"
-            />
-          </label>
-          <label className="space-y-2">
-            <span className="text-sm font-medium">Altura (cm)</span>
-            <input
-              className={inputClassName}
-              defaultValue={product?.dimensions.height}
-              inputMode="decimal"
-              min="0"
-              name="height"
-              placeholder="22"
-              required
-              type="number"
-            />
-          </label>
-          <label className="space-y-2">
-            <span className="text-sm font-medium">Largura (cm)</span>
-            <input
-              className={inputClassName}
-              defaultValue={product?.dimensions.width}
-              inputMode="decimal"
-              min="0"
-              name="width"
-              placeholder="22"
-              required
-              type="number"
-            />
-          </label>
-          <label className="space-y-2">
-            <span className="text-sm font-medium">Profundidade (cm)</span>
-            <input
-              className={inputClassName}
-              defaultValue={product?.dimensions.depth}
-              inputMode="decimal"
-              min="0"
-              name="depth"
-              placeholder="22"
-              required
-              type="number"
-            />
-          </label>
-          <label className="space-y-2">
-            <span className="text-sm font-medium">Peso (kg)</span>
-            <input
-              className={inputClassName}
-              defaultValue={product?.dimensions.weight.replace(",", ".")}
-              inputMode="decimal"
-              min="0"
-              name="weight"
-              placeholder="0,43"
-              required
-              type="number"
-              step="0.01"
-            />
-          </label>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Precificação e disponibilidade</CardTitle>
-          <CardDescription>
-            O preço de venda será calculado a partir do custo e da margem do
-            grupo.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
-          <label className="space-y-2">
-            <span className="text-sm font-medium">Grupo de precificação</span>
-            <select
-              className={inputClassName}
-              defaultValue={product?.pricingGroup ?? ""}
-              name="pricingGroup"
-              required
-            >
-              <option disabled value="">
-                Selecione o grupo
-              </option>
-              {adminProductFormOptions.pricingGroups.map((group) => (
-                <option key={group.label} value={group.label}>
-                  {group.label} — margem {group.margin}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="space-y-2">
-            <span className="text-sm font-medium">Custo unitário (R$)</span>
-            <input
-              className={inputClassName}
-              defaultValue={product?.cost
-                .replace("R$ ", "")
-                .replace(".", "")
-                .replace(",", ".")}
-              inputMode="decimal"
-              min="0"
-              name="cost"
-              placeholder="0,00"
-              required
-              type="number"
-              step="0.01"
-            />
-          </label>
-          <div className="space-y-2">
-            <span className="text-sm font-medium">Preço de venda</span>
-            <div className="flex h-10 items-center rounded-lg border border-input bg-muted px-3 text-sm text-muted-foreground">
-              {product?.salePrice ?? "Calculado ao salvar"}
-            </div>
+            {localImagePreview || imageUrl ? (
+              imagePreviewError ? (
+                <p className="text-sm text-muted-foreground">
+                  Não foi possível carregar a prévia desta imagem.
+                </p>
+              ) : (
+                <img
+                  alt="Prévia da foto do produto"
+                  className="size-32 rounded-lg border border-border bg-muted object-contain p-2"
+                  onError={() => setImagePreviewError(true)}
+                  src={
+                    localImagePreview ||
+                    resolveProductImageUrl(imageUrl) ||
+                    undefined
+                  }
+                />
+              )
+            ) : null}
           </div>
-          <label className="space-y-2">
-            <span className="text-sm font-medium">Estoque mínimo</span>
+          <div className="grid gap-2 md:col-span-2">
+            <span className="text-sm font-medium">Categorias</span>
+            <AdminCategoryMultiSelect
+              ariaLabel="Selecionar categorias do produto"
+              categories={categories}
+              onValueChange={setSelectedCategories}
+              placeholder="Selecione as categorias"
+              showSelectedBadges
+              values={selectedCategories}
+            />
+          </div>
+          <label>
+            Estoque mínimo
             <input
               className={inputClassName}
-              defaultValue={product?.stock.minimum}
+              defaultValue={product?.attributes.minimumStock ?? 0}
               min="0"
               name="minimumStock"
-              placeholder="Ex.: 5"
-              required
               type="number"
             />
-            <span className="block text-xs text-muted-foreground">
-              Gera alerta quando o disponível ficar abaixo deste valor.
-            </span>
           </label>
-          <label className="flex items-center gap-3 rounded-lg border border-input px-3 py-3 text-sm md:col-span-2 lg:col-span-3">
-            <input
-              className="size-4 accent-primary"
-              defaultChecked={product?.status !== "INATIVO"}
-              name="active"
-              type="checkbox"
-            />
-            <span>
-              <span className="block font-medium">Produto ativo</span>
-              <span className="block text-xs text-muted-foreground">
-                Disponibiliza o produto para venda quando houver estoque.
-              </span>
-            </span>
-            <Badge className="ml-auto" variant="success">
-              ATIVO
-            </Badge>
+          <label className="grid gap-2 text-sm font-medium">
+            Situação
+            <Select
+              onValueChange={(value) =>
+                setStatus(value === "inactive" ? "inactive" : "active")
+              }
+              value={status}
+            >
+              <SelectTrigger className="h-10 w-full bg-background data-[size=default]:h-10">
+                <SelectValue>
+                  {status === "active" ? "Ativo" : "Inativo"}
+                </SelectValue>
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="active">Ativo</SelectItem>
+                <SelectItem value="inactive">Inativo</SelectItem>
+              </SelectContent>
+            </Select>
           </label>
         </CardContent>
       </Card>
-
-      <div className="flex flex-wrap justify-end gap-3">
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between gap-3">
+          <CardTitle>Variações</CardTitle>
+          <Button
+            onClick={() =>
+              setVariants((current) => [...current, blankVariant()])
+            }
+            size="sm"
+            type="button"
+            variant="outline"
+          >
+            <Plus aria-hidden="true" />
+            Adicionar variação
+          </Button>
+        </CardHeader>
+        <CardContent className="grid gap-4">
+          {variants.map((variant, index) => (
+            <div
+              className="grid gap-4 rounded-xl border border-border p-4 md:grid-cols-2 xl:grid-cols-3"
+              key={variant.id ?? `nova-${index}`}
+            >
+              <div className="flex items-center justify-between gap-3 md:col-span-2 xl:col-span-3">
+                <p className="font-medium">{variantLabel(variant)}</p>
+                <Button
+                  aria-label={`Remover variação ${variantLabel(variant)}`}
+                  disabled={variants.length === 1}
+                  onClick={() =>
+                    setVariants((current) =>
+                      current.filter(
+                        (_, variantIndex) => variantIndex !== index,
+                      ),
+                    )
+                  }
+                  size="icon-sm"
+                  type="button"
+                  variant="ghost"
+                >
+                  <Trash2 aria-hidden="true" />
+                </Button>
+              </div>
+              <label>
+                SKU
+                <input
+                  className={inputClassName}
+                  onChange={(event) =>
+                    updateVariant(index, "sku", event.target.value)
+                  }
+                  required
+                  value={variant.sku}
+                />
+              </label>
+              <label>
+                Cor
+                <input
+                  className={inputClassName}
+                  onChange={(event) =>
+                    updateVariant(index, "color", event.target.value)
+                  }
+                  placeholder="Opcional"
+                  value={variant.color}
+                />
+              </label>
+              <label>
+                Tamanho
+                <input
+                  className={inputClassName}
+                  onChange={(event) =>
+                    updateVariant(index, "size", event.target.value)
+                  }
+                  placeholder="Opcional"
+                  value={variant.size}
+                />
+              </label>
+              <label>
+                Preço (R$)
+                <input
+                  className={inputClassName}
+                  min="0.01"
+                  onChange={(event) =>
+                    updateVariant(index, "price", event.target.value)
+                  }
+                  required
+                  step="0.01"
+                  type="number"
+                  value={variant.price}
+                />
+              </label>
+              <label>
+                Estoque
+                <input
+                  className={inputClassName}
+                  min="0"
+                  onChange={(event) =>
+                    updateVariant(index, "stock", event.target.value)
+                  }
+                  required
+                  step="1"
+                  type="number"
+                  value={variant.stock}
+                />
+              </label>
+            </div>
+          ))}
+        </CardContent>
+      </Card>
+      <div className="flex justify-end gap-3">
         <Button
-          render={
-            <Link
-              to={product ? `/admin/produtos/${product.id}` : "/admin/produtos"}
-            />
-          }
+          render={<Link to="/admin/produtos" />}
           type="button"
           variant="outline"
         >
           Cancelar
         </Button>
-        <Button type="submit">
-          <Save aria-hidden="true" />
-          {product ? "Salvar alterações" : "Salvar produto"}
+        <Button disabled={saving} type="submit">
+          <Save />
+          {saving ? "Salvando…" : "Salvar produto"}
         </Button>
       </div>
     </form>

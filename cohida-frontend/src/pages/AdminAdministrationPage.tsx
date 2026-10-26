@@ -1,570 +1,198 @@
-import { useEffect, useState, type FormEvent } from "react";
-import { Check, CircleHelp, Plus, Save, X } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { Pencil, Plus, Trash2 } from "lucide-react";
+import { Link } from "react-router";
 
-import { AdminLayout } from "@/components/admin/AdminLayout";
+import { AdminDataState } from "@/components/admin/AdminDataState";
+import { AdminListFiltersCard } from "@/components/admin/AdminListFiltersCard";
+import { AdminListToolbar } from "@/components/admin/AdminListToolbar";
+import { AdminPageLayout } from "@/components/admin/AdminPageLayout";
+import { AdminPagination } from "@/components/admin/AdminPagination";
 import { ConfirmDialog } from "@/components/admin/ConfirmDialog";
-import { RowActionsMenu } from "@/components/admin/RowActionsMenu";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
-import { Table } from "@/components/ui/table";
+import { Card, CardContent } from "@/components/ui/card";
 import { commerceApi, type ApiCategory } from "@/lib/commerceApi";
-import {
-  adminConfigurationFormOptions,
-  adminConfigurationRecords,
-  adminConfigurationSections,
-  type AdminConfigurationRecord,
-  type AdminConfigurationSectionId,
-} from "@/mocks";
 
-type Draft = Record<string, boolean | string>;
-type AdministrationSectionId = AdminConfigurationSectionId | "categorias";
+const pageSize = 10;
 
-const administrationSections = [
-  ...adminConfigurationSections,
-  {
-    id: "categorias" as const,
-    label: "Categorias",
-    description: "Categorias disponíveis no catálogo e nas análises.",
-  },
-];
-
-const inputClassName =
-  "h-10 w-full rounded-lg border border-input bg-background px-3 text-sm outline-none focus-visible:ring-3 focus-visible:ring-ring/50";
-
-function recordFrom(
-  section: AdminConfigurationSectionId,
-  draft: Draft,
-  id: string,
-): AdminConfigurationRecord {
-  const name = String(draft.name ?? "");
-  const title = section === "usuarios" ? `${name} · ${draft.role}` : name;
-  const details =
-    section === "precos"
-      ? `Margem ${draft.margin}% · aprovação abaixo da margem ${draft.requiresApproval ? "obrigatória" : "opcional"}`
-      : section === "catalogos"
-        ? `${draft.type} disponível para uso nos cadastros.`
-        : section === "parametros"
-          ? `${draft.value} ${draft.unit} · parâmetro operacional do sistema.`
-          : `${draft.email} · acesso ${draft.active ? "ativo" : "inativo"}`;
-  return { details, id, title, values: draft };
-}
-
-function Field({
-  children,
-  label,
-}: {
-  children: React.ReactNode;
-  label: string;
-}) {
-  return (
-    <label className="space-y-2">
-      <span className="text-sm font-medium">{label}</span>
-      {children}
-    </label>
-  );
-}
-
-function CategoryAdministration() {
+export function AdminAdministrationPage() {
   const [categories, setCategories] = useState<ApiCategory[]>([]);
-  const [name, setName] = useState("");
-  const [description, setDescription] = useState("");
-  const [feedback, setFeedback] = useState("");
+  const [search, setSearch] = useState("");
+  const [page, setPage] = useState(1);
+  const [deleting, setDeleting] = useState<ApiCategory | null>(null);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  async function loadCategories() {
-    setCategories(await commerceApi.adminCategories());
+  async function load() {
+    setLoading(true);
+    try {
+      setCategories(await commerceApi.adminCategories());
+      setError("");
+    } catch (reason) {
+      setError(
+        reason instanceof Error
+          ? reason.message
+          : "Não foi possível carregar as categorias.",
+      );
+    } finally {
+      setLoading(false);
+    }
   }
 
   useEffect(() => {
-    void loadCategories().catch(() => setError("Não foi possível carregar as categorias."));
+    const timer = window.setTimeout(() => void load(), 0);
+    return () => window.clearTimeout(timer);
   }, []);
 
-  async function createCategory(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    setError("");
-    setFeedback("");
-    try {
-      await commerceApi.createCategory({ description, name });
-      setName("");
-      setDescription("");
-      await loadCategories();
-      setFeedback("Categoria cadastrada e disponível nos filtros.");
-    } catch (reason) {
-      setError(reason instanceof Error ? reason.message : "Não foi possível cadastrar a categoria.");
-    }
-  }
-
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Categorias</CardTitle>
-        <CardDescription>
-          Categorias persistidas usadas no catálogo e nos filtros de análises.
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        <form className="grid gap-4 md:grid-cols-[1fr_2fr_auto]" onSubmit={createCategory}>
-          <input className={inputClassName} onChange={(event) => setName(event.target.value)} placeholder="Nome da categoria" required value={name} />
-          <input className={inputClassName} onChange={(event) => setDescription(event.target.value)} placeholder="Descrição para o catálogo" value={description} />
-          <Button type="submit"><Plus />Adicionar categoria</Button>
-        </form>
-        {feedback ? <p className="mt-4 text-sm text-success">{feedback}</p> : null}
-        {error ? <p className="mt-4 text-sm text-destructive">{error}</p> : null}
-        <div className="mt-5 flex flex-wrap gap-2">
-          {categories.map((category) => (
-            <span className="rounded-full bg-muted px-3 py-1 text-sm" key={category.id}>{category.name}</span>
-          ))}
-        </div>
-      </CardContent>
-    </Card>
-  );
-}
-
-export function AdminAdministrationPage() {
-  const [section, setSection] = useState<AdministrationSectionId>("precos");
-  const [records, setRecords] = useState(adminConfigurationRecords);
-  const [draft, setDraft] = useState<Draft>({});
-  const [editing, setEditing] = useState<number | null>(null);
-  const [formOpen, setFormOpen] = useState(false);
-  const [notice, setNotice] = useState("");
-  const [error, setError] = useState("");
-  const [deleting, setDeleting] = useState<number | null>(null);
-  const selected =
-    administrationSections.find((item) => item.id === section) ??
-    administrationSections[0];
-  const canManage = section !== "auditoria";
-
-  function updateDraft(name: string, value: boolean | string) {
-    setDraft((current) => ({ ...current, [name]: value }));
-  }
-  function closeForm() {
-    setDraft({});
-    setEditing(null);
-    setError("");
-    setFormOpen(false);
-  }
-  function openNewForm() {
-    setDraft({ active: true, requiresApproval: true });
-    setEditing(null);
-    setError("");
-    setFormOpen(true);
-  }
-  function openEditForm(record: AdminConfigurationRecord, index: number) {
-    setDraft(record.values);
-    setEditing(index);
-    setError("");
-    setFormOpen(true);
-  }
-  function saveRecord(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    if (section === "categorias") return;
-    const fields =
-      section === "precos"
-        ? ["name", "margin"]
-        : section === "catalogos"
-          ? ["name", "type"]
-          : section === "parametros"
-            ? ["name", "value", "unit"]
-            : ["name", "email", "role"];
-    if (fields.some((field) => !String(draft[field] ?? "").trim())) {
-      setError("Preencha todos os campos obrigatórios antes de salvar.");
-      return;
-    }
-    if (
-      (section === "precos" && Number(draft.margin) < 0) ||
-      (section === "parametros" && Number(draft.value) <= 0)
-    ) {
-      setError("Informe um valor numérico válido maior que zero.");
-      return;
-    }
-    const id =
-      editing === null
-        ? `${section}-${crypto.randomUUID()}`
-        : records[section][editing].id;
-    const record = recordFrom(section, draft, id);
-    setRecords((all) => ({
-      ...all,
-      [section]:
-        editing === null
-          ? [...all[section], record]
-          : all[section].map((item, index) =>
-              index === editing ? record : item,
-            ),
-    }));
-    setNotice(
-      editing === null
-        ? "Cadastro adicionado apenas nesta sessão de demonstração."
-        : "Cadastro atualizado apenas nesta sessão de demonstração.",
+  const filteredCategories = useMemo(() => {
+    const term = search.trim().toLocaleLowerCase("pt-BR");
+    return categories.filter((category) =>
+      `${category.name} ${category.description} ${category.slug}`
+        .toLocaleLowerCase("pt-BR")
+        .includes(term),
     );
-    closeForm();
+  }, [categories, search]);
+  const totalPages = Math.max(
+    1,
+    Math.ceil(filteredCategories.length / pageSize),
+  );
+  const safePage = Math.min(page, totalPages);
+  const visibleCategories = filteredCategories.slice(
+    (safePage - 1) * pageSize,
+    safePage * pageSize,
+  );
+
+  async function removeCategory() {
+    if (!deleting) return;
+    setError("");
+    try {
+      await commerceApi.deleteCategory(deleting.id);
+      setCategories((current) =>
+        current.filter((category) => category.id !== deleting.id),
+      );
+    } catch (reason) {
+      setError(
+        reason instanceof Error
+          ? reason.message
+          : "Não foi possível remover a categoria.",
+      );
+    } finally {
+      setDeleting(null);
+    }
   }
 
   return (
-    <AdminLayout>
-      <div>
-        <h1 className="text-3xl font-semibold tracking-tight">Administração</h1>
-        <p className="mt-2 text-muted-foreground">
-          Cadastros estruturados para precificação, bases, parâmetros e acessos.
-        </p>
-      </div>
-      <div className="mt-8 grid gap-6 lg:grid-cols-[16rem_1fr]">
-        <nav
-          aria-label="Áreas de administração"
-          className="flex flex-col gap-1"
-        >
-          {administrationSections.map((item) => (
-            <button
-              className={`rounded-lg px-3 py-2.5 text-left text-sm ${section === item.id ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted"}`}
-              key={item.id}
-              onClick={() => {
-                setSection(item.id as AdministrationSectionId);
-                closeForm();
-                setNotice("");
-              }}
-              type="button"
-            >
-              <span className="block font-medium">{item.label}</span>
-              <span className="mt-1 block text-xs opacity-75">
-                {item.description}
-              </span>
-            </button>
-          ))}
-        </nav>
-        <div className="space-y-6">
-          {section === "categorias" ? <CategoryAdministration /> : <>
-          <Card>
-            <CardHeader className="flex-row items-start justify-between gap-4">
-              <div>
-                <div className="flex items-center gap-1">
-                  <CardTitle>{selected.label}</CardTitle>
-                  <Tooltip>
-                    <TooltipTrigger
-                      render={
+    <AdminPageLayout
+      action={
+        <Button render={<Link to="/admin/administracao/nova" />}>
+          <Plus aria-hidden="true" />
+          Nova categoria
+        </Button>
+      }
+      description="Gerencie as categorias que organizam o catálogo e filtram as análises."
+      title="Administração"
+    >
+      <div className="mt-8 grid gap-4">
+        <AdminListFiltersCard>
+          <AdminListToolbar
+            onSearchChange={(value) => {
+              setSearch(value);
+              setPage(1);
+            }}
+            searchLabel="Pesquisar categorias"
+            searchPlaceholder="Nome, descrição ou slug"
+            searchValue={search}
+          />
+        </AdminListFiltersCard>
+        <Card>
+          <CardContent>
+            {error ? (
+              <p
+                className="mb-4 rounded-lg bg-error p-3 text-sm text-error-foreground"
+                role="alert"
+              >
+                {error}
+              </p>
+            ) : null}
+            {loading ? (
+              <AdminDataState
+                description="Consultando as categorias cadastradas."
+                title="Carregando categorias"
+                variant="loading"
+              />
+            ) : visibleCategories.length ? (
+              <>
+                <div className="divide-y divide-border">
+                  {visibleCategories.map((category) => (
+                    <div
+                      className="flex flex-wrap items-center justify-between gap-4 py-4"
+                      key={category.id}
+                    >
+                      <div>
+                        <p className="font-medium">{category.name}</p>
+                        <p className="mt-1 text-sm text-muted-foreground">
+                          {category.description || "Sem descrição"}
+                        </p>
+                        <p className="mt-1 text-xs text-muted-foreground">
+                          /{category.slug}
+                        </p>
+                      </div>
+                      <div className="flex gap-2">
                         <Button
-                          aria-label="Ajuda desta área"
-                          size="icon-xs"
-                          variant="ghost"
-                        />
-                      }
-                    >
-                      <CircleHelp />
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      {canManage
-                        ? "Selecione um cadastro para editar ou crie um novo registro com os campos específicos desta área."
-                        : "A auditoria é somente leitura. A API registrará cada escrita com data, autor e dados alterados."}
-                    </TooltipContent>
-                  </Tooltip>
-                </div>
-                <CardDescription>{selected.description}</CardDescription>
-              </div>
-              {canManage ? (
-                <Button onClick={openNewForm}>
-                  <Plus />
-                  Novo cadastro
-                </Button>
-              ) : null}
-            </CardHeader>
-            <CardContent>
-              {notice ? (
-                <p className="mb-4 flex items-center gap-2 rounded-lg bg-success p-3 text-sm text-success-foreground">
-                  <Check className="size-4" />
-                  {notice}
-                </p>
-              ) : null}
-              <Table className="min-w-[36rem] text-left">
-                <thead className="border-b border-border text-xs tracking-wide text-muted-foreground uppercase">
-                  <tr>
-                    <th className="pb-3 font-medium">Cadastro</th>
-                    <th className="pb-3 font-medium">Detalhes</th>
-                    {canManage ? (
-                      <th className="pb-3 text-right font-medium">Ações</th>
-                    ) : null}
-                  </tr>
-                </thead>
-                <tbody>
-                  {records[section].map((record, index) => (
-                    <tr
-                      className="border-b border-border last:border-0"
-                      key={record.id}
-                    >
-                      <td className="py-4 font-medium">{record.title}</td>
-                      <td className="py-4 text-muted-foreground">
-                        {record.details}
-                      </td>
-                      {canManage ? (
-                        <td className="py-4 text-right">
-                          <RowActionsMenu
-                            label={record.title}
-                            onDelete={() => setDeleting(index)}
-                            onEdit={() => openEditForm(record, index)}
-                          />
-                        </td>
-                      ) : null}
-                    </tr>
+                          aria-label={`Editar ${category.name}`}
+                          render={
+                            <Link
+                              to={`/admin/administracao/${category.id}/editar`}
+                            />
+                          }
+                          size="icon-sm"
+                          variant="outline"
+                        >
+                          <Pencil />
+                        </Button>
+                        <Button
+                          aria-label={`Excluir ${category.name}`}
+                          onClick={() => setDeleting(category)}
+                          size="icon-sm"
+                          variant="destructive"
+                        >
+                          <Trash2 />
+                        </Button>
+                      </div>
+                    </div>
                   ))}
-                </tbody>
-              </Table>
-            </CardContent>
-          </Card>
-          {formOpen ? (
-            <Card>
-              <CardHeader>
-                <CardTitle>
-                  {editing === null ? "Novo cadastro" : "Editar cadastro"}
-                </CardTitle>
-                <CardDescription>
-                  {section === "precos"
-                    ? "Defina a margem e a regra de aprovação."
-                    : section === "catalogos"
-                      ? "Escolha o tipo de dado base disponível no sistema."
-                      : section === "parametros"
-                        ? "Defina valores que controlam regras operacionais."
-                        : "Configure o acesso administrativo do usuário."}
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <form
-                  className="grid gap-5 md:grid-cols-2"
-                  onSubmit={saveRecord}
-                >
-                  {section === "precos" ? (
-                    <>
-                      <Field label="Nome do grupo">
-                        <input
-                          className={inputClassName}
-                          onChange={(event) =>
-                            updateDraft("name", event.target.value)
-                          }
-                          required
-                          value={String(draft.name ?? "")}
-                        />
-                      </Field>
-                      <Field label="Margem mínima (%)">
-                        <input
-                          className={inputClassName}
-                          min="0"
-                          onChange={(event) =>
-                            updateDraft("margin", event.target.value)
-                          }
-                          required
-                          type="number"
-                          value={String(draft.margin ?? "")}
-                        />
-                      </Field>
-                      <label className="flex items-center gap-3 rounded-lg border border-input p-3 text-sm md:col-span-2">
-                        <input
-                          checked={Boolean(draft.requiresApproval)}
-                          className="size-4 accent-primary"
-                          onChange={(event) =>
-                            updateDraft(
-                              "requiresApproval",
-                              event.target.checked,
-                            )
-                          }
-                          type="checkbox"
-                        />
-                        <span>
-                          <span className="block font-medium">
-                            Exigir aprovação abaixo da margem
-                          </span>
-                          <span className="text-muted-foreground">
-                            A regra será validada no domínio quando a API for
-                            conectada.
-                          </span>
-                        </span>
-                      </label>
-                    </>
-                  ) : null}
-                  {section === "catalogos" ? (
-                    <>
-                      <Field label="Tipo de cadastro">
-                        <select
-                          className={inputClassName}
-                          onChange={(event) =>
-                            updateDraft("type", event.target.value)
-                          }
-                          required
-                          value={String(draft.type ?? "")}
-                        >
-                          <option value="">Selecione</option>
-                          {adminConfigurationFormOptions.catalogTypes.map(
-                            (option) => (
-                              <option key={option}>{option}</option>
-                            ),
-                          )}
-                        </select>
-                      </Field>
-                      <Field label="Nome">
-                        <input
-                          className={inputClassName}
-                          onChange={(event) =>
-                            updateDraft("name", event.target.value)
-                          }
-                          placeholder="Ex.: Adidas"
-                          required
-                          value={String(draft.name ?? "")}
-                        />
-                      </Field>
-                    </>
-                  ) : null}
-                  {section === "parametros" ? (
-                    <>
-                      <Field label="Parâmetro">
-                        <input
-                          className={inputClassName}
-                          onChange={(event) =>
-                            updateDraft("name", event.target.value)
-                          }
-                          placeholder="Ex.: Reserva do carrinho"
-                          required
-                          value={String(draft.name ?? "")}
-                        />
-                      </Field>
-                      <Field label="Valor">
-                        <input
-                          className={inputClassName}
-                          min="1"
-                          onChange={(event) =>
-                            updateDraft("value", event.target.value)
-                          }
-                          required
-                          type="number"
-                          value={String(draft.value ?? "")}
-                        />
-                      </Field>
-                      <Field label="Unidade">
-                        <select
-                          className={inputClassName}
-                          onChange={(event) =>
-                            updateDraft("unit", event.target.value)
-                          }
-                          required
-                          value={String(draft.unit ?? "")}
-                        >
-                          <option value="">Selecione</option>
-                          {adminConfigurationFormOptions.parameterUnits.map(
-                            (option) => (
-                              <option key={option}>{option}</option>
-                            ),
-                          )}
-                        </select>
-                      </Field>
-                    </>
-                  ) : null}
-                  {section === "usuarios" ? (
-                    <>
-                      <Field label="Nome completo">
-                        <input
-                          className={inputClassName}
-                          onChange={(event) =>
-                            updateDraft("name", event.target.value)
-                          }
-                          required
-                          value={String(draft.name ?? "")}
-                        />
-                      </Field>
-                      <Field label="E-mail">
-                        <input
-                          className={inputClassName}
-                          onChange={(event) =>
-                            updateDraft("email", event.target.value)
-                          }
-                          required
-                          type="email"
-                          value={String(draft.email ?? "")}
-                        />
-                      </Field>
-                      <Field label="Função">
-                        <select
-                          className={inputClassName}
-                          onChange={(event) =>
-                            updateDraft("role", event.target.value)
-                          }
-                          required
-                          value={String(draft.role ?? "")}
-                        >
-                          <option value="">Selecione</option>
-                          {adminConfigurationFormOptions.roles.map((option) => (
-                            <option key={option}>{option}</option>
-                          ))}
-                        </select>
-                      </Field>
-                      <label className="flex items-center gap-3 rounded-lg border border-input p-3 text-sm">
-                        <input
-                          checked={Boolean(draft.active)}
-                          className="size-4 accent-primary"
-                          onChange={(event) =>
-                            updateDraft("active", event.target.checked)
-                          }
-                          type="checkbox"
-                        />
-                        <span>
-                          <span className="block font-medium">
-                            Acesso ativo
-                          </span>
-                          <span className="text-muted-foreground">
-                            Permite acesso ao painel administrativo.
-                          </span>
-                        </span>
-                      </label>
-                    </>
-                  ) : null}
-                  {error ? (
-                    <p
-                      className="text-sm text-destructive md:col-span-2"
-                      role="alert"
-                    >
-                      {error}
-                    </p>
-                  ) : null}
-                  <div className="flex justify-end gap-3 md:col-span-2">
-                    <Button onClick={closeForm} type="button" variant="outline">
-                      <X />
-                      Cancelar
-                    </Button>
-                    <Button type="submit">
-                      <Save />
-                      {editing === null
-                        ? "Adicionar cadastro"
-                        : "Salvar alterações"}
-                    </Button>
-                  </div>
-                </form>
-              </CardContent>
-            </Card>
-          ) : null}
-          </>}
-        </div>
+                </div>
+                <AdminPagination
+                  currentPage={safePage}
+                  onPageChange={setPage}
+                  pageSize={pageSize}
+                  totalItems={filteredCategories.length}
+                />
+              </>
+            ) : (
+              <AdminDataState
+                description={
+                  search
+                    ? "A busca não encontrou categorias."
+                    : "Cadastre uma categoria para começar a organizar o catálogo."
+                }
+                title={
+                  search ? "Nenhum resultado encontrado" : "Nenhuma categoria"
+                }
+                variant="empty"
+              />
+            )}
+          </CardContent>
+        </Card>
       </div>
-      {deleting !== null ? (
+      {deleting ? (
         <ConfirmDialog
-          confirmLabel="Excluir"
-          description="O cadastro será removido apenas desta sessão de demonstração."
+          confirmLabel="Excluir categoria"
+          description={`A categoria “${deleting.name}” deixará de aparecer no catálogo. Produtos já cadastrados não serão alterados.`}
           onCancel={() => setDeleting(null)}
-          onConfirm={() => {
-            if (section === "categorias") return;
-            setRecords((all) => ({
-              ...all,
-              [section]: all[section].filter((_, index) => index !== deleting),
-            }));
-            setNotice("Cadastro removido apenas desta sessão de demonstração.");
-            setDeleting(null);
-          }}
-          title="Excluir cadastro?"
+          onConfirm={() => void removeCategory()}
+          title="Excluir categoria?"
         />
       ) : null}
-    </AdminLayout>
+    </AdminPageLayout>
   );
 }
