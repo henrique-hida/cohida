@@ -24,17 +24,17 @@ public class AnalyticsController {
     }
 
     @GetMapping("/overview")
-    public AnalyticsOverviewResponse overview(@RequestParam(required = false) LocalDate from, @RequestParam(required = false) LocalDate to, @RequestParam(required = false) String category) {
-        return analytics.overview(from, to, category);
+    public AnalyticsOverviewResponse overview(@RequestParam(required = false) LocalDate from, @RequestParam(required = false) LocalDate to, @RequestParam(name = "category", required = false) List<String> categories) {
+        return analytics.overview(from, to, categories);
     }
 
     @GetMapping("/sales")
-    public List<SalesPointResponse> sales(@RequestParam(required = false) LocalDate from, @RequestParam(required = false) LocalDate to, @RequestParam(defaultValue = "day") String groupBy, @RequestParam(required = false) String category) {
-        return analytics.sales(from, to, groupBy, category);
+    public List<SalesPointResponse> sales(@RequestParam(required = false) LocalDate from, @RequestParam(required = false) LocalDate to, @RequestParam(defaultValue = "day") String groupBy, @RequestParam(name = "category", required = false) List<String> categories) {
+        return analytics.sales(from, to, groupBy, categories);
     }
 
     @GetMapping("/products/top")
-    public List<TopProductResponse> top(@RequestParam(required = false) LocalDate from, @RequestParam(required = false) LocalDate to, @RequestParam(required = false) String category) {
-        return analytics.top(from, to, category);
+    public List<TopProductResponse> top(@RequestParam(required = false) LocalDate from, @RequestParam(required = false) LocalDate to, @RequestParam(name = "category", required = false) List<String> categories) {
+        return analytics.top(from, to, categories);
     }
 }
