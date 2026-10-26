@@ -23,7 +23,10 @@ public interface CustomerRepository extends JpaRepository<Customer, Long> {
             value = """
                     select customer from Customer customer
                     join customer.account account
-                    where customer.deletedAt is null and (
+                    where (:status = 'ALL'
+                        or (:status = 'ACTIVE' and customer.deletedAt is null)
+                        or (:status = 'INACTIVE' and customer.deletedAt is not null))
+                    and (
                         lower(customer.name) like lower(concat('%', :search, '%'))
                         or lower(customer.code) like lower(concat('%', :search, '%'))
                         or customer.cpf like concat('%', :search, '%')
@@ -34,7 +37,10 @@ public interface CustomerRepository extends JpaRepository<Customer, Long> {
             countQuery = """
                     select count(customer) from Customer customer
                     join customer.account account
-                    where customer.deletedAt is null and (
+                    where (:status = 'ALL'
+                        or (:status = 'ACTIVE' and customer.deletedAt is null)
+                        or (:status = 'INACTIVE' and customer.deletedAt is not null))
+                    and (
                         lower(customer.name) like lower(concat('%', :search, '%'))
                         or lower(customer.code) like lower(concat('%', :search, '%'))
                         or customer.cpf like concat('%', :search, '%')
@@ -43,7 +49,7 @@ public interface CustomerRepository extends JpaRepository<Customer, Long> {
                     )
                     """
     )
-    Page<Customer> findActivePage(@Param("search") String search, Pageable pageable);
+    Page<Customer> findPage(@Param("search") String search, @Param("status") String status, Pageable pageable);
 
     boolean existsByCode(String code);
 

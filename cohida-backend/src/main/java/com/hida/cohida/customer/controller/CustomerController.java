@@ -30,8 +30,10 @@ public class CustomerController {
     @GetMapping
     public CustomerPageResponse findAll(@RequestParam(defaultValue = "") String search,
                                         @RequestParam(defaultValue = "0") int page,
-                                        @RequestParam(defaultValue = "20") int size) {
-        var customers = customerService.findActivePage(search, page, size);
+                                        @RequestParam(defaultValue = "10") int size,
+                                        @RequestParam(defaultValue = "ACTIVE") String status,
+                                        @RequestParam(defaultValue = "ASC") String sort) {
+        var customers = customerService.findPage(search, status, sort, page, size);
         List<CustomerResponse> content = customers.stream()
                 .map(CustomerResponse::from).toList();
         return new CustomerPageResponse(content, page, size, customers.getTotalElements());

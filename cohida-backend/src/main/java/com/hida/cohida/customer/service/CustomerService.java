@@ -16,6 +16,7 @@ import com.hida.cohida.customer.exception.DuplicateCustomerDataException;
 import com.hida.cohida.customer.repository.CustomerRepository;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -46,11 +47,18 @@ public class CustomerService {
     }
 
     @Transactional(readOnly = true)
-    public Page<Customer> findActivePage(String search, int page, int size) {
+    public Page<Customer> findPage(String search, String status, String sort, int page, int size) {
         if (page < 0 || size < 1 || size > 100) {
             throw new IllegalArgumentException("A página deve ser não negativa e o tamanho deve estar entre 1 e 100.");
         }
-        return customers.findActivePage(search == null ? "" : search.trim(), PageRequest.of(page, size));
+        String normalizedStatus = status == null ? "ACTIVE" : status.trim().toUpperCase(Locale.ROOT);
+        if (!List.of("ACTIVE", "INACTIVE", "ALL").contains(normalizedStatus)) {
+            throw new IllegalArgumentException("O status deve ser ACTIVE, INACTIVE ou ALL.");
+        }
+        Sort.Direction direction = Sort.Direction.fromOptionalString(sort)
+                .orElseThrow(() -> new IllegalArgumentException("A ordenação deve ser ASC ou DESC."));
+        return customers.findPage(search == null ? "" : search.trim(), normalizedStatus,
+                PageRequest.of(page, size, Sort.by(direction, "name").and(Sort.by(Sort.Direction.ASC, "id"))));
     }
 
     @Transactional
