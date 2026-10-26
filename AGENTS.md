@@ -1,0 +1,581 @@
+# DRS — E-commerce de Artigos Esportivos
+
+> Conversão do arquivo `DRS_LES_2_2026.docx`. Os identificadores e o conteúdo normativo foram preservados; somente o domínio foi adaptado de livros para artigos esportivos. Identificadores repetidos no documento-fonte foram mantidos. Este arquivo é a referência de requisitos para esta entrega.
+
+## Documento de Requisitos
+
+**E-commerce de artigos esportivos**
+
+LES 2º SEMESTRE DE 2026
+
+## Histórico de versões
+
+- 20/08/2017
+  - Versão 0.1
+Versão Inicial – cadastro de artigos esportivos
+
+Rodrigo Rocha Silva
+
+- 22/08/2017
+  - Versão 0.2
+Versão com cadastro de clientes
+
+Rodrigo Rocha Silva
+
+- 11/10/2017
+  - Versão 0.3
+Versão com requisitos iniciais de vendas
+
+Rodrigo Rocha Silva
+
+- 30/10/2017
+  - Versão 0.4
+Versão com requisitos de controle de status de vendas
+
+Turma Segunda e Rodrigo Rocha Silva
+
+- 12/08/2024
+  - Versão 0.5
+Adicionado requisito de análise
+
+Rodrigo
+
+- 15/08/2025
+  - Versão 0.6
+Melhoria requisitos de IA
+
+Rodrigo
+
+- 10/08/2026
+  - Versão 0.7
+Detalhamento requisitos de análise
+
+Rodrigo
+
+## Requisitos funcionais
+
+### Cadastro de Produtos Esportivos
+
+#### RF0011
+**Cadastrar artigo esportivo**
+
+O sistema deve manter um cadastro único para artigos esportivos.
+
+#### RF0012
+**Inativar cadastro de artigo esportivo**
+
+O sistema deve possibilitar que artigos esportivos sejam inativados.
+
+#### RF0013
+**Inativar artigo esportivo de forma automática**
+
+O sistema deve inativar artigos esportivos sem estoque e que não possuem venda com valor inferior a parâmetro predefinido no sistema.
+
+#### RF0014
+**Alterar cadastro de artigo esportivo**
+
+O sistema deve possibilitar a alteração de dados cadastrais para os artigos esportivos.
+
+#### RF0015
+**Consulta de artigos esportivos**
+
+O sistema deve possibilitar que um artigo esportivo seja consultado com base em um filtro definido pelo usuário. Todos os campos utilizados para identificação do artigo esportivo podem ser utilizados como filtro, tanto de forma combinada como de forma isolada.
+
+#### RF0016
+**Ativar cadastro de artigos esportivos**
+
+Deve ser possível ativar o cadastro de um artigo esportivo.
+
+### Cadastro de Clientes
+
+#### RF0021
+**Cadastrar cliente**
+
+O sistema deve possibilitar o cadastro de clientes.
+
+#### RF0022
+**Alterar cliente**
+
+O sistema deve possibilitar a alteração de dados cadastrais de clientes.
+
+#### RF0023
+**Inativar cadastro de cliente**
+
+O sistema deve possibilitar que clientes sejam inativados.
+
+#### RF0024
+**Consulta de clientes**
+
+O sistema deve possibilitar que um cliente seja consultado com base em um filtro definido pelo usuário. Todos os campos utilizados para identificação do cliente podem ser utilizados como filtro, tanto de forma combinada como de forma isolada.
+
+#### RF0025
+**Consulta de transações**
+
+O sistema deve disponibilizar no cadastro de clientes a consulta de todas as transações já realizadas pelo mesmo.
+
+#### RF0026
+**Cadastro de endereços de entrega**
+
+Deve ser possível associar diversos endereços de entrega ao cadastro de um cliente. Cada cadastro de endereço deve ser identificado com um nome composto de uma frase curta.
+
+#### RF0027
+**Cadastro de cartões de crédito**
+
+Deve ser possível associar diversos cartões de crédito ao cadastro de um cliente. Deve haver um cartão de crédito configurado como preferencial.
+
+#### RF0028
+**Alteração apenas de senha**
+
+O sistema deve possibilitar que a senha do usuário seja alterada sem que seja necessária a alteração de todos os dados cadastrais.
+
+### Gerenciar Vendas Eletrônicas
+
+#### RF0031
+**Gerenciar carrinho de compra**
+
+O sistema deve permitir que produtos sejam colocados em um repositório temporário para futura compra (carrinho de compra). Deve ser possível adicionar, alterar e excluir itens de compra no carrinho. Também deve ser possível visualizar os itens no carrinho.
+
+#### RF0032
+**Definir quantidade de itens no para o carrinho**
+
+Deve ser possível editar a quantidade de cada item ao adicionar um produto no carrinho. Também deve ser possível editar a quantidade de itens de um carrinho na visualização dos itens já adicionados.
+
+#### RF0033
+**Realizar compra**
+
+Deve ser possível a partir de um carrinho de compra realizar uma compra.
+
+#### RF0034
+**Calcular frete**
+
+O sistema deve calcular o frete da compra com base nos itens selecionados e o endereço apontado pelo cliente.
+
+#### RF0035
+**Selecionar endereço de entrega**
+
+O cliente pode selecionar qualquer endereço de entrega previamente cadastrado em seu perfil ou um novo endereço de entrega pode ser cadastrado. Caso um novo endereço de entrega seja inserido, deve-se dar a possibilidade que o mesmo seja incorporado ao perfil do cliente.
+
+#### RF0036
+**Selecionar forma de pagamento**
+
+O cliente pode selecionar qualquer cartão de crédito previamente cadastrado em seu perfil ou um novo cartão de crédito pode ser cadastrado. Caso um novo cartão de crédito seja cadastrado, deve-se dar a possibilidade que o mesmo seja incorporado ao perfil do cliente.
+
+O cliente também poderá utilizar um cupom de troca ou um cupom promocional válido.
+
+#### RF0037
+**Uso de cupom para pagamento**
+
+Deve-se possibilitar que o pagamento seja feito utilizando tanto cupons de troca, promocionais e cartão de crédito.
+
+#### RF0038
+**Finalizar Compra**
+
+Uma compra deve ser finalizada após a seleção da forma de pagamento e endereço de entrega. Após a finalização o status da compra deve ser EM PROCESSAMENTO.
+
+#### RF0039
+**Despachar produtos para entrega**
+
+O sistema deve possibilitar que um usuário com perfil de administrador selecione vendas já aprovadas para serem entregues. Assim o status deve ficar EM TRANSPORTE.
+
+#### RF0040
+**Produtos entregues**
+
+O sistema deve possibilitar que um usuário com perfil de administrador confirme entrega de uma compra. Assim o status deve ficar ENTREGUE.
+
+#### RF0041
+**Solicitar troca**
+
+O sistema deve possibilitar que um item de uma compra seja trocado por um cliente através da visualização de compras realizadas do mesmo.
+
+#### RF0042
+**Autorizar trocas**
+
+O sistema deverá possibilitar que o administrador autorize compras com status EM TROCA. Assim o compra passa ficar com status TROCA AUTORIZADA.
+
+#### RF0043
+**Visualização de trocas**
+
+O sistema deverá possibilitar que o administrador visualize todos pedidos de troca ou compra com status EM TROCA.
+
+#### RF0044
+**Confirmar recebimento de itens para troca**
+
+O sistema deverá possibilitar que o administrador confirme o recebimento de pedidos de troca ou compra com status EM TROCA.
+
+Nesta confirmação o administrador deverá informar se os itens trocados deverão retornar ao estoque. Em caso positivo deve-se dar entrada no estoque dos respectivos itens.
+
+#### RF0045
+**Gerar cupom de troca após recebimento de itens**
+
+O sistema deverá gerar um cupom de troca quando o administrador informar que os itens a serem trocados chegaram. Este cupom deverá ser disponibilizado para o cliente para ser utilizado em futuras compras.
+
+#### RF0046
+**Negar solicitação de troca**
+
+O sistema deve possibilitar que o administrador negue uma solicitação de troca com status EM TROCA. O status deverá passar para TROCA NEGADA, e o cliente deverá ser notificado.
+
+### Controle de Estoque
+
+#### RF0051
+**Realizar entrada em estoque**
+
+O sistema deve permitir que seja possível realizar entrada de itens de artigos esportivos em estoque.
+
+No registro de cada item, deve ser indicado o artigo esportivo já previamente cadastrado e a quantidade de itens do artigo esportivo.
+
+#### RF0052
+**Calcular valor de venda**
+
+O sistema deve calcular o valor de venda com base no valor de custo e o grupo de precificação. Sendo que o valor de venda será o valor de compra mais o percentual definido no grupo de precificação relacionado ao artigo esportivo.
+
+#### RF0053
+**Dar baixa em estoque**
+
+Para cada venda realizada deve-se dar baixa no estoque do total de itens vendidos.
+
+#### RF0054
+**Realizar reentrada em estoque**
+
+O sistema deve realizar a reentrada de um item em estoque a partir da troca de um produto.
+
+### Análise
+
+#### RF0055
+**Analisar histórico de vendas**
+
+O sistema deve possibilitar que o administrador consulte o histórico de vendas por categoria de produto, a partir de uma busca por período, informando uma data de início e uma data de fim.
+
+#### RF0056
+**Filtrar período de análise de vendas**
+
+O sistema deve permitir que o administrador informe uma data de início e uma data de fim para delimitar o período de vendas a ser exibido no gráfico gerencial. A data de fim não pode ser anterior à data de início.
+
+#### RF0057
+**Selecionar categorias para comparação**
+
+O sistema deve permitir que o administrador selecione uma ou mais categorias de artigos esportivos para serem exibidas simultaneamente no gráfico de evolução de vendas, possibilitando a comparação entre elas.
+
+#### RF0058
+**Exportar dados do gráfico de vendas**
+
+O sistema deve possibilitar que o administrador exporte os dados apresentados no gráfico gerencial (período, categoria e valor de venda) em formato de planilha.
+
+- Requisitos Não Funcionais
+### Geral
+
+#### RNF0011
+**Tempo de resposta para consultas**
+
+Toda consulta de usuário deve ter resposta em no máximo 1 segundo.
+
+#### RNF0012
+**Log de transação**
+
+Para toda operação de escrita (Inserção ou Alteração) deve ser registado data, hora, usuário responsável além de manter os dados alterados.
+
+### Cadastro de Produtos Esportivos
+
+#### RNF0021
+**Código de artigo esportivo**
+
+Todo artigo esportivo cadastrado deve receber um código único no sistema.
+
+#### RNF0013
+**Cadastro de domínios**
+
+Deve haver um script de implantação do sistema que insere todos registros de tabelas de domínio necessárias por exemplo: grupo de precificação, marca, categoria, fornecedor, etc.
+
+### Cadastro de Clientes
+
+#### RNF0031
+**Senha forte**
+
+A senha cadastrada pelo usuário deve ser composta de pelo menos 8 caracteres, ter letras maiúsculas e minúsculas além de conter caracteres especiais.
+
+#### RNF0032
+**Confirmação de senha**
+
+O usuário obrigatoriamente deve digitar duas vezes a mesma senha no momento do registro da mesma.
+
+#### RNF0033
+**Senha criptografada**
+
+A senha deve ser criptografada
+
+#### RNF0034
+**Alteração apenas de endereços**
+
+O sistema deve possibilitar que endereços de entrega ou cobrança possam ser alterados ou adicionados de forma simples sem a necessidade da edição dos demais dados cadastrais.
+
+#### RNF0035
+**Código de cliente**
+
+Todo cliente cadastrado deve receber um código único no sistema.
+
+### Gerenciar Vendas Eletrônicas
+
+#### RNF0042
+**Apresentar itens retirados do carrinho**
+
+Deve ser apresentado na listagem de itens do carrinho os produtos removidos por atingirem o prazo determinado para finalização da compra (apresentar o tempo conforme parâmetro do sistema). Assim a opção comprar deve ser desabilitada e o itens deverão ser adicionados novamente no carrinho.
+
+### Análise
+
+#### RNF0043
+**Gráfico de linhas**
+
+O sistema deve apresentar o histórico de vendas em um gráfico de linhas, sendo: o eixo horizontal (X) representando os períodos (mês/ano) dentro do intervalo selecionado; o eixo vertical (Y) representando o valor total de vendas em Reais (R$); e uma linha de cor distinta para cada categoria selecionada, com legenda identificando cada categoria.
+
+#### RNF0044
+**Formatação monetária do eixo de valores**
+
+Os valores do eixo vertical do gráfico gerencial devem ser exibidos no formato monetário brasileiro (ex.: R$ 20.000,00), com escala automática conforme o maior valor apresentado no período selecionado.
+
+#### RNF0045
+**Legenda do gráfico**
+
+O gráfico gerencial deve exibir uma legenda na parte inferior identificando o nome de cada categoria e a cor da respectiva linha.
+
+#### RNF0046
+**Interatividade do gráfico**
+
+Ao posicionar o cursor sobre um ponto da linha, o sistema deve exibir o valor exato de venda da categoria correspondente naquele período (tooltip).
+
+### Recomendação personalizada
+
+#### RNF0044
+**Recomendação com IA Generativa**
+
+- O sistema deve integrar uma IA generativa para oferecer recomendações personalizadas de artigos esportivos aos clientes com base no histórico de compras e preferências.
+- A IA deve permitir a interação via chatbot para auxiliar na busca por artigos esportivos, responder dúvidas e sugerir conteúdos relevantes.
+- O modelo de IA deve ser treinado com base em dados de vendas e feedback dos usuários, garantindo personalização contínua.
+- Regras de Negócio
+### Cadastro de Produtos Esportivos
+
+#### RN0011
+**Dados obrigatórios para o cadastro de um artigo esportivo**
+
+Para todo artigo esportivo cadastrado é obrigatório o cadastro dos seguintes dados: marca, categoria, modelo ou coleção, descrição, dimensões (altura, largura, peso e profundidade), grupo de precificação e código de barras.
+
+#### RN0012
+**Associação com categorias**
+
+Um artigo esportivo pode estar associado com mais de uma categoria.
+
+#### RN0013
+**Definindo valor de venda**
+
+Todo artigo esportivo após cadastrado deverá ser associado a um grupo de precificação onde o valor deverá ter como base a margem de lucro parametrizado para o grupo definido no cadastro do artigo esportivo.
+
+#### RN0014
+**Validar margem de lucro**
+
+Um artigo esportivo somente pode ter seu valor alterado se estiver dentro da margem de lucro definida pelo critério de grupo de precificação. Para um artigo esportivo ter seu valor alterado para baixo da margem de lucro definida pelo grupo de precificação é necessária uma autorização de um gerente de vendas.
+
+#### RN0015
+**Associar motivo de inativação**
+
+Todo artigo esportivo que for inativado manualmente deve ter uma justificativa e uma categoria de inativação associada.
+
+#### RN0016
+**Associar motivo de inativação automática**
+
+Todo cadastro de artigo esportivo inativado de forma automática deve ser categorizado como FORA DE MERCADO.
+
+#### RN0017
+**Associar motivo de ativação**
+
+Todo artigo esportivo que for ativado deve ter uma justificativa e uma categoria de ativação associada.
+
+### Cadastro de Clientes
+
+#### RN0021
+**Cadastro de endereço de cobrança**
+
+Para todo cliente cadastrado é obrigatório o registro de ao menos um endereço de cobrança.
+
+#### RN0022
+**Cadastro de endereço de entrega**
+
+Para todo cliente cadastrado é obrigatório o registro de ao menos um endereço de entrega.
+
+#### RN0023
+**Composição do registro de endereços**
+
+Todo cadastro de endereços associados a clientes deve ser composto dos seguintes dados: Tipo de residência (Casa, Apartamento, etc), Tipo Logradouro, Logradouro, Número, Bairro, CEP, Cidade, Estado e País. Todos os campos anteriores são de preenchimento obrigatório. Opcionalmente pode ser preenchido um campo observações.
+
+#### RN0024
+**Composição do registro de cartões de crédito**
+
+Todo cartão de crédito associado a um cliente deverá ser composto pelos seguintes campos: Nº do Cartão, Nome impresso no Cartão, Bandeira do Cartão e Código de Segurança.
+
+#### RN0025
+**Bandeiras permitidas para registro de cartões de crédito**
+
+Todo cartão de crédito associado a um cliente deverá ser de alguma bandeira registrada no sistema.
+
+#### RN0026
+**Dados obrigatórios para o cadastro de um cliente**
+
+Para todo cliente cadastrado é obrigatório o cadastro dos seguintes dados: Gênero, Nome, Data de Nascimento, CPF, Telefone (deve ser composto pelo tipo, DDD e número), e-mail, senha, endereço residencial.
+
+#### RN0027
+**Ranking de cliente**
+
+O cliente deve receber um ranking numérico com base no seu perfil de compra
+
+#### RN0028
+**Validar retorno da operadora de cartão de credito**
+
+Somente deve-se dar baixa no estoque de itens cuja a compra tenha sido efetivada, isso significa que o status não é mais EM PROCESSAMENTO. Todo item que faça parte de uma compra não aprovada deve ser desbloqueado e mantido em estoque.
+
+### Gerenciar Vendas Eletrônicas
+
+#### RN0031
+**Validar estoque para adição de itens no carrinho**
+
+Não deve ser permitido adicionar um item no carrinho de compra que não esteja disponível em estoque. Também deve ser validado a quantidade do item adicionado ao carrinho para que não seja adicionado mais itens do que o disponível em estoque.
+
+#### RN0032
+**Validar estoque para compra**
+
+Caso o estoque seja alterado entre a adição ao carrinho e a finalização da compra, o sistema deve:
+
+- Exibir uma notificação ao usuário informando a mudança na disponibilidade do item.
+- Atualizar automaticamente a quantidade disponível no carrinho.
+- Remover itens automaticamente caso fiquem indisponíveis, com uma mensagem de alerta.
+
+#### RN0033
+**Uso de cupom promocional para pagamento**
+
+Apenas um cupom promocional pode ser utilizado por compra.
+
+#### RN0034
+**Uso de diversos cartões de crédito**
+
+Uma compra pode ser paga utilizando mais de um cartão de crédito, porém o valor mínimo para ser pago com cada cartão deve ser R$ 10,00.
+
+#### RN0035
+**Uso de cupons junto a cartão de crédito**
+
+Ao realizar pagamento utilizando cupons e cartões em conjunto, deve-se sempre considerar o valor máximo dos cupons.
+
+Somente neste caso é permitido que seja realizado um pagamento de um valor menor que R$ 10,00 no cartão. Exemplo: Uma compra de R$ 35,00 o cliente pode pagar R$ 30,00 utilizando cupons de troca ou cupons promocionais e pagar R$ 5,00 com cartão de crédito.
+
+#### RN0036
+**Gerar cupom de troca**
+
+Um cupom de troca deve ser gerado quando uma compra for paga com outros cupons em que o valor supere o valor da compra. Obs: O sistema não deve possibilitar o uso de cupons que supere a compra desnecessariamente, ex: a venda tem valor total de R$ 50,00 e o cliente possui três cupons, um com valor de R$ 20,00, outro com valor de R$ 40,00 e um terceiro com valor de R$ 35,00 o sistema não deve possibilitar o uso dos três cupons nesta compra, deve ser aceito apenas dois cupons e consequentemente gerar um cupom com a diferença de R$ 5,00, ou R$ 10,00 ou R$ 25,00.
+
+#### RN0037
+**Validar Forma de Pagamento para finalização de compra**
+
+Após a finalização da compra a forma de pagamento deve ser validada. Para tal deve-se validar a validade e veracidade dos cupons de troca e promocionais que por ventura foram utilizados.
+
+Também deve ser validado o aceite da compra pela respectiva operadora de cartão de crédito.
+
+#### RN0038
+**Alterar status da compra conforme processo de aprovação de forma de pagamento**
+
+Caso as formas de pagamento tenham sido validadas com sucesso, a compra deve passar ter o status APROVADA.
+
+Caso contrário deve passar a ter o status REPROVADA.
+
+#### RN0039
+**Alterar status da compra para transporte**
+
+Toda compra selecionada para ser entregue por um administrador deve ter seu status alterado para EM TRANSPORTE.
+
+#### RN0040
+**Alterar status da compra após entrega**
+
+Toda compra selecionada como entregue por um administrador deve ter seu status alterado para ENTREGUE.
+
+#### RN0041
+**Gerar pedido de troca**
+
+Todo item selecionado para troca deve gerar um pedido de troca. Este pedido deverá ter o status EM TROCA.
+
+Caso o cliente solicite a troca de toda a compra o status do pedido deverá ser EM TROCA.
+
+#### RN0042
+**Alterar status do pedido após recebimento de troca**
+
+Ao confirmar que os itens de um pedido de troca ou uma compra com status EM TROCA foi recebido o status do pedido ou compra deverá ser TROCADO.
+
+#### RN0043
+**Validação para solicitar troca**
+
+Somente itens de pedidos com status ENTREGUE poderão receber solicitação de troca.
+
+#### RN0047
+**Negar solicitação de troca**
+
+Uma solicitação somente poderá ser negada enquanto estiver com status EM TROCA. Após negada, não poderá ser autorizada nem concluída.
+
+#### RN0044
+**Bloqueio de produtos**
+
+- Ao adicionar o item no carrinho, este deverá ser temporariamente bloqueado para que novas compras não sejam solicitadas. Tal bloqueio só deve ser retirado no caso da compra que gerou tal status não ser efetivada ou aprovada em um prazo parametrizado, o prazo deve levar em consideração o momento do bloqueio. Obs.: O prazo parametrizado deve ser relativo ao último item incluído no carrinho. Um item bloqueado no carrinho terá um tempo limite parametrizável antes de ser removido.
+- O usuário será notificado 5 minutos antes do bloqueio expirar.
+- Se o tempo limite expirar, os itens serão removidos e desbloqueados para outros clientes.
+
+#### RN0045
+**Retirar item do carrinho**
+
+Toda vez que um item for desbloqueado todos itens do mesmo produto deverão ser retirados do carrinho de compra que gerou o prazo de bloqueio.
+
+#### RN0046
+**Gerar notificação de autorização de troca**
+
+Quando o administrador autorizar uma troca o sistema deverá gerar uma notificação sobre tal ao cliente.
+
+### Controle de Estoque
+
+#### RN0050
+**Validar dados de estoque**
+
+Para cada entrada em estoque, deve ser obrigatoriamente informado o produto, a quantidade, o valor de custo, fornecedor, e a data de entrada dos itens de produto.
+
+#### RN0051
+**Definir valor de item com diferentes custos**
+
+Quando itens de um determinado artigo esportivo forem registrados com valores de custo diferentes deverá ser calculado o valor de venda com base no grupo de precificação porém o valor de todos itens deverão ser iguais, considerando então o maior valor de custo.
+
+#### RN0061
+**Quantidade de itens**
+
+Não deve ser permitido que seja realizado a entrada de itens de artigos esportivos com quantidade igual a zero.
+
+#### RN0062
+**Valor de custo**
+
+Para todo item deve haver um valor de custo.
+
+#### RNF0064
+**Data de entrada**
+
+Não deve ser permitido que itens sejam registrados sem que uma data de entrada seja registrada.
+
+### ANÁLISE
+
+#### RN0071
+**Granularidade do período**
+
+O agrupamento dos valores de venda no gráfico gerencial deve ser feito por mês, considerando a soma de todas as vendas aprovadas de cada categoria dentro do respectivo mês.
+
+#### RN0072
+**Período mínimo e máximo de análise**
+
+O intervalo entre a data de início e a data de fim informado pelo administrador deve ser de no mínimo 1 mês e no máximo 24 meses.
+
+#### RN0073
+**Categorias sem vendas no período**
+
+Caso uma categoria selecionada não possua vendas em um determinado mês dentro do período analisado, o valor correspondente deve ser considerado como R$ 0,00, mantendo a linha contínua no gráfico.
+
+#### RN0074
+**Consideração de status para o cálculo**
+
+Somente compras com status APROVADA, EM TRÂNSITO/TRANSPORTE ou ENTREGUE devem ser consideradas no cálculo do valor de vendas exibido no gráfico. Compras REPROVADA ou canceladas não devem ser contabilizadas.
+
