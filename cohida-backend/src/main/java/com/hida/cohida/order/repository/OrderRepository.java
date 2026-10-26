@@ -12,16 +12,16 @@ import java.util.List;
 import java.util.Optional;
 
 public interface OrderRepository extends JpaRepository<SaleOrder, Long> {
-    @EntityGraph(attributePaths = {"items", "payments.paymentCard", "issuedCoupon"})
+    @EntityGraph(attributePaths = {"items", "issuedCoupon"})
     List<SaleOrder> findByCustomerIdOrderByCreatedAtDesc(Long customerId);
 
-    @EntityGraph(attributePaths = {"items", "payments.paymentCard", "issuedCoupon"})
+    @EntityGraph(attributePaths = {"items", "issuedCoupon"})
     Optional<SaleOrder> findByIdAndCustomerId(Long id, Long customerId);
 
-    @EntityGraph(attributePaths = {"items", "payments.paymentCard", "issuedCoupon"})
+    @EntityGraph(attributePaths = {"items", "issuedCoupon"})
     List<SaleOrder> findAllByOrderByCreatedAtDesc();
 
-    @EntityGraph(attributePaths = {"items", "payments.paymentCard", "issuedCoupon"})
+    @EntityGraph(attributePaths = {"items", "issuedCoupon"})
     Optional<SaleOrder> findById(Long id);
 
     @Modifying

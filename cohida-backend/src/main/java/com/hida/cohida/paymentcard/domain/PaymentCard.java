@@ -13,6 +13,7 @@ public class PaymentCard extends DomainEntity {
     @JoinColumn(name = "customer_id", nullable = false)
     private Customer customer;
 
+    @Getter
     @Column(name = "processor_token", nullable = false, unique = true, length = 255)
     private String processorToken;
 

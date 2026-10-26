@@ -1,3 +1,3 @@
 package com.hida.cohida.returnrequest.domain;
 
-public enum ReturnStatus {SOLICITADA, ACEITA, NEGADA, ITEM_ENVIADO, ITEM_RECEBIDO, PROCESSADA}
+public enum ReturnStatus {EM_TROCA, TROCA_AUTORIZADA, TROCA_NEGADA, TROCADO}

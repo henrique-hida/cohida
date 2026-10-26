@@ -24,6 +24,8 @@ public class CheckoutController {
     public OrderResponse checkout(@AuthenticationPrincipal AuthenticatedCustomer p, @RequestBody CheckoutRequest request) {
         if (request.payments() != null && !request.payments().isEmpty())
             return OrderResponse.from(orders.checkout(p.customerId(), request.deliveryAddressId(), request.payments()));
-        return OrderResponse.from(orders.checkout(p.customerId(), request.deliveryAddressId(), request.paymentCardId()));
+        return OrderResponse.from(orders.checkout(p.customerId(), request.deliveryAddressId(), request.paymentCardId() == null
+                ? java.util.List.of()
+                : java.util.List.of(new com.hida.cohida.order.dto.PaymentAllocationRequest(request.paymentCardId(), null))));
     }
 }

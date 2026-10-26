@@ -5,6 +5,7 @@ import com.hida.cohida.returnrequest.dto.ReturnStatusRequest;
 import com.hida.cohida.returnrequest.service.ReturnService;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
@@ -19,12 +20,14 @@ public class AdminReturnController {
     }
 
     @GetMapping
+    @Transactional(readOnly = true)
     public List<ReturnResponse> all() {
         return returns.all().stream().map(ReturnResponse::from).toList();
     }
 
     @PatchMapping("/{id}/status")
+    @Transactional
     public ReturnResponse status(@PathVariable Long id, @RequestBody ReturnStatusRequest r) {
-        return ReturnResponse.from(returns.status(id, r.status()));
+        return ReturnResponse.from(returns.status(id, r.status(), r.restockItems()));
     }
 }

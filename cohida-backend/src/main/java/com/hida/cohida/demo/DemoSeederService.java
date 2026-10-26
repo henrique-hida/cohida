@@ -111,15 +111,15 @@ public class DemoSeederService {
         LocalDateTime now = LocalDateTime.now();
         List<DemoOrder> samples = List.of(
                 new DemoOrder(ana, anaCard, "DEMO-BAL-001", 2, OrderStatus.EM_PROCESSAMENTO),
-                new DemoOrder(bruno, brunoCard, "DEMO-RUN-001", 1, OrderStatus.PAGAMENTO_REALIZADO),
+                new DemoOrder(bruno, brunoCard, "DEMO-RUN-001", 1, OrderStatus.APROVADA),
                 new DemoOrder(clara, claraCard, "DEMO-TRN-001", 3, OrderStatus.EM_TRANSITO),
                 new DemoOrder(ana, anaCard, "DEMO-OUT-001", 1, OrderStatus.ENTREGUE),
                 new DemoOrder(bruno, brunoCard, "DEMO-FTB-002", 1, OrderStatus.ENTREGUE),
-                new DemoOrder(clara, claraCard, "DEMO-RUN-002", 1, OrderStatus.PAGAMENTO_REALIZADO),
+                new DemoOrder(clara, claraCard, "DEMO-RUN-002", 1, OrderStatus.APROVADA),
                 new DemoOrder(ana, anaCard, "DEMO-TRN-002", 2, OrderStatus.EM_TRANSITO),
                 new DemoOrder(bruno, brunoCard, "DEMO-MAR-001", 1, OrderStatus.EM_PROCESSAMENTO),
                 new DemoOrder(clara, claraCard, "DEMO-OUT-003", 1, OrderStatus.ENTREGUE),
-                new DemoOrder(ana, anaCard, "DEMO-MAR-002", 2, OrderStatus.PAGAMENTO_REALIZADO),
+                new DemoOrder(ana, anaCard, "DEMO-MAR-002", 2, OrderStatus.APROVADA),
                 new DemoOrder(bruno, brunoCard, "DEMO-OUT-004", 1, OrderStatus.EM_TRANSITO),
                 new DemoOrder(clara, claraCard, "DEMO-FTB-003", 1, OrderStatus.EM_PROCESSAMENTO)
         );
@@ -138,9 +138,7 @@ public class DemoSeederService {
         if (delivered != null) {
             var request = returns.request(ana.getId(), delivered.getId(), delivered.getItems().getFirst().getId(),
                     "Produto demonstrativo para acompanhamento de troca.");
-            returns.status(request.getId(), ReturnStatus.ACEITA);
-            returns.dispatch(ana.getId(), request.getId(), "DEMO-RET-001");
-            returns.status(request.getId(), ReturnStatus.ITEM_RECEBIDO);
+            returns.status(request.getId(), ReturnStatus.TROCA_AUTORIZADA);
         }
     }
 
@@ -193,7 +191,9 @@ public class DemoSeederService {
         order.addPayment(card, subtotal);
         order.addItem(new OrderItem(variant.getId(), variant.getProduct().getName(), variant.getSku(),
                 variant.getLabel(), variant.getPriceCents(), quantity));
-        while (order.getStatus().ordinal() < target.ordinal()) order.changeStatus(OrderStatus.values()[order.getStatus().ordinal() + 1]);
+        if (target == OrderStatus.APROVADA || target == OrderStatus.EM_TRANSITO || target == OrderStatus.ENTREGUE) order.approve();
+        if (target == OrderStatus.EM_TRANSITO || target == OrderStatus.ENTREGUE) order.dispatch("DEMO-" + sku);
+        if (target == OrderStatus.ENTREGUE) order.confirmDelivery();
         SaleOrder saved = orders.save(order);
         orders.updateCreatedAt(saved.getId(), createdAt);
         return saved;

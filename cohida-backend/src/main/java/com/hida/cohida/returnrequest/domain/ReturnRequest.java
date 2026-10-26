@@ -3,6 +3,7 @@ package com.hida.cohida.returnrequest.domain;
 import com.hida.cohida.common.DomainEntity;
 import com.hida.cohida.coupon.domain.Coupon;
 import com.hida.cohida.order.domain.OrderItem;
+import com.hida.cohida.order.domain.SaleOrder;
 import jakarta.persistence.*;
 import lombok.Getter;
 
@@ -10,9 +11,13 @@ import lombok.Getter;
 @Table(name = "return_requests")
 public class ReturnRequest extends DomainEntity {
     @Getter
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "order_item_id", nullable = false)
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "order_item_id")
     private OrderItem orderItem;
+    @Getter
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "order_id")
+    private SaleOrder order;
     @Getter
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
@@ -27,37 +32,41 @@ public class ReturnRequest extends DomainEntity {
     @OneToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "issued_coupon_id", unique = true)
     private Coupon issuedCoupon;
+    @Getter
+    @Column(name = "restock_items")
+    private Boolean restockItems;
 
     protected ReturnRequest() {
     }
 
     public ReturnRequest(OrderItem item, String reason) {
         orderItem = item;
+        order = item.getOrder();
         this.reason = reason;
-        status = ReturnStatus.SOLICITADA;
+        status = ReturnStatus.EM_TROCA;
+    }
+
+    public ReturnRequest(SaleOrder order, String reason) {
+        this.order = order;
+        this.reason = reason;
+        status = ReturnStatus.EM_TROCA;
     }
 
     public void changeStatus(ReturnStatus next) {
-        if (status == ReturnStatus.SOLICITADA && (next == ReturnStatus.ACEITA || next == ReturnStatus.NEGADA)) {
-            status = next;
-            return;
-        }
-        if (status == ReturnStatus.ITEM_ENVIADO && next == ReturnStatus.ITEM_RECEBIDO) {
+        if (status == ReturnStatus.EM_TROCA && (next == ReturnStatus.TROCA_AUTORIZADA || next == ReturnStatus.TROCA_NEGADA)) {
             status = next;
             return;
         }
         throw new IllegalArgumentException("A transição da devolução é inválida.");
     }
 
-    public void dispatch(String code) {
-        if (status != ReturnStatus.ACEITA)
-            throw new IllegalArgumentException("A devolução precisa ser aceita antes do envio.");
-        trackingCode = code;
-        status = ReturnStatus.ITEM_ENVIADO;
+    public void issue(Coupon coupon, boolean restockItems) {
+        issuedCoupon = coupon;
+        this.restockItems = restockItems;
+        status = ReturnStatus.TROCADO;
     }
 
-    public void issue(Coupon coupon) {
-        issuedCoupon = coupon;
-        status = ReturnStatus.PROCESSADA;
-    }
+    public SaleOrder targetOrder() { return orderItem == null ? order : orderItem.getOrder(); }
+
+    public java.util.List<OrderItem> targetItems() { return orderItem == null ? order.getItems() : java.util.List.of(orderItem); }
 }

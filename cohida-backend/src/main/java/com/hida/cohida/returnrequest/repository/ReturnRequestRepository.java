@@ -8,10 +8,12 @@ import java.util.Optional;
 
 public interface ReturnRequestRepository extends JpaRepository<ReturnRequest, Long> {
     boolean existsByOrderItemId(Long id);
+    boolean existsByOrderId(Long id);
 
     List<ReturnRequest> findAllByOrderByCreatedAtDesc();
 
-    List<ReturnRequest> findByOrderItemOrderCustomerIdOrderByCreatedAtDesc(Long customerId);
+    @org.springframework.data.jpa.repository.Query("select r from ReturnRequest r where r.order.customer.id = :customerId or r.orderItem.order.customer.id = :customerId order by r.createdAt desc")
+    List<ReturnRequest> findByCustomerIdOrderByCreatedAtDesc(Long customerId);
 
     Optional<ReturnRequest> findById(Long id);
 }

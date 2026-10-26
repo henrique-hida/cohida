@@ -11,6 +11,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
+import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "orders")
@@ -82,6 +83,21 @@ public class SaleOrder extends DomainEntity {
     @Column(name = "cancellation_reason", length = 500)
     private String cancellationReason;
     @Getter
+    @Column(name = "payment_authorized_at")
+    private LocalDateTime paymentAuthorizedAt;
+    @Getter
+    @Column(name = "payment_authorization_reason", length = 500)
+    private String paymentAuthorizationReason;
+    @Getter
+    @Column(name = "approved_at")
+    private LocalDateTime approvedAt;
+    @Getter
+    @Column(name = "dispatched_at")
+    private LocalDateTime dispatchedAt;
+    @Getter
+    @Column(name = "delivered_at")
+    private LocalDateTime deliveredAt;
+    @Getter
     @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<OrderItem> items = new ArrayList<>();
     @Getter
@@ -99,7 +115,7 @@ public class SaleOrder extends DomainEntity {
         this.subtotalCents = subtotal;
         this.discountCents = discount;
         this.shippingCents = shipping;
-        this.totalCents = subtotal - discount + shipping;
+        this.totalCents = Math.max(0, subtotal + shipping - discount);
         this.couponCode = couponCode;
         this.cardBrand = cardBrand;
         this.cardLastDigits = cardLastDigits;
@@ -130,17 +146,37 @@ public class SaleOrder extends DomainEntity {
         this.couponValueCents = couponValueCents;
     }
 
-    public void changeStatus(OrderStatus next) {
-        if (next.ordinal() != status.ordinal() + 1)
-            throw new IllegalArgumentException("A transição de status do pedido é inválida.");
-        status = next;
+    public void approve() {
+        if (status != OrderStatus.EM_PROCESSAMENTO)
+            throw new IllegalArgumentException("Somente pedidos em processamento podem ser aprovados.");
+        status = OrderStatus.APROVADA;
+        approvedAt = LocalDateTime.now();
+    }
+
+    public void reject() {
+        if (status != OrderStatus.EM_PROCESSAMENTO)
+            throw new IllegalArgumentException("Somente pedidos em processamento podem ser reprovados.");
+        status = OrderStatus.REPROVADA;
+    }
+
+    public void recordPaymentAuthorization(String reason) {
+        paymentAuthorizedAt = LocalDateTime.now();
+        paymentAuthorizationReason = reason;
+    }
+
+    public void confirmDelivery() {
+        if (status != OrderStatus.EM_TRANSITO)
+            throw new IllegalArgumentException("O pedido precisa estar em transporte para confirmar a entrega.");
+        status = OrderStatus.ENTREGUE;
+        deliveredAt = LocalDateTime.now();
     }
 
     public void dispatch(String trackingCode) {
-        if (status != OrderStatus.PAGAMENTO_REALIZADO)
-            throw new IllegalArgumentException("O pedido precisa ter pagamento realizado para despacho.");
+        if (status != OrderStatus.APROVADA)
+            throw new IllegalArgumentException("O pedido precisa estar aprovado para despacho.");
         this.trackingCode = trackingCode;
         status = OrderStatus.EM_TRANSITO;
+        dispatchedAt = LocalDateTime.now();
     }
 
     public void cancel(String reason) {
