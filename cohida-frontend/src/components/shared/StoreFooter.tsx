@@ -9,8 +9,7 @@ export function StoreFooter() {
     <footer className="border-t border-border bg-muted/35">
       <PageContainer className="grid gap-10 py-10 sm:grid-cols-[1.4fr_repeat(2,minmax(0,1fr))] sm:py-14">
         <div>
-          <AppLogo className="dark:hidden" variant="dark" />
-          <AppLogo className="hidden dark:block" variant="light" />
+          <AppLogo variant="default" />
           <p className="mt-4 max-w-sm text-sm leading-6 text-muted-foreground">
             Equipamentos esportivos para acompanhar cada treino, desafio e
             conquista.

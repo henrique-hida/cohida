@@ -1,9 +1,6 @@
-import { lazy, Suspense } from "react";
 import { Navigate, Route, Routes, useLocation } from "react-router";
 
-import { AdminDataState } from "@/components/admin/AdminDataState";
 import { ChatbotFab, StoreFooter } from "@/components/shared";
-import { AdminAdministrationPage } from "@/pages/AdminAdministrationPage";
 import { AdminDashboardPage } from "@/pages/AdminDashboardPage";
 import { AdminCustomerCreatePage } from "@/pages/AdminCustomerCreatePage";
 import { AdminCustomerDetailPage } from "@/pages/AdminCustomerDetailPage";
@@ -15,14 +12,12 @@ import { AdminProductEditPage } from "@/pages/AdminProductEditPage";
 import { AdminOrderDetailPage } from "@/pages/AdminOrderDetailPage";
 import { AdminExchangeDetailPage } from "@/pages/AdminExchangeDetailPage";
 import { AdminCouponsPage } from "@/pages/AdminCouponsPage";
-const AdminAnalyticsPage = lazy(() =>
-  import("@/pages/AdminAnalyticsPage").then((module) => ({
-    default: module.AdminAnalyticsPage,
-  })),
-);
+import { AdminCouponCreatePage } from "@/pages/AdminCouponCreatePage";
+import { AdminAnalyticsPage } from "@/pages/AdminAnalyticsPage";
+import { AdminAdministrationPage } from "@/pages/AdminAdministrationPage";
+import { AdminCategoryFormPage } from "@/pages/AdminCategoryFormPage";
 import { AdminResourcePage } from "@/pages/AdminResourcePage";
-import { AdminStockEntryPage } from "@/pages/AdminStockEntryPage";
-import { AdminStockMovementsPage } from "@/pages/AdminStockMovementsPage";
+import { AdminStockPage } from "@/pages/AdminStockPage";
 import { CatalogPage } from "@/pages/CatalogPage";
 import { CartPage } from "@/pages/CartPage";
 import { CheckoutPage } from "@/pages/CheckoutPage";
@@ -72,18 +67,6 @@ function App() {
           path="/admin/produtos/:productId/editar"
         />
         <Route
-          element={<AdminResourcePage resource="estoque" />}
-          path="/admin/estoque"
-        />
-        <Route
-          element={<AdminStockEntryPage />}
-          path="/admin/estoque/entrada"
-        />
-        <Route
-          element={<AdminStockMovementsPage />}
-          path="/admin/estoque/movimentacoes"
-        />
-        <Route
           element={<AdminResourcePage resource="pedidos" />}
           path="/admin/pedidos"
         />
@@ -112,26 +95,21 @@ function App() {
           element={<AdminExchangeDetailPage />}
           path="/admin/trocas/:exchangeId"
         />
+        <Route element={<AdminCouponCreatePage />} path="/admin/cupons/novo" />
         <Route element={<AdminCouponsPage />} path="/admin/cupons" />
-        <Route
-          element={
-            <Suspense
-              fallback={
-                <AdminDataState
-                  description="Carregando o painel de desempenho..."
-                  title="Carregando análises"
-                  variant="loading"
-                />
-              }
-            >
-              <AdminAnalyticsPage />
-            </Suspense>
-          }
-          path="/admin/analises"
-        />
+        <Route element={<AdminStockPage />} path="/admin/estoque" />
+        <Route element={<AdminAnalyticsPage />} path="/admin/analises" />
         <Route
           element={<AdminAdministrationPage />}
           path="/admin/administracao"
+        />
+        <Route
+          element={<AdminCategoryFormPage />}
+          path="/admin/administracao/nova"
+        />
+        <Route
+          element={<AdminCategoryFormPage />}
+          path="/admin/administracao/:id/editar"
         />
         <Route element={<HomePage />} path="*" />
       </Routes>

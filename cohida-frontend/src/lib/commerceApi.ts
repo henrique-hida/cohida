@@ -1,5 +1,40 @@
 import { apiRequest } from "./customerApi";
 
+const apiBaseUrl =
+  import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8080/api";
+
+function apiOrigin() {
+  const origin =
+    typeof window === "undefined" ? "http://localhost" : window.location.origin;
+  return new URL(apiBaseUrl, origin).origin;
+}
+
+export function resolveProductImageUrl(imageUrl: string | null | undefined) {
+  if (!imageUrl) return undefined;
+  if (imageUrl.startsWith("/api/products/images/")) {
+    return new URL(imageUrl, apiOrigin()).toString();
+  }
+  return imageUrl;
+}
+
+export function toStoredProductImageUrl(imageUrl: string | null | undefined) {
+  if (!imageUrl) return null;
+  try {
+    const parsed = new URL(
+      imageUrl,
+      typeof window === "undefined"
+        ? "http://localhost"
+        : window.location.origin,
+    );
+    return parsed.origin === apiOrigin() &&
+      parsed.pathname.startsWith("/api/products/images/")
+      ? parsed.pathname
+      : imageUrl;
+  } catch {
+    return imageUrl;
+  }
+}
+
 export interface ApiVariant {
   id: number;
   sku: string;
@@ -23,6 +58,10 @@ export interface ApiProduct {
   categories: string[];
   variants: ApiVariant[];
   createdAt: string;
+}
+
+export interface ApiProductImageUpload {
+  imageUrl: string;
 }
 
 export interface ApiCategory {
@@ -49,10 +88,21 @@ export interface ApiCart {
   id: number;
   items: ApiCartItem[];
   couponCode: string | null;
+  /** Backward-compatible while clients transition from couponCode to coupons. */
+  couponCodes?: string[];
   subtotalCents: number;
   discountCents: number;
   shippingCents: number;
   totalCents: number;
+}
+export interface ApiExpiredCartItem {
+  id: number;
+  variantId: number;
+  productId: number;
+  productName: string;
+  label: string;
+  quantity: number;
+  expiredAt: string;
 }
 
 export interface ApiOrder {
@@ -61,6 +111,7 @@ export interface ApiOrder {
   customerName: string;
   status: string;
   items: Array<{
+    id?: number;
     variantId: number;
     productName: string;
     sku: string;
@@ -92,6 +143,9 @@ export interface ApiOrder {
   deliveryState: string;
   deliveryCountry: string;
   createdAt: string;
+  approvedAt?: string | null;
+  dispatchedAt?: string | null;
+  deliveredAt?: string | null;
 }
 
 export interface ApiCard {
@@ -124,9 +178,23 @@ export interface ApiCoupon {
   createdAt: string;
 }
 
+export interface ApiCouponUpsertRequest {
+  code: string;
+  description: string;
+  discountType: "FIXED_AMOUNT" | "PERCENTAGE";
+  discountCents: number | null;
+  discountPercentage: number | null;
+  maximumDiscountCents: number | null;
+  minimumOrderValueCents: number | null;
+  validFrom: string;
+  expiresAt: string;
+  maximumUses: number | null;
+  active: boolean;
+}
+
 export interface ApiReturn {
   id: number;
-  orderItemId: number;
+  orderItemId: number | null;
   orderId: number;
   status: string;
   reason: string;
@@ -144,6 +212,7 @@ export interface ApiAnalyticsOverview {
 
 export interface ApiSalesPoint {
   period: string;
+  category: string | null;
   revenueCents: number;
   orders: number;
 }
@@ -179,6 +248,14 @@ export const commerceApi = {
     );
   },
   adminProducts: () => apiRequest<ApiProduct[]>("/admin/products"),
+  uploadProductImage: (file: File) => {
+    const body = new FormData();
+    body.append("file", file);
+    return apiRequest<ApiProductImageUpload>("/products/images", {
+      body,
+      method: "POST",
+    });
+  },
   createProduct: (body: unknown) =>
     apiRequest<ApiProduct>("/admin/products", {
       body: JSON.stringify(body),
@@ -197,6 +274,12 @@ export const commerceApi = {
       { body: JSON.stringify({ stockQuantity }), method: "PATCH" },
     ),
   cart: () => apiRequest<ApiCart>("/customers/me/cart"),
+  expiredCartItems: () =>
+    apiRequest<ApiExpiredCartItem[]>("/customers/me/cart/expired-items"),
+  acknowledgeExpiredCartItem: (id: string) =>
+    apiRequest<void>(`/customers/me/cart/expired-items/${id}/acknowledge`, {
+      method: "POST",
+    }),
   addCartItem: (variantId: string, quantity: number) =>
     apiRequest<ApiCart>("/customers/me/cart/items", {
       body: JSON.stringify({ variantId: Number(variantId), quantity }),
@@ -218,6 +301,13 @@ export const commerceApi = {
     }),
   removeCoupon: () =>
     apiRequest<ApiCart>("/customers/me/cart/coupon", { method: "DELETE" }),
+  removeCouponByCode: (code: string) =>
+    apiRequest<ApiCart>(
+      `/customers/me/cart/coupon/${encodeURIComponent(code)}`,
+      {
+        method: "DELETE",
+      },
+    ),
   cards: () => apiRequest<ApiCard[]>("/customers/me/cards"),
   createCard: (body: unknown) =>
     apiRequest<ApiCard>("/customers/me/cards", {
@@ -260,9 +350,16 @@ export const commerceApi = {
       method: "POST",
     }),
   returns: () => apiRequest<ApiReturn[]>("/customers/me/orders/returns"),
-  requestReturn: (orderId: string, orderItemId: string, reason: string) =>
+  requestReturn: (
+    orderId: string,
+    orderItemId: string | null,
+    reason: string,
+  ) =>
     apiRequest<ApiReturn>(`/customers/me/orders/${orderId}/returns`, {
-      body: JSON.stringify({ orderItemId: Number(orderItemId), reason }),
+      body: JSON.stringify({
+        orderItemId: orderItemId === null ? null : Number(orderItemId),
+        reason,
+      }),
       method: "POST",
     }),
   dispatchReturn: (id: string, trackingCode: string) =>
@@ -272,6 +369,15 @@ export const commerceApi = {
     }),
   adminOrders: () => apiRequest<ApiOrder[]>("/admin/orders"),
   adminReturns: () => apiRequest<ApiReturn[]>("/admin/returns"),
+  updateReturnStatus: (
+    id: string,
+    status: "TROCA_AUTORIZADA" | "TROCA_NEGADA" | "TROCADO",
+    restockItems?: boolean,
+  ) =>
+    apiRequest<ApiReturn>(`/admin/returns/${id}/status`, {
+      body: JSON.stringify({ status, restockItems }),
+      method: "PATCH",
+    }),
   updateOrderStatus: (id: string, status: string) =>
     apiRequest<ApiOrder>(`/admin/orders/${id}/status`, {
       body: JSON.stringify({ status }),
@@ -284,39 +390,39 @@ export const commerceApi = {
     }),
   coupons: () => apiRequest<ApiCoupon[]>("/admin/coupons"),
   customerCoupons: () => apiRequest<ApiCoupon[]>("/customers/me/coupons"),
-  createCoupon: (body: unknown) =>
+  createCoupon: (body: ApiCouponUpsertRequest) =>
     apiRequest<ApiCoupon>("/admin/coupons", {
       body: JSON.stringify(body),
       method: "POST",
     }),
-  updateCoupon: (id: string, body: unknown) =>
+  updateCoupon: (id: string, body: ApiCouponUpsertRequest) =>
     apiRequest<ApiCoupon>(`/admin/coupons/${id}`, {
       body: JSON.stringify(body),
       method: "PUT",
     }),
   deactivateCoupon: (id: string) =>
     apiRequest<void>(`/admin/coupons/${id}`, { method: "DELETE" }),
-  analyticsOverview: (from?: string, to?: string, category?: string) => {
+  analyticsOverview: (from?: string, to?: string, categories?: string[]) => {
     const query = new URLSearchParams();
     if (from) query.set("from", from);
     if (to) query.set("to", to);
-    if (category) query.set("category", category);
+    categories?.forEach((category) => query.append("category", category));
     return apiRequest<ApiAnalyticsOverview>(
       `/admin/analytics/overview?${query}`,
     );
   },
-  analyticsSales: (from?: string, to?: string, category?: string) => {
+  analyticsSales: (from?: string, to?: string, categories?: string[]) => {
     const query = new URLSearchParams({ groupBy: "month" });
     if (from) query.set("from", from);
     if (to) query.set("to", to);
-    if (category) query.set("category", category);
+    categories?.forEach((category) => query.append("category", category));
     return apiRequest<ApiSalesPoint[]>(`/admin/analytics/sales?${query}`);
   },
-  analyticsTopProducts: (from?: string, to?: string, category?: string) => {
+  analyticsTopProducts: (from?: string, to?: string, categories?: string[]) => {
     const query = new URLSearchParams();
     if (from) query.set("from", from);
     if (to) query.set("to", to);
-    if (category) query.set("category", category);
+    categories?.forEach((category) => query.append("category", category));
     return apiRequest<ApiTopProduct[]>(
       `/admin/analytics/products/top?${query}`,
     );

@@ -1,11 +1,12 @@
-import { ChevronRight, Package } from "lucide-react";
-import { Link } from "react-router";
+import { Package } from "lucide-react";
+import { useState } from "react";
+import { Link, Navigate } from "react-router";
 
-import { PageContainer, StoreHeader } from "@/components/shared";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { formatCurrency } from "@/lib/currency";
+import { Pagination } from "@/components/shared/Pagination";
+import { AccountSectionCard } from "@/components/shared/AccountSectionCard";
 import { useCommerce } from "@/data/useCommerce";
+import { formatCurrency } from "@/lib/currency";
 
 const statusLabel = {
   approved: "Aprovado",
@@ -19,20 +20,32 @@ const statusLabel = {
 };
 
 export function OrdersPage() {
+  return <Navigate replace to="/conta?secao=orders" />;
+}
+
+export function OrdersSection() {
   const { state } = useCommerce();
+  const [page, setPage] = useState(1);
+  const pageSize = 5;
+  const totalPages = Math.max(1, Math.ceil(state.orders.length / pageSize));
+  const currentPage = Math.min(page, totalPages);
+  const orders = state.orders.slice(
+    (currentPage - 1) * pageSize,
+    currentPage * pageSize,
+  );
+
   return (
-    <div className="min-h-svh bg-background">
-      <StoreHeader />
-      <PageContainer className="py-10 sm:py-14">
-        <p className="text-sm font-medium text-primary">Minha conta</p>
-        <h1 className="mt-2 text-3xl font-semibold tracking-tight">
-          Meus pedidos
-        </h1>
-        <div className="mt-8 overflow-hidden rounded-xl border border-border bg-card">
-          {state.orders.map((order) => (
-            <article
-              className="flex flex-col gap-4 border-b border-border p-5 last:border-b-0 sm:flex-row sm:items-center sm:justify-between"
+    <AccountSectionCard
+      description="Acompanhe seus pedidos e entregas."
+      title="Meus pedidos"
+    >
+      {state.orders.length ? (
+        <div className="divide-y divide-border">
+          {orders.map((order) => (
+            <Link
+              className="flex flex-col gap-4 py-4 outline-none first:pt-0 last:pb-0 focus-visible:rounded-lg focus-visible:ring-2 focus-visible:ring-ring sm:flex-row sm:items-center sm:justify-between"
               key={order.id}
+              to={`/pedidos/${order.id}`}
             >
               <div className="flex items-center gap-4">
                 <span className="grid size-11 place-items-center rounded-xl bg-muted text-muted-foreground">
@@ -40,7 +53,7 @@ export function OrdersPage() {
                 </span>
                 <div>
                   <div className="flex flex-wrap items-center gap-2">
-                    <h2 className="font-semibold">{order.id}</h2>
+                    <h3 className="font-semibold">{order.id}</h3>
                     <Badge
                       variant={
                         order.status === "delivered" ? "secondary" : "default"
@@ -62,18 +75,21 @@ export function OrdersPage() {
                 <p className="font-semibold">
                   {formatCurrency(order.totalCents)}
                 </p>
-                <Button
-                  render={<Link to={`/pedidos/${order.id}`} />}
-                  size="sm"
-                  variant="outline"
-                >
-                  Ver pedido <ChevronRight />
-                </Button>
               </div>
-            </article>
+            </Link>
           ))}
         </div>
-      </PageContainer>
-    </div>
+      ) : (
+        <p className="py-2 text-sm text-muted-foreground">
+          Você ainda não fez nenhum pedido.
+        </p>
+      )}
+      <Pagination
+        currentPage={currentPage}
+        onPageChange={setPage}
+        pageSize={pageSize}
+        totalItems={state.orders.length}
+      />
+    </AccountSectionCard>
   );
 }

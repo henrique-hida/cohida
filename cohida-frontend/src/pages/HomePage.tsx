@@ -35,6 +35,7 @@ import {
 } from "@/mocks";
 import { useCommerce } from "@/data/useCommerce";
 import { useCategories } from "@/data/useCategories";
+import type { Product, ProductVariant } from "@/types";
 
 const categoryIcons = [Trophy, Footprints, Dumbbell, Mountain, Medal];
 const trustIcons = [UsersRound, Star, HeartHandshake];
@@ -76,15 +77,24 @@ const heroSlides = [
 ];
 
 export function HomePage() {
-  const { state } = useCommerce();
+  const { addCartItem, state } = useCommerce();
   const categories = useCategories();
-  const [cartItemCount, setCartItemCount] = useState(0);
   const [activeHeroIndex, setActiveHeroIndex] = useState(0);
   const recommendationsCarouselRef = useRef<HTMLDivElement>(null);
   const communityCarouselRef = useRef<HTMLDivElement>(null);
+  const cartItemCount = state.cartItems.reduce(
+    (total, item) => total + item.quantity,
+    0,
+  );
 
-  function addToCart() {
-    setCartItemCount((count) => count + 1);
+  async function addToCart(product: Product, variant: ProductVariant) {
+    await addCartItem({
+      id: `home-${crypto.randomUUID()}`,
+      productId: product.id,
+      quantity: 1,
+      unitPriceCents: variant.priceCents ?? product.priceCents,
+      variantId: variant.id,
+    });
   }
 
   useEffect(() => {
@@ -118,7 +128,7 @@ export function HomePage() {
       <StoreHeader cartItemCount={cartItemCount} />
 
       <main>
-        <section className="relative isolate overflow-hidden bg-[#0d0d0d] text-[#f2f2f2]">
+        <section className="relative isolate overflow-hidden bg-foreground text-background">
           <div className="absolute inset-0 -z-10 bg-linear-to-r from-black via-black/80 to-transparent" />
           <div className="absolute inset-x-0 bottom-0 -z-10 h-2/5 bg-linear-to-b from-transparent via-background/45 to-background" />
           {heroSlides.map((slide, index) => (
@@ -139,7 +149,7 @@ export function HomePage() {
               <h1 className="text-4xl font-semibold tracking-tight text-balance sm:text-6xl">
                 {activeHero.title}
               </h1>
-              <p className="mt-6 max-w-lg text-base leading-7 text-[#b3b3b3] sm:text-lg">
+              <p className="mt-6 max-w-lg text-base leading-7 text-background/75 sm:text-lg">
                 {activeHero.description}
               </p>
               <div className="mt-8 flex flex-wrap gap-3">
@@ -346,7 +356,10 @@ export function HomePage() {
                         #{index + 1} em alta
                       </p>
                       <h3 className="mt-1 font-semibold">{product.name}</h3>
-                      <p className="mt-2 text-sm font-medium">
+                      <p className="mt-2 text-xs text-muted-foreground">
+                        A partir de
+                      </p>
+                      <p className="text-sm font-medium">
                         R${" "}
                         {(product.priceCents / 100).toLocaleString("pt-BR", {
                           minimumFractionDigits: 2,

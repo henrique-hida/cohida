@@ -1,43 +1,49 @@
 import {
-  CreditCard,
-  MapPin,
-  Package,
+  Ellipsis,
+  Eye,
+  EyeOff,
   Pencil,
   Plus,
   Star,
-  UserRound,
+  Trash2,
+  X,
 } from "lucide-react";
 import { useState } from "react";
-import { Link, Navigate, useSearchParams } from "react-router";
+import { Navigate, useSearchParams } from "react-router";
 
 import { CardBrandIcon, PageContainer, StoreHeader } from "@/components/shared";
-import { Badge } from "@/components/ui/badge";
+import { PageHeader } from "@/components/shared/PageHeader";
+import { AccountSectionCard } from "@/components/shared/AccountSectionCard";
+import {
+  CustomerAccountSidebar,
+  type CustomerAccountSection,
+} from "@/components/shared/CustomerAccountSidebar";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Toast } from "@/components/ui/toast";
 import { ConfirmDialog } from "@/components/admin/ConfirmDialog";
 import { useCommerce } from "@/data/useCommerce";
-import { formatCurrency } from "@/lib/currency";
 import { customerApi } from "@/lib/customerApi";
+import { CouponsSection } from "@/pages/CouponsPage";
+import { ExchangesSection } from "@/pages/ExchangesPage";
+import { OrdersSection } from "@/pages/OrdersPage";
 import {
   detectCardBrand,
   formatCardNumber,
   formatCvv,
   formatExpiry,
 } from "@/lib/card";
-
-type AccountSection = "addresses" | "cards" | "orders" | "profile";
-
-const sections: {
-  icon: typeof UserRound;
-  id: AccountSection;
-  label: string;
-}[] = [
-  { icon: UserRound, id: "profile", label: "Dados pessoais" },
-  { icon: MapPin, id: "addresses", label: "Endereços" },
-  { icon: CreditCard, id: "cards", label: "Cartões" },
-  { icon: Package, id: "orders", label: "Meus pedidos" },
-];
 
 export function AccountPage() {
   const {
@@ -55,14 +61,29 @@ export function AccountPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [isEditing, setIsEditing] = useState(false);
   const [isChangingPassword, setIsChangingPassword] = useState(false);
+  const [visiblePasswordFields, setVisiblePasswordFields] = useState<
+    Record<string, boolean>
+  >({});
   const [isDeactivatingAccount, setIsDeactivatingAccount] = useState(false);
   const [isDeactivationDialogOpen, setIsDeactivationDialogOpen] =
     useState(false);
   const [deactivationError, setDeactivationError] = useState("");
   const [addressRemovalError, setAddressRemovalError] = useState("");
   const [isAdding, setIsAdding] = useState(false);
-  const activeSection =
-    (searchParams.get("secao") as AccountSection) || "profile";
+  const requestedSection = searchParams.get("secao");
+  const validSections: CustomerAccountSection[] = [
+    "addresses",
+    "cards",
+    "coupons",
+    "exchanges",
+    "orders",
+    "profile",
+  ];
+  const activeSection = validSections.includes(
+    requestedSection as CustomerAccountSection,
+  )
+    ? (requestedSection as CustomerAccountSection)
+    : "profile";
   const customer = state.customer;
 
   if (!state.sessionHydrated) {
@@ -80,7 +101,7 @@ export function AccountPage() {
     return <Navigate replace to="/entrar" />;
   }
 
-  function selectSection(section: AccountSection) {
+  function selectSection(section: CustomerAccountSection) {
     setIsAdding(false);
     setIsEditing(false);
     setIsChangingPassword(false);
@@ -121,39 +142,22 @@ export function AccountPage() {
   return (
     <div className="min-h-svh bg-background">
       <StoreHeader />
-      <PageContainer className="py-10 sm:py-14">
-        <p className="text-sm font-medium text-primary">Minha conta</p>
-        <h1 className="mt-2 text-3xl font-semibold tracking-tight">
-          Olá, {customer.name.split(" ")[0]}
-        </h1>
-        <div className="mt-8 grid gap-8 lg:grid-cols-[14rem_minmax(0,1fr)] lg:items-start">
-          <aside className="grid gap-1 rounded-xl border border-border bg-card p-2">
-            {sections.map((section) => {
-              const Icon = section.icon;
-              return (
-                <Button
-                  className="justify-start"
-                  key={section.id}
-                  onClick={() => selectSection(section.id)}
-                  variant={activeSection === section.id ? "secondary" : "ghost"}
-                >
-                  <Icon />
-                  {section.label}
-                </Button>
-              );
-            })}
-          </aside>
-          <section>
-            {activeSection === "profile" ? (
-              <Card>
-                <CardContent className="p-5 sm:p-6">
-                  <div className="flex flex-wrap items-center justify-between gap-3">
-                    <div>
-                      <h2 className="text-lg font-semibold">Dados pessoais</h2>
-                      <p className="mt-1 text-sm text-muted-foreground">
-                        Mantenha seus dados atualizados.
-                      </p>
-                    </div>
+      <div className="relative isolate pb-8">
+        <PageHeader
+          description="Gerencie seus dados pessoais, endereços e cartões."
+          eyebrow="Minha conta"
+          title={`Olá, ${customer.name.split(" ")[0]}`}
+        />
+        <PageContainer className="relative z-10 -mt-9 space-y-8 px-5 sm:-mt-12 sm:px-8">
+          <div className="mt-8 grid gap-8 lg:grid-cols-[14rem_minmax(0,1fr)] lg:items-start">
+            <CustomerAccountSidebar
+              activeSection={activeSection}
+              onSectionChange={selectSection}
+            />
+            <section>
+              {activeSection === "profile" ? (
+                <AccountSectionCard
+                  action={
                     <Button
                       onClick={() => setIsEditing((editing) => !editing)}
                       variant="outline"
@@ -161,9 +165,12 @@ export function AccountPage() {
                       <Pencil />
                       {isEditing ? "Cancelar" : "Editar"}
                     </Button>
-                  </div>
+                  }
+                  description="Mantenha seus dados atualizados."
+                  title="Dados pessoais"
+                >
                   <form
-                    className="mt-6 grid gap-4 sm:grid-cols-2"
+                    className="grid gap-4 sm:grid-cols-2"
                     onSubmit={(event) => {
                       event.preventDefault();
                       const formData = new FormData(event.currentTarget);
@@ -199,13 +206,16 @@ export function AccountPage() {
                       </label>
                     ))}
                     {isEditing ? (
-                      <Button className="sm:col-span-2 sm:w-fit" type="submit">
+                      <Button
+                        className="sm:col-span-2 sm:ml-auto"
+                        type="submit"
+                      >
                         Salvar alterações
                       </Button>
                     ) : null}
                   </form>
                   <div className="mt-6 border-t border-border pt-5">
-                    <div className="flex flex-wrap gap-3">
+                    <div className="flex flex-wrap justify-end gap-3">
                       <Button
                         onClick={() =>
                           setIsChangingPassword((changing) => !changing)
@@ -242,31 +252,112 @@ export function AccountPage() {
                       >
                         <label className="grid gap-1 text-sm">
                           Senha atual
-                          <input
-                            className="h-9 rounded-lg border border-input bg-background px-3"
-                            name="currentPassword"
-                            required
-                            type="password"
-                          />
+                          <span className="relative">
+                            <input
+                              className="h-9 w-full rounded-lg border border-input bg-background px-3 pr-10"
+                              name="currentPassword"
+                              required
+                              type={
+                                visiblePasswordFields.current
+                                  ? "text"
+                                  : "password"
+                              }
+                            />
+                            <Button
+                              aria-label={
+                                visiblePasswordFields.current
+                                  ? "Ocultar senha atual"
+                                  : "Visualizar senha atual"
+                              }
+                              className="absolute top-1/2 right-0 -translate-y-1/2"
+                              onClick={() =>
+                                setVisiblePasswordFields((current) => ({
+                                  ...current,
+                                  current: !current.current,
+                                }))
+                              }
+                              size="icon-sm"
+                              type="button"
+                              variant="ghost"
+                            >
+                              {visiblePasswordFields.current ? (
+                                <EyeOff />
+                              ) : (
+                                <Eye />
+                              )}
+                            </Button>
+                          </span>
                         </label>
                         <label className="grid gap-1 text-sm">
                           Nova senha
-                          <input
-                            className="h-9 rounded-lg border border-input bg-background px-3"
-                            name="newPassword"
-                            minLength={8}
-                            required
-                            type="password"
-                          />
+                          <span className="relative">
+                            <input
+                              className="h-9 w-full rounded-lg border border-input bg-background px-3 pr-10"
+                              name="newPassword"
+                              minLength={8}
+                              required
+                              type={
+                                visiblePasswordFields.new ? "text" : "password"
+                              }
+                            />
+                            <Button
+                              aria-label={
+                                visiblePasswordFields.new
+                                  ? "Ocultar nova senha"
+                                  : "Visualizar nova senha"
+                              }
+                              className="absolute top-1/2 right-0 -translate-y-1/2"
+                              onClick={() =>
+                                setVisiblePasswordFields((current) => ({
+                                  ...current,
+                                  new: !current.new,
+                                }))
+                              }
+                              size="icon-sm"
+                              type="button"
+                              variant="ghost"
+                            >
+                              {visiblePasswordFields.new ? <EyeOff /> : <Eye />}
+                            </Button>
+                          </span>
                         </label>
                         <label className="grid gap-1 text-sm">
                           Confirmar nova senha
-                          <input
-                            className="h-9 rounded-lg border border-input bg-background px-3"
-                            name="newPasswordConfirmation"
-                            required
-                            type="password"
-                          />
+                          <span className="relative">
+                            <input
+                              className="h-9 w-full rounded-lg border border-input bg-background px-3 pr-10"
+                              name="newPasswordConfirmation"
+                              required
+                              type={
+                                visiblePasswordFields.confirmation
+                                  ? "text"
+                                  : "password"
+                              }
+                            />
+                            <Button
+                              aria-label={
+                                visiblePasswordFields.confirmation
+                                  ? "Ocultar confirmação de senha"
+                                  : "Visualizar confirmação de senha"
+                              }
+                              className="absolute top-1/2 right-0 -translate-y-1/2"
+                              onClick={() =>
+                                setVisiblePasswordFields((current) => ({
+                                  ...current,
+                                  confirmation: !current.confirmation,
+                                }))
+                              }
+                              size="icon-sm"
+                              type="button"
+                              variant="ghost"
+                            >
+                              {visiblePasswordFields.confirmation ? (
+                                <EyeOff />
+                              ) : (
+                                <Eye />
+                              )}
+                            </Button>
+                          </span>
                         </label>
                         <Button className="w-fit" type="submit">
                           Atualizar senha
@@ -279,36 +370,36 @@ export function AccountPage() {
                       {deactivationError}
                     </p>
                   ) : null}
-                </CardContent>
-              </Card>
-            ) : null}
-            {activeSection === "addresses" ? (
-              <AccountAddresses
-                addresses={state.addresses}
-                isAdding={isAdding}
-                onAdd={addAddress}
-                onRemove={removeCustomerAddress}
-                onUpdate={updateAddress}
-                setIsAdding={setIsAdding}
-              />
-            ) : null}
-            {activeSection === "cards" ? (
-              <AccountCards
-                cards={state.cards}
-                isAdding={isAdding}
-                onAdd={addCard}
-                onRemove={removeCard}
-                onSetPreferred={setPreferredCard}
-                onUpdate={updateCard}
-                setIsAdding={setIsAdding}
-              />
-            ) : null}
-            {activeSection === "orders" ? (
-              <AccountOrders orders={state.orders} />
-            ) : null}
-          </section>
-        </div>
-      </PageContainer>
+                </AccountSectionCard>
+              ) : null}
+              {activeSection === "addresses" ? (
+                <AccountAddresses
+                  addresses={state.addresses}
+                  isAdding={isAdding}
+                  onAdd={addAddress}
+                  onRemove={removeCustomerAddress}
+                  onUpdate={updateAddress}
+                  setIsAdding={setIsAdding}
+                />
+              ) : null}
+              {activeSection === "cards" ? (
+                <AccountCards
+                  cards={state.cards}
+                  isAdding={isAdding}
+                  onAdd={addCard}
+                  onRemove={removeCard}
+                  onSetPreferred={setPreferredCard}
+                  onUpdate={updateCard}
+                  setIsAdding={setIsAdding}
+                />
+              ) : null}
+              {activeSection === "orders" ? <OrdersSection /> : null}
+              {activeSection === "coupons" ? <CouponsSection /> : null}
+              {activeSection === "exchanges" ? <ExchangesSection /> : null}
+            </section>
+          </div>
+        </PageContainer>
+      </div>
       {isDeactivationDialogOpen ? (
         <ConfirmDialog
           confirmLabel="Desativar conta"
@@ -326,57 +417,6 @@ export function AccountPage() {
         />
       ) : null}
     </div>
-  );
-}
-
-function AccountOrders({
-  orders,
-}: {
-  orders: ReturnType<typeof useCommerce>["state"]["orders"];
-}) {
-  return (
-    <Card>
-      <CardContent className="p-5 sm:p-6">
-        <h2 className="text-lg font-semibold">Meus pedidos</h2>
-        <div className="mt-5 grid gap-3">
-          {orders.length ? (
-            orders.map((order) => (
-              <div
-                className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border p-4"
-                key={order.id}
-              >
-                <div>
-                  <p className="font-medium">{order.id}</p>
-                  <p className="mt-1 text-sm text-muted-foreground">
-                    {new Intl.DateTimeFormat("pt-BR", {
-                      dateStyle: "medium",
-                    }).format(new Date(order.createdAt))}{" "}
-                    · {order.items.length} item(ns)
-                  </p>
-                </div>
-                <div className="flex items-center gap-3">
-                  <span className="font-medium">
-                    {formatCurrency(order.totalCents)}
-                  </span>
-                  <Button
-                    render={<Link to={`/pedidos/${order.id}`} />}
-                    size="sm"
-                    variant="outline"
-                  >
-                    Ver pedido
-                  </Button>
-                </div>
-              </div>
-            ))
-          ) : (
-            <p className="rounded-xl border border-dashed border-border bg-muted/30 px-4 py-6 text-sm text-muted-foreground">
-              Você ainda não fez nenhum pedido. Quando fizer sua primeira
-              compra, o acompanhamento aparecerá aqui.
-            </p>
-          )}
-        </div>
-      </CardContent>
-    </Card>
   );
 }
 
@@ -405,76 +445,91 @@ function AccountAddresses({
   };
 
   return (
-    <Card>
-      <CardContent className="p-5 sm:p-6">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <h2 className="text-lg font-semibold">Endereços</h2>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Escolha um endereço para cada entrega.
-            </p>
-          </div>
-          <Button
-            onClick={() => {
-              setEditingAddress(null);
-              setIsAdding(!isAdding);
-            }}
-          >
-            <Plus />
-            Adicionar endereço
-          </Button>
-        </div>
-        {isAdding || editingAddress ? (
-          <AddressForm
-            initialAddress={editingAddress ?? undefined}
-            onCancel={closeForm}
-            onSave={async (address) => {
-              if (editingAddress) {
-                await onUpdate(editingAddress.id, address);
-              } else {
-                await onAdd(address);
-              }
+    <AccountSectionCard
+      action={
+        <Button
+          onClick={() => {
+            if (isAdding || editingAddress) {
               closeForm();
-            }}
-          />
-        ) : (
-          <div className="mt-6 grid gap-3">
-            {addresses.map((address) => (
+            } else {
+              setIsAdding(true);
+            }
+          }}
+        >
+          {isAdding || editingAddress ? <X /> : <Plus />}
+          {isAdding || editingAddress ? "Cancelar" : "Adicionar endereço"}
+        </Button>
+      }
+      description="Escolha um endereço para cada entrega."
+      title="Endereços"
+    >
+      {isAdding || editingAddress ? (
+        <AddressForm
+          initialAddress={editingAddress ?? undefined}
+          onCancel={closeForm}
+          onSave={async (address) => {
+            if (editingAddress) {
+              await onUpdate(editingAddress.id, address);
+            } else {
+              await onAdd(address);
+            }
+            closeForm();
+          }}
+        />
+      ) : (
+        <div className="divide-y divide-border">
+          {addresses.length ? (
+            addresses.map((address) => (
               <div
-                className="rounded-xl border border-border p-4"
+                className="flex flex-wrap items-start justify-between gap-3 py-4 first:pt-0 last:pb-0"
                 key={address.id}
               >
-                <div className="flex justify-between gap-3">
+                <div>
                   <p className="font-medium">{address.label}</p>
-                  <div className="flex items-center gap-1">
-                    <Button
-                      onClick={() => setEditingAddress(address)}
-                      size="sm"
-                      variant="ghost"
-                    >
-                      <Pencil />
-                      Editar
-                    </Button>
-                    <Button
-                      onClick={() => void onRemove(address.id)}
-                      size="sm"
-                      variant="ghost"
-                    >
-                      Remover
-                    </Button>
-                  </div>
+                  <p className="mt-1 text-sm leading-6 text-muted-foreground">
+                    {address.street}, {address.number}
+                    <br />
+                    {address.neighborhood} · {address.city} - {address.state}
+                  </p>
                 </div>
-                <p className="mt-2 text-sm leading-6 text-muted-foreground">
-                  {address.street}, {address.number}
-                  <br />
-                  {address.neighborhood} · {address.city} - {address.state}
-                </p>
+                <div className="flex items-center gap-1">
+                  <Popover>
+                    <PopoverTrigger
+                      aria-label="Mais ações do endereço"
+                      render={<Button size="icon-sm" variant="ghost" />}
+                    >
+                      <Ellipsis />
+                    </PopoverTrigger>
+                    <PopoverContent align="end" className="w-40 gap-1 p-1">
+                      <Button
+                        className="w-full justify-start"
+                        onClick={() => setEditingAddress(address)}
+                        variant="ghost"
+                      >
+                        <Pencil />
+                        Editar
+                      </Button>
+                      <Button
+                        className="w-full justify-start text-destructive hover:text-destructive"
+                        onClick={() => void onRemove(address.id)}
+                        variant="ghost"
+                      >
+                        <Trash2 />
+                        Remover
+                      </Button>
+                    </PopoverContent>
+                  </Popover>
+                </div>
               </div>
-            ))}
-          </div>
-        )}
-      </CardContent>
-    </Card>
+            ))
+          ) : (
+            <p className="py-2 text-sm text-muted-foreground">
+              Você ainda não cadastrou endereços.
+            </p>
+          )}
+        </div>
+      )}
+    </AccountSectionCard>
   );
 }
 
@@ -492,9 +547,13 @@ function AddressForm({
     >,
   ) => Promise<void>;
 }) {
+  const [addressType, setAddressType] = useState<"billing" | "delivery">(
+    initialAddress?.type ?? "delivery",
+  );
+
   return (
     <form
-      className="mt-6 grid gap-3 rounded-xl border border-dashed border-border p-4 sm:grid-cols-2"
+      className="grid gap-3 rounded-xl border border-dashed border-border p-4 sm:grid-cols-2"
       onSubmit={async (event) => {
         event.preventDefault();
         const formData = new FormData(event.currentTarget);
@@ -587,26 +646,32 @@ function AddressForm({
       </label>
       <label className="grid gap-1 text-sm">
         Tipo de endereço
-        <select
-          className="h-9 rounded-lg border border-input bg-background px-3"
-          defaultValue={initialAddress?.type ?? "delivery"}
+        <Select
           name="type"
+          onValueChange={(value) => {
+            if (value === "billing" || value === "delivery") {
+              setAddressType(value);
+            }
+          }}
+          value={addressType}
         >
-          <option value="delivery">Entrega</option>
-          <option value="billing">Cobrança</option>
-        </select>
+          <SelectTrigger className="h-9 w-full bg-background data-[size=default]:h-9">
+            <SelectValue>
+              {addressType === "billing" ? "Cobrança" : "Entrega"}
+            </SelectValue>
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="delivery">Entrega</SelectItem>
+            <SelectItem value="billing">Cobrança</SelectItem>
+          </SelectContent>
+        </Select>
       </label>
-      <Button className="w-fit" type="submit">
-        Salvar endereço
-      </Button>
-      <Button
-        className="w-fit"
-        onClick={onCancel}
-        type="button"
-        variant="ghost"
-      >
-        Cancelar
-      </Button>
+      <div className="flex justify-end gap-2 sm:col-span-2">
+        <Button onClick={onCancel} type="button" variant="ghost">
+          Cancelar
+        </Button>
+        <Button type="submit">Salvar endereço</Button>
+      </div>
     </form>
   );
 }
@@ -632,203 +697,224 @@ function AccountCards({
   const [newCardNumber, setNewCardNumber] = useState("");
   const newCardBrand = detectCardBrand(newCardNumber);
   return (
-    <Card>
-      <CardContent className="p-5 sm:p-6">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <h2 className="text-lg font-semibold">Cartões</h2>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Os dados sensíveis são protegidos.
-            </p>
-          </div>
-          <Button
-            onClick={() => {
-              setIsAdding(!isAdding);
-              setNewCardNumber("");
-            }}
-          >
-            <Plus />
-            Adicionar cartão
-          </Button>
-        </div>
-        {isAdding ? (
-          <form
-            className="mt-6 grid gap-3 rounded-xl border border-dashed border-border p-4 sm:grid-cols-2"
-            onSubmit={(event) => {
-              event.preventDefault();
-              const formData = new FormData(event.currentTarget);
-              const number = String(formData.get("number") ?? "");
-              onAdd(
-                {
-                  brand: detectCardBrand(number) ?? "Cartão",
-                  isPreferred: !cards.length,
-                  label: String(formData.get("label") ?? "Novo cartão"),
-                },
-                number,
-              );
-              setIsAdding(false);
-              setNewCardNumber("");
-            }}
-          >
-            <label className="grid gap-1 text-sm">
-              Número do cartão
-              <span className="relative">
-                {newCardBrand ? (
-                  <span className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2">
-                    <CardBrandIcon brand={newCardBrand} />
-                  </span>
-                ) : null}
-                <input
-                  className={`h-9 w-full rounded-lg border border-input bg-background pr-3 ${
-                    newCardBrand ? "pl-16" : "pl-3"
-                  }`}
-                  inputMode="numeric"
-                  name="number"
-                  onInput={(event) => {
-                    const formattedNumber = formatCardNumber(
-                      event.currentTarget.value,
-                    );
-                    event.currentTarget.value = formattedNumber;
-                    setNewCardNumber(formattedNumber);
-                  }}
-                  required
-                />
-              </span>
-            </label>
-            <label className="grid gap-1 text-sm">
-              Nome do cartão
+    <AccountSectionCard
+      action={
+        <Button
+          onClick={() => {
+            setIsAdding(!isAdding);
+            setNewCardNumber("");
+          }}
+        >
+          {isAdding ? <X /> : <Plus />}
+          {isAdding ? "Cancelar" : "Adicionar cartão"}
+        </Button>
+      }
+      description="Os dados sensíveis são protegidos."
+      title="Cartões"
+    >
+      {isAdding ? (
+        <form
+          className="grid gap-3 rounded-xl border border-dashed border-border p-4 sm:grid-cols-2"
+          onSubmit={(event) => {
+            event.preventDefault();
+            const formData = new FormData(event.currentTarget);
+            const number = String(formData.get("number") ?? "");
+            onAdd(
+              {
+                brand: detectCardBrand(number) ?? "Cartão",
+                isPreferred: !cards.length,
+                label: String(formData.get("label") ?? "Novo cartão"),
+              },
+              number,
+            );
+            setIsAdding(false);
+            setNewCardNumber("");
+          }}
+        >
+          <label className="grid gap-1 text-sm">
+            Número do cartão
+            <span className="relative">
+              {newCardBrand ? (
+                <span className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2">
+                  <CardBrandIcon brand={newCardBrand} />
+                </span>
+              ) : null}
               <input
-                className="h-9 rounded-lg border border-input bg-background px-3"
-                placeholder="Ex.: Cartão principal"
-                required
-                name="label"
-              />
-            </label>
-            <label className="grid gap-1 text-sm">
-              Validade
-              <input
-                className="h-9 rounded-lg border border-input bg-background px-3"
-                placeholder="MM/AA"
-                onInput={(event) => {
-                  event.currentTarget.value = formatExpiry(
-                    event.currentTarget.value,
-                  );
-                }}
-                required
-              />
-            </label>
-            <label className="grid gap-1 text-sm">
-              CVV
-              <input
-                className="h-9 rounded-lg border border-input bg-background px-3"
+                className={`h-9 w-full rounded-lg border border-input bg-background pr-3 ${
+                  newCardBrand ? "pl-16" : "pl-3"
+                }`}
                 inputMode="numeric"
-                maxLength={4}
+                name="number"
                 onInput={(event) => {
-                  event.currentTarget.value = formatCvv(
+                  const formattedNumber = formatCardNumber(
                     event.currentTarget.value,
                   );
+                  event.currentTarget.value = formattedNumber;
+                  setNewCardNumber(formattedNumber);
                 }}
                 required
               />
-            </label>
-            <Button className="w-fit" type="submit">
-              Salvar cartão
+            </span>
+          </label>
+          <label className="grid gap-1 text-sm">
+            Nome do cartão
+            <input
+              className="h-9 rounded-lg border border-input bg-background px-3"
+              placeholder="Ex.: Cartão principal"
+              required
+              name="label"
+            />
+          </label>
+          <label className="grid gap-1 text-sm">
+            Validade
+            <input
+              className="h-9 rounded-lg border border-input bg-background px-3"
+              placeholder="MM/AA"
+              onInput={(event) => {
+                event.currentTarget.value = formatExpiry(
+                  event.currentTarget.value,
+                );
+              }}
+              required
+            />
+          </label>
+          <label className="grid gap-1 text-sm">
+            CVV
+            <input
+              className="h-9 rounded-lg border border-input bg-background px-3"
+              inputMode="numeric"
+              maxLength={4}
+              onInput={(event) => {
+                event.currentTarget.value = formatCvv(
+                  event.currentTarget.value,
+                );
+              }}
+              required
+            />
+          </label>
+          <div className="flex justify-end gap-2 sm:col-span-2">
+            <Button
+              onClick={() => {
+                setIsAdding(false);
+                setNewCardNumber("");
+              }}
+              type="button"
+              variant="outline"
+            >
+              Cancelar
             </Button>
-          </form>
-        ) : (
-          <div className="mt-6 grid gap-3 sm:grid-cols-2">
-            {cards.length ? (
-              cards.map((card) => (
-                <div
-                  className="rounded-xl border border-border bg-muted/35 p-4"
-                  key={card.id}
-                >
-                  <div className="flex justify-between gap-3">
-                    <p className="font-medium">
-                      {card.brand} · {card.lastDigits}
+            <Button type="submit">Salvar cartão</Button>
+          </div>
+        </form>
+      ) : (
+        <div className="grid gap-4 sm:grid-cols-2">
+          {cards.length ? (
+            cards.map((card) => (
+              <div
+                className="rounded-xl border border-border bg-muted/35 p-4"
+                key={card.id}
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <p className="font-medium">
+                        {card.brand} · {card.lastDigits}
+                      </p>
+                      {card.isPreferred ? (
+                        <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
+                          <Star className="size-3 fill-current" />
+                          Favorito
+                        </span>
+                      ) : null}
+                    </div>
+                    <p className="mt-1 text-sm text-muted-foreground">
+                      {card.label}
                     </p>
-                    {card.isPreferred ? <Badge>Preferido</Badge> : null}
                   </div>
-                  {editingId === card.id ? (
-                    <form
-                      className="mt-3 grid gap-2"
-                      onSubmit={(event) => {
-                        event.preventDefault();
-                        const formData = new FormData(event.currentTarget);
-                        onUpdate(card.id, {
-                          brand: card.brand,
-                          label: String(formData.get("label") ?? ""),
-                        });
-                        setEditingId(null);
-                      }}
-                    >
-                      <input
-                        className="h-9 rounded-lg border border-input bg-background px-3 text-sm"
-                        defaultValue={card.label}
-                        name="label"
-                        required
-                      />
-                      <div className="flex gap-2">
-                        <Button size="sm" type="submit">
-                          Salvar
-                        </Button>
+                  <div className="flex shrink-0 items-center gap-1">
+                    {!card.isPreferred ? (
+                      <Button
+                        aria-label="Definir como cartão favorito"
+                        onClick={() => onSetPreferred(card.id)}
+                        size="icon-sm"
+                        title="Definir como cartão favorito"
+                        variant="ghost"
+                      >
+                        <Star />
+                      </Button>
+                    ) : null}
+                    <Popover>
+                      <PopoverTrigger
+                        aria-label="Mais ações do cartão"
+                        render={<Button size="icon-sm" variant="ghost" />}
+                      >
+                        <Ellipsis />
+                      </PopoverTrigger>
+                      <PopoverContent align="end" className="w-40 gap-1 p-1">
                         <Button
-                          onClick={() => setEditingId(null)}
-                          size="sm"
-                          type="button"
+                          className="w-full justify-start"
+                          onClick={() => setEditingId(card.id)}
                           variant="ghost"
                         >
-                          Cancelar
-                        </Button>
-                      </div>
-                    </form>
-                  ) : (
-                    <>
-                      <p className="mt-2 text-sm text-muted-foreground">
-                        {card.label}
-                      </p>
-                      <div className="mt-4 flex gap-2">
-                        <Button
-                          disabled={card.isPreferred}
-                          onClick={() => onSetPreferred(card.id)}
-                          size="sm"
-                          variant={card.isPreferred ? "secondary" : "outline"}
-                        >
-                          <Star
-                            className={
-                              card.isPreferred ? "fill-current" : undefined
-                            }
-                          />
-                          {card.isPreferred ? "Favorito" : "Favoritar"}
-                        </Button>
-                        <Button
-                          onClick={() => setEditingId(card.id)}
-                          size="sm"
-                          variant="outline"
-                        >
+                          <Pencil />
                           Editar
                         </Button>
                         <Button
+                          className="w-full justify-start text-destructive hover:text-destructive"
                           onClick={() => onRemove(card.id)}
-                          size="sm"
                           variant="ghost"
                         >
+                          <Trash2 />
                           Remover
                         </Button>
-                      </div>
-                    </>
-                  )}
+                      </PopoverContent>
+                    </Popover>
+                  </div>
                 </div>
-              ))
-            ) : (
-              <p className="rounded-xl border border-dashed border-border bg-muted/30 px-4 py-6 text-sm text-muted-foreground sm:col-span-2">
-                Você ainda não cadastrou nenhum cartão. Adicione um cartão para
-                agilizar o pagamento das próximas compras.
-              </p>
-            )}
-          </div>
-        )}
-      </CardContent>
-    </Card>
+                {editingId === card.id ? (
+                  <form
+                    className="mt-3 grid gap-2"
+                    onSubmit={(event) => {
+                      event.preventDefault();
+                      const formData = new FormData(event.currentTarget);
+                      onUpdate(card.id, {
+                        brand: card.brand,
+                        label: String(formData.get("label") ?? ""),
+                      });
+                      setEditingId(null);
+                    }}
+                  >
+                    <input
+                      className="h-9 rounded-lg border border-input bg-background px-3 text-sm"
+                      defaultValue={card.label}
+                      name="label"
+                      required
+                    />
+                    <div className="flex justify-end gap-2">
+                      <Button size="sm" type="submit">
+                        Salvar
+                      </Button>
+                      <Button
+                        onClick={() => setEditingId(null)}
+                        size="sm"
+                        type="button"
+                        variant="ghost"
+                      >
+                        Cancelar
+                      </Button>
+                    </div>
+                  </form>
+                ) : null}
+              </div>
+            ))
+          ) : (
+            <p className="rounded-xl border border-dashed border-border bg-muted/30 px-4 py-6 text-sm text-muted-foreground sm:col-span-2">
+              Você ainda não cadastrou nenhum cartão. Adicione um cartão para
+              agilizar o pagamento das próximas compras.
+            </p>
+          )}
+        </div>
+      )}
+    </AccountSectionCard>
   );
 }

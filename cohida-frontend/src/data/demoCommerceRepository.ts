@@ -1,14 +1,23 @@
 import type { CartItem, Order, Product } from "@/types";
 import type { CustomerResponse as ApiCustomerResponse } from "@/lib/customerApi";
-import { customerApi, logout as clearApiSession } from "@/lib/customerApi";
+import {
+  customerApi,
+  logout as clearApiSession,
+  updateCurrentAccountName,
+} from "@/lib/customerApi";
 import {
   commerceApi,
   type ApiCart,
   type ApiCoupon,
+  type ApiCouponUpsertRequest,
   type ApiOrder,
   type ApiProduct,
   type ApiReturn,
+  type ApiExpiredCartItem,
+  resolveProductImageUrl,
+  toStoredProductImageUrl,
 } from "@/lib/commerceApi";
+import { tokenizeCardForProcessor } from "@/lib/paymentTokenization";
 
 export interface DemoAddress {
   city: string;
@@ -72,6 +81,7 @@ export interface DemoCommerceState {
   coupons: DemoCoupon[];
   customer: DemoCustomer | null;
   exchanges: DemoExchange[];
+  expiredCartItems: ApiExpiredCartItem[];
   orders: Order[];
   products: Product[];
   sessionCustomerId: string | null;
@@ -82,6 +92,7 @@ export interface DemoCommerceState {
     shippingCents: number;
     totalCents: number;
     couponCode: string | null;
+    couponCodes: string[];
   };
 }
 
@@ -96,6 +107,7 @@ function emptyState(): DemoCommerceState {
     coupons: [],
     customer: null,
     exchanges: [],
+    expiredCartItems: [],
     orders: [],
     products: [],
     sessionCustomerId: null,
@@ -106,12 +118,14 @@ function emptyState(): DemoCommerceState {
       shippingCents: 0,
       totalCents: 0,
       couponCode: null,
+      couponCodes: [],
     },
   };
 }
 
 function mapProduct(product: ApiProduct): Product {
-  const first = product.variants[0];
+  const imageUrl = resolveProductImageUrl(product.imageUrl);
+  const variantPrices = product.variants.map((variant) => variant.priceCents);
   return {
     id: String(product.id),
     sku: product.code,
@@ -119,13 +133,13 @@ function mapProduct(product: ApiProduct): Product {
     name: product.name,
     brand: product.brand,
     description: product.description,
-    priceCents: first?.priceCents ?? 0,
+    priceCents: variantPrices.length ? Math.min(...variantPrices) : 0,
     rating: 0,
     reviewCount: 0,
     status: product.active ? "active" : "inactive",
     categoryIds: product.categories,
-    images: product.imageUrl
-      ? [{ alt: product.name, id: `${product.id}-main`, src: product.imageUrl }]
+    images: imageUrl
+      ? [{ alt: product.name, id: `${product.id}-main`, src: imageUrl }]
       : [],
     attributes: {
       marca: product.brand,
@@ -142,6 +156,7 @@ function mapProduct(product: ApiProduct): Product {
       label: variant.label,
       color: variant.color ?? undefined,
       size: variant.size ?? undefined,
+      priceCents: variant.priceCents,
       stockQuantity: variant.stockQuantity,
     })),
   };
@@ -151,6 +166,8 @@ function mapOrder(order: ApiOrder): Order {
   const statuses: Record<string, Order["status"]> = {
     EM_ABERTO: "processing",
     EM_PROCESSAMENTO: "processing",
+    APROVADA: "approved",
+    REPROVADA: "rejected",
     PAGAMENTO_REALIZADO: "approved",
     EM_TRANSITO: "in_transit",
     ENTREGUE: "delivered",
@@ -161,7 +178,7 @@ function mapOrder(order: ApiOrder): Order {
     customerId: String(order.customerId),
     status: statuses[order.status] ?? "processing",
     items: order.items.map((item) => ({
-      id: `${order.id}-${item.variantId}`,
+      id: String(item.id ?? `${order.id}-${item.variantId}`),
       productId: item.productName,
       variantId: String(item.variantId),
       quantity: item.quantity,
@@ -172,6 +189,9 @@ function mapOrder(order: ApiOrder): Order {
     shippingCents: order.shippingCents,
     totalCents: order.totalCents,
     createdAt: order.createdAt,
+    approvedAt: order.approvedAt ?? undefined,
+    dispatchedAt: order.dispatchedAt ?? undefined,
+    deliveredAt: order.deliveredAt ?? undefined,
     issuedCoupon:
       order.issuedCouponCode && order.issuedCouponValueCents != null
         ? {
@@ -197,6 +217,8 @@ function mapCart(cart: ApiCart) {
       shippingCents: cart.shippingCents,
       totalCents: cart.totalCents,
       couponCode: cart.couponCode,
+      couponCodes:
+        cart.couponCodes ?? (cart.couponCode ? [cart.couponCode] : []),
     },
   };
 }
@@ -218,17 +240,15 @@ function mapCoupon(coupon: ApiCoupon): DemoCoupon {
 
 function mapReturn(item: ApiReturn): DemoExchange {
   const statuses: Record<string, DemoExchange["status"]> = {
-    SOLICITADA: "requested",
-    ACEITA: "authorized",
-    NEGADA: "denied",
-    ITEM_ENVIADO: "sent",
-    ITEM_RECEBIDO: "received",
-    PROCESSADA: "completed",
+    EM_TROCA: "requested",
+    TROCA_AUTORIZADA: "authorized",
+    TROCA_NEGADA: "denied",
+    TROCADO: "completed",
   };
   return {
     id: String(item.id),
     orderId: String(item.orderId),
-    orderItemId: String(item.orderItemId),
+    orderItemId: item.orderItemId === null ? "" : String(item.orderItemId),
     reason: item.reason,
     status: statuses[item.status] ?? "requested",
     dispatch: item.trackingCode
@@ -248,13 +268,19 @@ function patch(next: Partial<DemoCommerceState>) {
 }
 
 async function refreshCustomerData() {
-  const [cart, cards, orders, returns, coupons] = await Promise.all([
-    commerceApi.cart(),
-    commerceApi.cards(),
-    commerceApi.orders(),
-    commerceApi.returns(),
-    commerceApi.customerCoupons(),
-  ]);
+  // Loading the cart can expire reservations on the server. Fetch expiration
+  // notices afterwards so the UI never renders a cart that was reconciled with
+  // a stale list of expired items.
+  const cart = await commerceApi.cart();
+  const [cards, orders, returns, coupons, expiredCartItems] = await Promise.all(
+    [
+      commerceApi.cards(),
+      commerceApi.orders(),
+      commerceApi.returns(),
+      commerceApi.customerCoupons(),
+      commerceApi.expiredCartItems().catch(() => []),
+    ],
+  );
   patch({
     ...mapCart(cart),
     cards: cards.map((card) => ({
@@ -267,6 +293,7 @@ async function refreshCustomerData() {
     orders: orders.map(mapOrder),
     exchanges: returns.map(mapReturn),
     coupons: coupons.map(mapCoupon),
+    expiredCartItems,
   });
 }
 
@@ -285,6 +312,7 @@ export const demoCommerceRepository = {
     return () => listeners.delete(listener);
   },
   async startApiSession(customer: ApiCustomerResponse) {
+    updateCurrentAccountName(customer.name);
     patch({
       customer: {
         id: String(customer.id),
@@ -323,7 +351,9 @@ export const demoCommerceRepository = {
   async updateCustomer(
     values: Pick<DemoCustomer, "birthDate" | "email" | "name" | "phone">,
   ) {
-    await this.startApiSession(await customerApi.updateProfile(values));
+    await demoCommerceRepository.startApiSession(
+      await customerApi.updateProfile(values),
+    );
   },
   async addAddress(address: Omit<DemoAddress, "id">) {
     const saved = await customerApi.addAddress({
@@ -352,13 +382,15 @@ export const demoCommerceRepository = {
     });
   },
   async addCard(card: Omit<DemoCard, "id" | "lastDigits">, cardNumber: string) {
-    await commerceApi.createCard({
+    const created = await commerceApi.createCard({
       cardNumber,
       label: card.label,
+      processorToken: tokenizeCardForProcessor(cardNumber),
       expiryMonth: 1,
       expiryYear: new Date().getFullYear() + 3,
     });
     await refreshCustomerData();
+    return created;
   },
   async updateCard(id: string, values: Pick<DemoCard, "brand" | "label">) {
     await commerceApi.updateCard(id, values.label);
@@ -372,15 +404,8 @@ export const demoCommerceRepository = {
     await commerceApi.removeCard(id);
     await refreshCustomerData();
   },
-  async createCoupon(input: Pick<DemoCoupon, "code" | "kind" | "valueCents">) {
-    await commerceApi.createCoupon({
-      code: input.code,
-      description:
-        input.kind === "exchange" ? "Crédito de troca" : "Cupom promocional",
-      discountType: "FIXED",
-      discountCents: input.valueCents,
-      active: true,
-    });
+  async createCoupon(input: ApiCouponUpsertRequest) {
+    await commerceApi.createCoupon(input);
     patch({ coupons: (await commerceApi.coupons()).map(mapCoupon) });
   },
   async toggleCoupon(id: string) {
@@ -408,8 +433,19 @@ export const demoCommerceRepository = {
   async removeCoupon() {
     patch(mapCart(await commerceApi.removeCoupon()));
   },
+  async removeCouponByCode(code: string) {
+    patch(mapCart(await commerceApi.removeCouponByCode(code)));
+  },
+  async acknowledgeExpiredCartItem(id: string) {
+    await commerceApi.acknowledgeExpiredCartItem(id);
+    patch({
+      expiredCartItems: state.expiredCartItems.filter(
+        (item) => String(item.id) !== id,
+      ),
+    });
+  },
   async startBuyNow(item: CartItem) {
-    await this.addCartItem(item);
+    await demoCommerceRepository.addCartItem(item);
   },
   async createOrder(input: {
     deliveryAddressId: string;
@@ -432,7 +468,7 @@ export const demoCommerceRepository = {
   },
   async requestExchange(input: {
     orderId: string;
-    orderItemId: string;
+    orderItemId: string | null;
     reason: string;
   }) {
     await commerceApi.requestReturn(
@@ -454,15 +490,16 @@ export const demoCommerceRepository = {
       name: product.name,
       brand: product.brand,
       description: product.description,
+      imageUrl: toStoredProductImageUrl(product.images[0]?.src),
       categories: product.categoryIds,
-      minimumStock: 0,
+      minimumStock: Number(product.attributes.minimumStock ?? 0),
       active: product.status === "active",
       variants: product.variants.map((variant) => ({
         sku: variant.sku,
         label: variant.label,
         color: variant.color,
         size: variant.size,
-        priceCents: product.priceCents,
+        priceCents: variant.priceCents ?? product.priceCents,
         stockQuantity: variant.stockQuantity,
       })),
     };
@@ -478,6 +515,6 @@ export const demoCommerceRepository = {
     await commerceApi.updateOrderStatus(id, status);
   },
   reset() {
-    this.logout();
+    demoCommerceRepository.logout();
   },
 };

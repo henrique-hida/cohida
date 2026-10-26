@@ -28,6 +28,12 @@ export function ProductCard({
     (variant) => variant.stockQuantity > 0,
   );
   const isAvailable = firstAvailableVariant !== undefined;
+  const hasVariantPriceRange =
+    new Set(
+      product.variants.map(
+        (variant) => variant.priceCents ?? product.priceCents,
+      ),
+    ).size > 1;
 
   return (
     <Card className="h-full gap-4 pb-4 pt-0">
@@ -76,6 +82,9 @@ export function ProductCard({
         </p>
       </CardHeader>
       <CardContent className="mt-auto px-4">
+        {hasVariantPriceRange ? (
+          <p className="mb-1 text-xs text-muted-foreground">A partir de</p>
+        ) : null}
         <Price
           compareAtPriceCents={product.compareAtPriceCents}
           priceCents={product.priceCents}

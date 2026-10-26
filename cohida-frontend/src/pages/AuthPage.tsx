@@ -1,4 +1,4 @@
-import { KeyRound, UserRound } from "lucide-react";
+import { Eye, EyeOff, KeyRound, UserRound } from "lucide-react";
 import { useState } from "react";
 import { useNavigate } from "react-router";
 
@@ -40,7 +40,8 @@ export function AuthPage() {
   const [mode, setMode] = useState<AuthMode>("login");
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const { startApiSession } = useCommerce();
+  const [isPasswordVisible, setIsPasswordVisible] = useState(false);
+  const { completeSessionHydration, startApiSession } = useCommerce();
   const navigate = useNavigate();
   const copy = authCopy[mode];
 
@@ -59,12 +60,16 @@ export function AuthPage() {
         String(formData.get("password") ?? ""),
       );
       if (authentication.role === "ADMIN") {
-        localStorage.setItem("cohida-admin-name", authentication.customerName ?? "Administradora");
+        localStorage.setItem(
+          "cohida-admin-name",
+          authentication.customerName ?? "Administradora",
+        );
         navigate("/admin/clientes");
         return;
       }
-      startApiSession(await customerApi.me());
-      navigate("/conta");
+      await startApiSession(await customerApi.me());
+      completeSessionHydration();
+      navigate("/");
     } catch (reason) {
       setError(
         reason instanceof Error
@@ -135,8 +140,9 @@ export function AuthPage() {
               <CustomerRegistrationForm
                 onSubmit={async (input) => {
                   await registerApi(input);
-                  startApiSession(await customerApi.me());
-                  navigate("/conta");
+                  await startApiSession(await customerApi.me());
+                  completeSessionHydration();
+                  navigate("/");
                 }}
                 submitLabel="Criar conta"
               />
@@ -154,12 +160,30 @@ export function AuthPage() {
                 {mode !== "recovery" ? (
                   <label className="grid gap-2 text-sm font-medium">
                     Senha
-                    <input
-                      className="h-9 rounded-md border border-input bg-background px-3 font-normal"
-                      name="password"
-                      required
-                      type="password"
-                    />
+                    <span className="relative">
+                      <input
+                        className="h-9 w-full rounded-md border border-input bg-background px-3 pr-10 font-normal"
+                        name="password"
+                        required
+                        type={isPasswordVisible ? "text" : "password"}
+                      />
+                      <Button
+                        aria-label={
+                          isPasswordVisible
+                            ? "Ocultar senha"
+                            : "Visualizar senha"
+                        }
+                        className="absolute top-1/2 right-0 -translate-y-1/2"
+                        onClick={() =>
+                          setIsPasswordVisible((visible) => !visible)
+                        }
+                        size="icon-sm"
+                        type="button"
+                        variant="ghost"
+                      >
+                        {isPasswordVisible ? <EyeOff /> : <Eye />}
+                      </Button>
+                    </span>
                   </label>
                 ) : null}
                 {error ? (

@@ -20,6 +20,7 @@ export interface ProductVariant {
   label: string;
   color?: string;
   size?: string;
+  priceCents?: number;
   stockQuantity: number;
 }
 

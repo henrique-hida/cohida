@@ -1,9 +1,8 @@
 import logoAccent from "@/assets/logos/CoHidaLogoAccent.svg";
-import logoDark from "@/assets/logos/CoHidaLogoDark.svg";
-import logoLight from "@/assets/logos/CoHidaLogoLight.svg";
+import logoDefault from "@/assets/logos/CoHidaLogoDark.svg";
 import { cn } from "@/lib/utils";
 
-type LogoVariant = "accent" | "dark" | "light";
+type LogoVariant = "accent" | "default";
 
 interface AppLogoProps {
   className?: string;
@@ -12,11 +11,10 @@ interface AppLogoProps {
 
 const logos: Record<LogoVariant, string> = {
   accent: logoAccent,
-  dark: logoDark,
-  light: logoLight,
+  default: logoDefault,
 };
 
-export function AppLogo({ className, variant = "accent" }: AppLogoProps) {
+export function AppLogo({ className, variant = "default" }: AppLogoProps) {
   return (
     <img
       alt="coHida"

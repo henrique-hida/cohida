@@ -4,11 +4,8 @@ import {
   LogIn,
   LogOut,
   Menu,
-  Package,
-  Repeat2,
   ShoppingCart,
   Search,
-  Ticket,
   UserRound,
   X,
 } from "lucide-react";
@@ -16,22 +13,22 @@ import { useEffect, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router";
 
 import { AppLogo } from "@/components/shared/AppLogo";
-import { ThemeToggle } from "@/components/shared/ThemeToggle";
+import { AccountMenu } from "@/components/shared/AccountMenu";
+import { FilterSelect } from "@/components/shared/FilterSelect";
 import { Button } from "@/components/ui/button";
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { useCommerce } from "@/data/useCommerce";
-import { hasAdminSession } from "@/lib/customerApi";
+import {
+  apiRequest,
+  getSavedAccounts,
+  getSessionRole,
+  hasAdminSession,
+  switchAccount,
+} from "@/lib/customerApi";
 import { logout as logoutApi } from "@/lib/customerApi";
 import { useCategories } from "@/data/useCategories";
 
@@ -41,6 +38,14 @@ interface StoreHeaderProps {
   cartItemCount?: number;
 }
 
+interface CustomerNotification {
+  id: number;
+  type: string;
+  message: string;
+  targetPath: string | null;
+  read: boolean;
+}
+
 export function StoreHeader({ cartItemCount = 0 }: StoreHeaderProps) {
   const { search } = useLocation();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -48,7 +53,10 @@ export function StoreHeader({ cartItemCount = 0 }: StoreHeaderProps) {
     () => new URLSearchParams(search).get("busca") ?? "",
   );
   const [categoryId, setCategoryId] = useState(
-    () => new URLSearchParams(search).get("categoria") ?? "todas",
+    () => new URLSearchParams(search).get("categoria") ?? "",
+  );
+  const [notifications, setNotifications] = useState<CustomerNotification[]>(
+    [],
   );
   const { logout, state } = useCommerce();
   const categories = useCategories();
@@ -63,6 +71,7 @@ export function StoreHeader({ cartItemCount = 0 }: StoreHeaderProps) {
     state.customer && state.sessionCustomerId === state.customer.id,
   );
   const signedInAsAdmin = Boolean(adminName);
+  const savedAccounts = getSavedAccounts();
   const accountName = signedInAsAdmin ? adminName : state.customer?.name;
   const accountInitials = accountName
     ?.trim()
@@ -79,26 +88,56 @@ export function StoreHeader({ cartItemCount = 0 }: StoreHeaderProps) {
     logout();
   }
 
+  function handleAccountSwitch(token: string) {
+    const account = savedAccounts.find((saved) => saved.token === token);
+    if (!account) return;
+
+    switchAccount(account);
+    window.location.assign(account.role === "ADMIN" ? "/admin" : "/");
+  }
+
   useEffect(() => {
-    const searchParams = new URLSearchParams(search);
-    setSearchTerm(searchParams.get("busca") ?? "");
-    setCategoryId(searchParams.get("categoria") ?? "todas");
+    const timer = window.setTimeout(() => {
+      const searchParams = new URLSearchParams(search);
+      setSearchTerm(searchParams.get("busca") ?? "");
+      setCategoryId(searchParams.get("categoria") ?? "");
+    }, 0);
+    return () => window.clearTimeout(timer);
   }, [search]);
 
   useEffect(() => {
+    if (getSessionRole() !== "CUSTOMER") {
+      const timer = window.setTimeout(() => setNotifications([]), 0);
+      return () => window.clearTimeout(timer);
+    }
+    void apiRequest<CustomerNotification[]>("/customers/me/notifications")
+      .then(setNotifications)
+      .catch(() => setNotifications([]));
+  }, [state.sessionCustomerId]);
+
+  useEffect(() => {
     const query = searchTerm.trim();
-    if (!query && categoryId === "todas") return;
+    const currentParams = new URLSearchParams(search);
+    if (
+      !query &&
+      !categoryId &&
+      !currentParams.has("busca") &&
+      !currentParams.has("categoria")
+    ) {
+      return;
+    }
 
     const timeoutId = window.setTimeout(() => {
       const params = new URLSearchParams();
       if (query) params.set("busca", query);
-      if (categoryId !== "todas") params.set("categoria", categoryId);
-      navigate(`/produtos?${params.toString()}`);
+      if (categoryId) params.set("categoria", categoryId);
+      const queryString = params.toString();
+      navigate(`/produtos${queryString ? `?${queryString}` : ""}`);
       setIsMenuOpen(false);
     }, 400);
 
     return () => window.clearTimeout(timeoutId);
-  }, [categoryId, navigate, searchTerm]);
+  }, [categoryId, navigate, search, searchTerm]);
 
   const searchForm = (
     <div
@@ -118,26 +157,17 @@ export function StoreHeader({ cartItemCount = 0 }: StoreHeaderProps) {
           value={searchTerm}
         />
       </div>
-      <Select
-        onValueChange={(value) => setCategoryId(value ?? "todas")}
+      <FilterSelect
+        ariaLabel="Filtrar produtos por categoria"
+        className="min-w-34 shrink-0"
+        onValueChange={setCategoryId}
+        options={categories.map((category) => ({
+          label: category.name,
+          value: category.id,
+        }))}
+        placeholder="Categoria"
         value={categoryId}
-      >
-        <SelectTrigger
-          aria-label="Categoria"
-          className="h-10 w-34 shrink-0 rounded-lg bg-background data-[size=default]:h-10"
-          id="store-category"
-        >
-          <SelectValue />
-        </SelectTrigger>
-        <SelectContent align="end" className="p-1">
-          <SelectItem value="todas">Categorias</SelectItem>
-          {categories.map((category) => (
-            <SelectItem key={category.id} value={category.id}>
-              {category.name}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
+      />
     </div>
   );
 
@@ -149,8 +179,7 @@ export function StoreHeader({ cartItemCount = 0 }: StoreHeaderProps) {
           className="shrink-0 justify-self-start"
           to="/"
         >
-          <AppLogo className="dark:hidden" variant="dark" />
-          <AppLogo className="hidden dark:block" variant="light" />
+          <AppLogo variant="default" />
         </Link>
         <div className="hidden min-w-0 justify-self-center md:block">
           {searchForm}
@@ -170,9 +199,23 @@ export function StoreHeader({ cartItemCount = 0 }: StoreHeaderProps) {
             </PopoverTrigger>
             <PopoverContent align="end" className="w-72 p-4">
               <p className="font-medium">Notificações</p>
-              <p className="mt-1 text-sm text-muted-foreground">
-                Você não tem novas notificações.
-              </p>
+              {notifications.length ? (
+                <div className="mt-3 grid gap-2">
+                  {notifications.map((notification) => (
+                    <Link
+                      className="rounded-lg bg-muted p-3 text-sm hover:bg-muted/70"
+                      key={notification.id}
+                      to={notification.targetPath ?? "/pedidos"}
+                    >
+                      {notification.message}
+                    </Link>
+                  ))}
+                </div>
+              ) : (
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Você não tem novas notificações.
+                </p>
+              )}
             </PopoverContent>
           </Popover>
           <Button
@@ -189,117 +232,80 @@ export function StoreHeader({ cartItemCount = 0 }: StoreHeaderProps) {
               </span>
             ) : null}
           </Button>
-          <Popover>
-            <PopoverTrigger
-              render={
-                <Button
-                  aria-label={
-                    signedInAsAdmin
-                      ? "Menu da administradora"
-                      : signedIn
-                        ? "Menu da conta"
-                        : "Entrar ou criar conta"
-                  }
-                  className="font-semibold"
-                  size="icon"
-                  variant="outline"
-                />
-              }
-            >
-              {accountInitials ? (
+          <AccountMenu
+            accountName={signedIn ? accountName : undefined}
+            accounts={signedIn ? savedAccounts : []}
+            showAddAccount={signedIn}
+            ariaLabel={
+              signedInAsAdmin
+                ? "Menu da administradora"
+                : signedIn
+                  ? "Menu da conta"
+                  : "Entrar ou criar conta"
+            }
+            onSwitchAccount={handleAccountSwitch}
+            triggerClassName="font-semibold"
+            trigger={
+              accountInitials ? (
                 <span className="text-xs" title={accountName ?? undefined}>
                   {accountInitials}
                 </span>
               ) : (
                 <UserRound />
-              )}
-            </PopoverTrigger>
-            <PopoverContent align="end" className="w-56 gap-1 p-2">
-              {signedInAsAdmin ? (
-                <>
-                  <p className="px-2 pt-1 font-medium">{adminName}</p>
-                  <p className="px-2 text-xs text-muted-foreground">Admin</p>
-                  <Button
-                    className="w-full justify-start"
-                    render={<Link to="/admin" />}
-                    variant="ghost"
-                  >
-                    <LayoutDashboard />
-                    Ir para admin
-                  </Button>
-                  <Button
-                    className="w-full justify-start"
-                    onClick={handleLogout}
-                    render={<Link to="/" />}
-                    variant="ghost"
-                  >
-                    <LogOut />
-                    Sair
-                  </Button>
-                </>
-              ) : signedIn ? (
-                <>
-                  <p className="px-2 pt-1 font-medium">
-                    {state.customer?.name}
-                  </p>
-                  <Button
-                    className="w-full justify-start"
-                    render={<Link to="/conta" />}
-                    variant="ghost"
-                  >
-                    <UserRound />
-                    Minha conta
-                  </Button>
-                  <Button
-                    className="w-full justify-start"
-                    render={<Link to="/cupons" />}
-                    variant="ghost"
-                  >
-                    <Ticket />
-                    Meus cupons
-                  </Button>
-                  <Button
-                    className="w-full justify-start"
-                    render={<Link to="/pedidos" />}
-                    variant="ghost"
-                  >
-                    <Package />
-                    Meus pedidos
-                  </Button>
-                  <Button
-                    className="w-full justify-start"
-                    render={<Link to="/trocas" />}
-                    variant="ghost"
-                  >
-                    <Repeat2 />
-                    Trocas e devoluções
-                  </Button>
-                  <Button
-                    className="w-full justify-start"
-                    onClick={handleLogout}
-                    render={<Link to="/" />}
-                    variant="ghost"
-                  >
-                    <LogOut />
-                    Sair
-                  </Button>
-                </>
-              ) : (
+              )
+            }
+          >
+            {signedInAsAdmin ? (
+              <>
                 <Button
                   className="w-full justify-start"
-                  render={<Link to="/entrar" />}
+                  render={<Link to="/admin" />}
                   variant="ghost"
                 >
-                  <LogIn />
-                  Entrar / cadastrar-se
+                  <LayoutDashboard />
+                  Ir para admin
                 </Button>
-              )}
-              <div className="mt-1 flex items-center justify-between border-t border-border px-2 pt-2">
-                <span className="text-sm text-muted-foreground">Tema</span>
-                <ThemeToggle />
-              </div>
-            </PopoverContent>
-          </Popover>
+                <Button
+                  className="w-full justify-start"
+                  onClick={handleLogout}
+                  render={<Link to="/" />}
+                  variant="ghost"
+                >
+                  <LogOut />
+                  Sair
+                </Button>
+              </>
+            ) : signedIn ? (
+              <>
+                <Button
+                  className="w-full justify-start"
+                  render={<Link to="/conta" />}
+                  variant="ghost"
+                >
+                  <UserRound />
+                  Minha conta
+                </Button>
+                <Button
+                  className="w-full justify-start"
+                  onClick={handleLogout}
+                  render={<Link to="/" />}
+                  variant="ghost"
+                >
+                  <LogOut />
+                  Sair
+                </Button>
+              </>
+            ) : (
+              <Button
+                className="w-full justify-start"
+                render={<Link to="/entrar" />}
+                variant="ghost"
+              >
+                <LogIn />
+                Entrar / cadastrar-se
+              </Button>
+            )}
+          </AccountMenu>
           <Button
             aria-label={isMenuOpen ? "Fechar menu" : "Abrir menu"}
             className="md:hidden"
