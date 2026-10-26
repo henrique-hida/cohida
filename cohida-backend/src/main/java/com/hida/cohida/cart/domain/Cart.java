@@ -9,6 +9,7 @@ import lombok.Getter;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "carts")
@@ -19,9 +20,9 @@ public class Cart extends DomainEntity {
     private Customer customer;
 
     @Getter
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "coupon_id")
-    private Coupon coupon;
+    @ManyToMany
+    @JoinTable(name = "cart_coupons", joinColumns = @JoinColumn(name = "cart_id"), inverseJoinColumns = @JoinColumn(name = "coupon_id"))
+    private java.util.Set<Coupon> coupons = new java.util.LinkedHashSet<>();
 
     @Getter
     @OneToMany(mappedBy = "cart", cascade = CascadeType.ALL, orphanRemoval = true)
@@ -34,9 +35,9 @@ public class Cart extends DomainEntity {
         this.customer = customer;
     }
 
-    public void add(ProductVariant variant, int quantity) {
+    public void add(ProductVariant variant, int quantity, LocalDateTime reservedUntil) {
         items.stream().filter(item -> item.getVariant().getId().equals(variant.getId())).findFirst()
-                .ifPresentOrElse(item -> item.setQuantity(item.getQuantity() + quantity), () -> items.add(new CartItem(this, variant, quantity)));
+                .ifPresentOrElse(item -> item.reserve(item.getQuantity() + quantity, reservedUntil), () -> items.add(new CartItem(this, variant, quantity, reservedUntil)));
     }
 
     public CartItem item(Long itemId) {
@@ -50,14 +51,34 @@ public class Cart extends DomainEntity {
 
     public void clear() {
         items.clear();
-        coupon = null;
+        coupons.clear();
+    }
+
+    public List<CartItem> removeExpiredProducts(LocalDateTime now) {
+        var expiredProductIds = items.stream().filter(item -> item.isExpired(now))
+                .map(item -> item.getVariant().getProduct().getId()).collect(java.util.stream.Collectors.toSet());
+        var expired = items.stream().filter(item -> expiredProductIds.contains(item.getVariant().getProduct().getId())).toList();
+        items.removeIf(item -> expiredProductIds.contains(item.getVariant().getProduct().getId()));
+        return expired;
+    }
+
+    public List<CartItem> expireAllReservations() {
+        var expired = List.copyOf(items);
+        items.clear();
+        return expired;
     }
 
     public void applyCoupon(Coupon coupon) {
-        this.coupon = coupon;
+        if (!coupon.isReturnCredit() && coupons.stream().anyMatch(existing -> !existing.isReturnCredit()))
+            throw new IllegalArgumentException("Apenas um cupom promocional pode ser utilizado por compra.");
+        coupons.add(coupon);
     }
 
     public void removeCoupon() {
-        coupon = null;
+        coupons.clear();
+    }
+
+    public void removeCoupon(String code) {
+        coupons.removeIf(coupon -> coupon.getCode().equalsIgnoreCase(code));
     }
 }

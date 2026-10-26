@@ -51,9 +51,25 @@ public class CartController {
         return carts.removeCoupon(p.customerId());
     }
 
+    @DeleteMapping("/coupon/{code}")
+    public CartResponse removeCoupon(@AuthenticationPrincipal AuthenticatedCustomer p, @PathVariable String code) {
+        return carts.removeCoupon(p.customerId(), code);
+    }
+
     @DeleteMapping
     @ResponseStatus(org.springframework.http.HttpStatus.NO_CONTENT)
     public void clear(@AuthenticationPrincipal AuthenticatedCustomer p) {
         carts.clear(p.customerId());
+    }
+
+    @GetMapping("/expired-items")
+    public java.util.List<com.hida.cohida.cart.dto.ExpiredCartItemResponse> expired(@AuthenticationPrincipal AuthenticatedCustomer p) {
+        return carts.expired(p.customerId());
+    }
+
+    @PostMapping("/expired-items/{id}/acknowledge")
+    @ResponseStatus(org.springframework.http.HttpStatus.NO_CONTENT)
+    public void acknowledgeExpired(@AuthenticationPrincipal AuthenticatedCustomer p, @PathVariable Long id) {
+        carts.acknowledgeExpired(p.customerId(), id);
     }
 }
