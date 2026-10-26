@@ -32,5 +32,28 @@ Stop the stack with:
 docker compose down
 ```
 
+## Demo data commands
+
+Provide an administrator access token in `COHIDA_ADMIN_TOKEN` before running
+these commands. The token can be copied from the `accessToken` field returned
+by `POST /api/auth/login`.
+
+From `cohida-frontend`, set the token and run the npm command to load demo
+products, coupons, customers, and orders:
+
+```bash
+export COHIDA_ADMIN_TOKEN="<token>"
+npm run demo:seed
+```
+
+Deactivate the demo products and coupons:
+
+```bash
+npm run demo:remove
+```
+
+Set `COHIDA_API_URL` to use an API base other than
+`http://localhost:8080/api`.
+
 The named dependency volumes are preserved by `down`. To deliberately remove
 them and force clean dependency installation, run `docker compose down -v`.

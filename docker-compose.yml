@@ -27,8 +27,12 @@ services:
       SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-cohida}
       SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-cohida_dev_password}
       JWT_SECRET: ${JWT_SECRET:?JWT_SECRET must be set}
+      COHIDA_CART_RESERVATION_MINUTES: ${COHIDA_CART_RESERVATION_MINUTES:-30}
+      COHIDA_CART_RESERVATION_CHECK_MS: ${COHIDA_CART_RESERVATION_CHECK_MS:-60000}
+      COHIDA_UPLOAD_DIRECTORY: /app/uploads/products
     volumes:
       - ./cohida-backend:/app
+      - product_uploads:/app/uploads/products
       - maven_repository:/root/.m2
     depends_on:
       postgres:
@@ -53,4 +57,5 @@ services:
 volumes:
   frontend_node_modules:
   maven_repository:
+  product_uploads:
   postgres_data:
