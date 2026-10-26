@@ -11,7 +11,7 @@ interface ToastProps {
 
 const styles: Record<ToastVariant, string> = {
   error: "bg-error text-error-foreground",
-  success: "bg-success text-success-foreground",
+  success: "border-success-border bg-success-bg text-success-foreground",
 };
 
 export function Toast({ message, onClose, variant = "success" }: ToastProps) {
