@@ -1,4 +1,8 @@
-import { loginAsAdmin, loginAsCustomer, startCheckoutWithFirstAvailableProduct } from "./helpers";
+import {
+  loginAsAdmin,
+  loginAsCustomer,
+  startCheckoutWithFirstAvailableProduct,
+} from "./helpers";
 
 it("4) emite pela interface um cupom de troca para a diferença de cupons acima da compra", () => {
   const code = `E2ESALDO${Date.now()}`;
@@ -11,7 +15,7 @@ it("4) emite pela interface um cupom de troca para a diferença de cupons acima 
   cy.location("pathname").should("eq", "/admin/cupons");
 
   loginAsCustomer("bruno.demo@cohida.test");
-  startCheckoutWithFirstAvailableProduct();
+  startCheckoutWithFirstAvailableProduct("DEMO - Bola Strike Pro");
   cy.get("#coupon").type(code);
   cy.contains(code).should("be.visible");
   cy.contains("button", "Confirmar pedido").click();

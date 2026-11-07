@@ -5,7 +5,7 @@ services:
     build:
       context: ./cohida-frontend
     ports:
-      - "5175:5173"
+      - "5173:5173"
     environment:
       VITE_API_BASE_URL: http://localhost:8080/api
       VITE_ENABLE_MOCKS: "false"

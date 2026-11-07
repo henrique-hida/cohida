@@ -1,4 +1,8 @@
-import { loginAsAdmin, loginAsCustomer, startCheckoutWithFirstAvailableProduct } from "./helpers";
+import {
+  loginAsAdmin,
+  loginAsCustomer,
+  startCheckoutWithFirstAvailableProduct,
+} from "./helpers";
 
 it("3) permite pela interface cartão de R$ 5,00 quando cupom promocional cobre o restante", () => {
   const code = `E2EPROMO${Date.now()}`;
@@ -11,7 +15,7 @@ it("3) permite pela interface cartão de R$ 5,00 quando cupom promocional cobre 
   cy.location("pathname").should("eq", "/admin/cupons");
 
   loginAsCustomer("bruno.demo@cohida.test");
-  startCheckoutWithFirstAvailableProduct();
+  startCheckoutWithFirstAvailableProduct("DEMO - Bola Strike Pro");
   cy.get("#coupon").type(code);
   cy.contains(code).should("be.visible");
   cy.contains("R$ 5,00").should("be.visible");

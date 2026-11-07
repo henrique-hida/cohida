@@ -57,7 +57,9 @@ With the Compose backend and PostgreSQL running, run `npm run demo:seed` once
 from `cohida-frontend`. The Cypress tests prepare their dedicated sales-analysis
 data in PostgreSQL and reset the test order's delivery status. To open Cypress
 for the demonstration, run `npm run cy:open` from `cohida-frontend`. To run the
-eight sales-analysis scenarios headlessly:
+full Cypress suite headlessly, use `npm run cy:run`; to run it in a visible
+Chrome window, use `npm run cy:run:headed`. These commands start their own Vite
+server on port 5174. To run only the eight sales-analysis scenarios headlessly:
 
 ```bash
 npx start-server-and-test 'vite --host 127.0.0.1 --port 5174 --strictPort' http://127.0.0.1:5174 'cypress run --spec "cypress/e2e/sales-analytics/*.cy.ts"'

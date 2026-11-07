@@ -63,13 +63,21 @@ export function loginAsCustomer(email: string, password = "Demo@123") {
   return replenishCatalogThroughAdmin()
     .then(() =>
       apiLogin(email, password).then((accessToken) =>
-        clearExpiredCartItems(accessToken).then(() =>
-          cy.visit("/entrar", {
-            onBeforeLoad(window) {
-              window.localStorage.setItem("cohida-access-token", accessToken);
-            },
-          }),
-        ),
+        clearExpiredCartItems(accessToken)
+          .then(() =>
+            cy.request({
+              method: "DELETE",
+              url: `${apiBaseUrl}/customers/me/cart/coupon`,
+              headers: apiHeaders(accessToken),
+            }),
+          )
+          .then(() =>
+            cy.visit("/entrar", {
+              onBeforeLoad(window) {
+                window.localStorage.setItem("cohida-access-token", accessToken);
+              },
+            }),
+          ),
       ),
     )
     .then(() => cy.visit("/"))
@@ -119,26 +127,36 @@ export function expireAllCartReservations() {
   );
 }
 
-export function addFirstAvailableProductToCart(): Cypress.Chainable {
+export function addFirstAvailableProductToCart(
+  productName?: string,
+): Cypress.Chainable {
   return cy
     .visit("/carrinho")
     .contains("h1", "Carrinho")
     .should("be.visible")
     .then(() => clearCart())
-    .then(() =>
-      cy
-        .visit("/produtos")
-        .contains("button", "Adicionar")
-        .filter(":not(:disabled)")
-        .first()
-        .click(),
-    )
+    .then(() => {
+      cy.visit("/produtos");
+      if (productName) {
+        cy.contains('[data-slot="card"]', productName)
+          .contains("button", "Adicionar")
+          .should("not.be.disabled")
+          .click();
+      } else {
+        cy.contains("button", "Adicionar")
+          .filter(":not(:disabled)")
+          .first()
+          .click();
+      }
+    })
     .get('[aria-label^="Carrinho com"]')
     .should("not.have.attr", "aria-label", "Carrinho com 0 itens");
 }
 
-export function startCheckoutWithFirstAvailableProduct(): Cypress.Chainable {
-  return addFirstAvailableProductToCart()
+export function startCheckoutWithFirstAvailableProduct(
+  productName?: string,
+): Cypress.Chainable {
+  return addFirstAvailableProductToCart(productName)
     .then(() => cy.visit("/carrinho"))
     .then(() => acknowledgeExpiredItems())
     .then(() => cy.get('a[href="/checkout"]').click())
