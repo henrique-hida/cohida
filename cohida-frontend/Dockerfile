@@ -3,7 +3,7 @@ FROM node:24-alpine
 WORKDIR /app
 
 COPY package.json package-lock.json ./
-RUN npm ci
+RUN CYPRESS_INSTALL_BINARY=0 npm ci && npm cache clean --force
 
 COPY . .
 

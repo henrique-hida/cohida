@@ -1,6 +1,5 @@
 package com.hida.cohida.demo;
 
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -13,7 +12,6 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/api/admin/demo")
-@PreAuthorize("hasRole('ADMIN')")
 public class AdminDemoController {
     private final DemoSeederService demo;
 

@@ -14,6 +14,7 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -24,6 +25,11 @@ import java.util.Map;
 
 @RestControllerAdvice
 public class ApiExceptionHandler {
+    @ExceptionHandler(AccessDeniedException.class)
+    ResponseEntity<Map<String, Object>> accessDenied(AccessDeniedException exception) {
+        return error(HttpStatus.FORBIDDEN, "Acesso negado.");
+    }
+
     @ExceptionHandler(ResponseStatusException.class)
     ResponseEntity<Map<String, Object>> responseStatus(ResponseStatusException exception) {
         String message = exception.getReason() == null ? "Não foi possível concluir a operação." : exception.getReason();

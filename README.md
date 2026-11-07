@@ -34,15 +34,11 @@ docker compose down
 
 ## Demo data commands
 
-Provide an administrator access token in `COHIDA_ADMIN_TOKEN` before running
-these commands. The token can be copied from the `accessToken` field returned
-by `POST /api/auth/login`.
-
-From `cohida-frontend`, set the token and run the npm command to load demo
-products, coupons, customers, and orders:
+From `cohida-frontend`, run the npm command to load demo products, coupons,
+customers, and orders. The demo endpoint is public and intended for testing;
+remove or secure it before deploying to production.
 
 ```bash
-export COHIDA_ADMIN_TOKEN="<token>"
 npm run demo:seed
 ```
 
@@ -54,6 +50,18 @@ npm run demo:remove
 
 Set `COHIDA_API_URL` to use an API base other than
 `http://localhost:8080/api`.
+
+## Sales analysis tests
+
+With the Compose backend and PostgreSQL running, run `npm run demo:seed` once
+from `cohida-frontend`. The Cypress tests prepare their dedicated sales-analysis
+data in PostgreSQL and reset the test order's delivery status. To open Cypress
+for the demonstration, run `npm run cy:open` from `cohida-frontend`. To run the
+eight sales-analysis scenarios headlessly:
+
+```bash
+npx start-server-and-test 'vite --host 127.0.0.1 --port 5174 --strictPort' http://127.0.0.1:5174 'cypress run --spec "cypress/e2e/sales-analytics/*.cy.ts"'
+```
 
 The named dependency volumes are preserved by `down`. To deliberately remove
 them and force clean dependency installation, run `docker compose down -v`.

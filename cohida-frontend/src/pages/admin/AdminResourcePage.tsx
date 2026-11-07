@@ -13,7 +13,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { commerceApi, type ApiOrder, type ApiReturn } from "@/lib/commerceApi";
 import { commerceStatus } from "@/lib/commerceStatus";
 import { formatCurrency } from "@/lib/currency";
-import { AdminProductsPage } from "@/pages/AdminProductsPage";
+import { AdminProductsPage } from "@/pages/admin/AdminProductsPage";
 
 type SalesResource = "pedidos" | "trocas";
 

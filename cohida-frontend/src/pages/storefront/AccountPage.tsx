@@ -35,9 +35,9 @@ import { Toast } from "@/components/ui/toast";
 import { ConfirmDialog } from "@/components/admin/ConfirmDialog";
 import { useCommerce } from "@/data/useCommerce";
 import { customerApi } from "@/lib/customerApi";
-import { CouponsSection } from "@/pages/CouponsPage";
-import { ExchangesSection } from "@/pages/ExchangesPage";
-import { OrdersSection } from "@/pages/OrdersPage";
+import { CouponsSection } from "@/pages/storefront/CouponsPage";
+import { ExchangesSection } from "@/pages/storefront/ExchangesPage";
+import { OrdersSection } from "@/pages/storefront/OrdersPage";
 import {
   detectCardBrand,
   formatCardNumber,

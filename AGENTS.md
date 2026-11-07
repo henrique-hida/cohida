@@ -1,3 +1,8 @@
+## Testes de fluxo
+
+- Em todo teste de fluxo real deste projeto, realize as interações e verificações do comportamento pela interface (UI).
+- Utilize a API somente para preparar dados repetitivos necessários ao teste. Não use respostas da API para substituir a verificação do fluxo pela interface.
+
 # DRS — E-commerce de Artigos Esportivos
 
 > Conversão do arquivo `DRS_LES_2_2026.docx`. Os identificadores e o conteúdo normativo foram preservados; somente o domínio foi adaptado de livros para artigos esportivos. Identificadores repetidos no documento-fonte foram mantidos. Este arquivo é a referência de requisitos para esta entrega.

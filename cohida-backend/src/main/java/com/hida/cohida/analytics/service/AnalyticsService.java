@@ -57,56 +57,28 @@ public class AnalyticsService {
 
     @Transactional(readOnly = true)
     public List<SalesPointResponse> sales(LocalDate f, LocalDate t, String groupBy, List<String> categories) {
-        List<String> selectedCategories = categories == null
-                ? List.of()
-                : categories.stream().filter(category -> category != null && !category.isBlank()).distinct().toList();
-
-        if (selectedCategories.isEmpty()) {
-            Map<String, List<SaleOrder>> totals = new TreeMap<>();
-            for (var order : filtered(f, t, List.of())) {
-                String period = period(order, groupBy);
-                totals.computeIfAbsent(period, ignored -> new ArrayList<>()).add(order);
-            }
-            return totals.entrySet().stream()
-                    .map(entry -> new SalesPointResponse(
-                            entry.getKey(),
-                            null,
-                            entry.getValue().stream().mapToLong(SaleOrder::getTotalCents).sum(),
-                            entry.getValue().size()))
-                    .toList();
+        if (f == null || t == null || t.isBefore(f) || t.isBefore(f.plusMonths(1)) || t.isAfter(f.plusMonths(24))) {
+            throw new IllegalArgumentException("Informe um período entre 1 e 24 meses.");
         }
+        List<String> selectedCategories = categories == null ? List.of() : categories.stream()
+                .filter(category -> category != null && !category.isBlank()).distinct().toList();
+        if (selectedCategories.isEmpty()) return List.of();
 
-        Map<String, Set<String>> categorySkus = new LinkedHashMap<>();
-        selectedCategories.forEach(category -> categorySkus.put(category, new HashSet<>()));
-        products.findByActiveTrueOrderByNameAsc().forEach(product -> {
-            product.getCategories().stream()
-                    .filter(categorySkus::containsKey)
-                    .forEach(category -> product.getVariants().stream()
-                            .map(variant -> variant.getSku())
-                            .forEach(categorySkus.get(category)::add));
-        });
-
-        Map<String, Map<String, long[]>> totals = new TreeMap<>();
-        for (var order : filtered(f, t, selectedCategories)) {
-            String period = period(order, groupBy);
-            Map<String, long[]> periodTotals = totals.computeIfAbsent(period, ignored -> new LinkedHashMap<>());
+        Map<String, SalesPointResponse> results = new HashMap<>();
+        for (Object[] row : orders.aggregateDeliveredSalesByCategory(f.atStartOfDay(), t.plusDays(1).atStartOfDay(), selectedCategories)) {
+            var month = java.time.YearMonth.of(((Number) row[0]).intValue(), ((Number) row[1]).intValue());
+            String category = (String) row[2];
+            results.put(month + ":" + category, new SalesPointResponse(month.atDay(1).toString(), category,
+                    ((Number) row[3]).longValue(), ((Number) row[4]).longValue()));
+        }
+        List<SalesPointResponse> points = new ArrayList<>();
+        for (var month = java.time.YearMonth.from(f); !month.isAfter(java.time.YearMonth.from(t)); month = month.plusMonths(1)) {
             for (String category : selectedCategories) {
-                Set<String> skus = categorySkus.get(category);
-                long categoryRevenue = order.getItems().stream()
-                        .filter(item -> skus.contains(item.getSku()))
-                        .mapToLong(item -> item.getUnitPriceCents() * item.getQuantity())
-                        .sum();
-                if (categoryRevenue == 0) continue;
-                long[] values = periodTotals.computeIfAbsent(category, ignored -> new long[2]);
-                values[0] += categoryRevenue;
-                values[1]++;
+                points.add(results.getOrDefault(month + ":" + category,
+                        new SalesPointResponse(month.atDay(1).toString(), category, 0, 0)));
             }
         }
-        return totals.entrySet().stream()
-                .flatMap(period -> period.getValue().entrySet().stream()
-                        .map(category -> new SalesPointResponse(
-                                period.getKey(), category.getKey(), category.getValue()[0], category.getValue()[1])))
-                .toList();
+        return points;
     }
 
     private static String period(SaleOrder order, String groupBy) {

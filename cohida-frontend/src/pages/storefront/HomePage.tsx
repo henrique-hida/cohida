@@ -25,7 +25,6 @@ import collectionTrainingImage from "@/assets/CoHidaCollectionTraining.png";
 import heroFootballImage from "@/assets/CoHidaHeroFootball.png";
 import heroMartialArtsImage from "@/assets/CoHidaHeroMartialArts.png";
 import { PageContainer, ProductCard, StoreHeader } from "@/components/shared";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   homeGoalCollections,
@@ -52,7 +51,6 @@ const heroSlides = [
     categoryId: undefined,
     description:
       "Equipamentos esportivos selecionados para você treinar, competir e ir além.",
-    eyebrow: "Equipe seu próximo desafio",
     image: heroImage,
     title: "Performance começa com a escolha certa.",
   },
@@ -61,7 +59,6 @@ const heroSlides = [
     categoryId: "football",
     description:
       "Chuteiras, bolas e acessórios para você entrar em campo preparado.",
-    eyebrow: "Futebol",
     image: heroFootballImage,
     title: "Seu jogo começa antes do apito.",
   },
@@ -70,7 +67,6 @@ const heroSlides = [
     categoryId: "martial-arts",
     description:
       "Equipamentos para acompanhar sua evolução em cada treino no tatame.",
-    eyebrow: "Artes marciais",
     image: heroMartialArtsImage,
     title: "Disciplina para ir além no tatame.",
   },
@@ -143,39 +139,12 @@ export function HomePage() {
           ))}
           <PageContainer className="flex h-[34rem] items-center pb-36 pt-20 sm:h-[38rem] sm:pb-44">
             <div className="max-w-xl">
-              <Badge className="mb-5" variant="default">
-                {activeHero.eyebrow}
-              </Badge>
               <h1 className="text-4xl font-semibold tracking-tight text-balance sm:text-6xl">
                 {activeHero.title}
               </h1>
               <p className="mt-6 max-w-lg text-base leading-7 text-background/75 sm:text-lg">
                 {activeHero.description}
               </p>
-              <div className="mt-8 flex flex-wrap gap-3">
-                <Button
-                  render={
-                    <Link
-                      to={
-                        activeHero.categoryId
-                          ? `/produtos?categoria=${activeHero.categoryId}`
-                          : "/produtos"
-                      }
-                    />
-                  }
-                  size="lg"
-                >
-                  Ver destaques
-                </Button>
-                <Button
-                  className="border-white/35 bg-white/10 text-white hover:bg-white/20 hover:text-white"
-                  render={<a href="#categorias" />}
-                  size="lg"
-                  variant="outline"
-                >
-                  Explorar categorias
-                </Button>
-              </div>
             </div>
           </PageContainer>
           <div className="absolute inset-x-0 top-1/2 z-10 hidden -translate-y-1/2 justify-between px-5 lg:flex">

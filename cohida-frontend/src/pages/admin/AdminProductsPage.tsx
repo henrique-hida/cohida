@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Table } from "@/components/ui/table";
 import { useCommerce } from "@/data/useCommerce";
+import { useCategories } from "@/data/useCategories";
 
 const pageSize = 10;
 
@@ -27,6 +28,14 @@ function formatPrice(priceCents: number) {
 export function AdminProductsPage() {
   const navigate = useNavigate();
   const { loadAdminProducts, setProductStatus, state } = useCommerce();
+  const availableCategories = useCategories();
+  const categoryNames = useMemo(
+    () =>
+      new Map(
+        availableCategories.map((category) => [category.id, category.name]),
+      ),
+    [availableCategories],
+  );
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("");
@@ -59,6 +68,7 @@ export function AdminProductsPage() {
           product.brand,
           product.description,
           ...product.categoryIds,
+          ...product.categoryIds.map((id) => categoryNames.get(id) ?? id),
         ].some((value) =>
           value.toLocaleLowerCase("pt-BR").includes(normalizedSearch),
         );
@@ -77,14 +87,26 @@ export function AdminProductsPage() {
         const result = first.name.localeCompare(second.name, "pt-BR");
         return sortDirection === "asc" ? result : -result;
       });
-  }, [categoryFilter, search, sortDirection, state.products, statusFilter]);
+  }, [
+    categoryFilter,
+    categoryNames,
+    search,
+    sortDirection,
+    state.products,
+    statusFilter,
+  ]);
 
   const categories = useMemo(
     () =>
       [...new Set(state.products.flatMap((product) => product.categoryIds))]
         .filter(Boolean)
-        .sort((first, second) => first.localeCompare(second, "pt-BR")),
-    [state.products],
+        .sort((first, second) =>
+          (categoryNames.get(first) ?? first).localeCompare(
+            categoryNames.get(second) ?? second,
+            "pt-BR",
+          ),
+        ),
+    [categoryNames, state.products],
   );
 
   const totalPages = Math.max(1, Math.ceil(filteredProducts.length / pageSize));
@@ -164,7 +186,7 @@ export function AdminProductsPage() {
               }}
               options={[
                 ...categories.map((category) => ({
-                  label: category,
+                  label: categoryNames.get(category) ?? category,
                   value: category,
                 })),
               ]}
@@ -243,7 +265,9 @@ export function AdminProductsPage() {
                                 {product.name}
                               </td>
                               <td className="py-4 pl-6">
-                                {product.categoryIds.join(", ")}
+                                {product.categoryIds
+                                  .map((id) => categoryNames.get(id) ?? id)
+                                  .join(", ")}
                               </td>
                               <td className="py-4">{stock} un.</td>
                               <td className="py-4">{formatPrice(price)}</td>
@@ -317,7 +341,11 @@ export function AdminProductsPage() {
                             <dt className="text-xs text-muted-foreground">
                               Categoria
                             </dt>
-                            <dd>{product.categoryIds.join(", ")}</dd>
+                            <dd>
+                              {product.categoryIds
+                                .map((id) => categoryNames.get(id) ?? id)
+                                .join(", ")}
+                            </dd>
                           </div>
                           <div>
                             <dt className="text-xs text-muted-foreground">

@@ -12,19 +12,12 @@ if (!Object.hasOwn(methods, action)) {
   process.exit(1);
 }
 
-const token = process.env.COHIDA_ADMIN_TOKEN;
-if (!token) {
-  console.error("Defina COHIDA_ADMIN_TOKEN com o token de uma conta admin.");
-  process.exit(1);
-}
-
 const apiBaseUrl = (
   process.env.COHIDA_API_URL ?? "http://localhost:8080/api"
 ).replace(/\/$/, "");
 
 try {
   const response = await fetch(`${apiBaseUrl}/admin/demo/seed`, {
-    headers: { Authorization: `Bearer ${token}` },
     method: methods[action].method,
   });
 

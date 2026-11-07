@@ -3,7 +3,7 @@ import { Link, useParams } from "react-router";
 
 import { AdminPageLayout } from "@/components/admin/AdminPageLayout";
 import { Button } from "@/components/ui/button";
-import { AdminCustomerFormPage } from "@/pages/AdminCustomerCreatePage";
+import { AdminCustomerFormPage } from "@/pages/admin/AdminCustomerCreatePage";
 import { customerApi, type CustomerResponse } from "@/lib/customerApi";
 
 export function AdminCustomerEditPage() {
