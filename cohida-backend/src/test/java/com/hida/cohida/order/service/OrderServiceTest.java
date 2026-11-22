@@ -2,6 +2,8 @@ package com.hida.cohida.order.service;
 
 import com.hida.cohida.account.domain.Account;
 import com.hida.cohida.cart.service.CartService;
+import com.hida.cohida.category.domain.Category;
+import com.hida.cohida.category.repository.CategoryRepository;
 import com.hida.cohida.coupon.domain.Coupon;
 import com.hida.cohida.coupon.domain.CouponDiscountType;
 import com.hida.cohida.coupon.dto.CouponUpsertRequest;
@@ -25,6 +27,7 @@ import com.hida.cohida.product.service.ProductService;
 import com.hida.cohida.returnrequest.domain.ReturnStatus;
 import com.hida.cohida.returnrequest.service.ReturnService;
 import jakarta.persistence.EntityManager;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -52,6 +55,17 @@ class OrderServiceTest {
   @Autowired private ReturnService returns;
   @Autowired private NotificationRepository notifications;
   @Autowired private EntityManager entityManager;
+  @Autowired private CategoryRepository categories;
+
+  private Long categoryId;
+
+  @BeforeEach
+  void createCategory() {
+    categoryId =
+        categories
+            .save(new Category("teste-pedido", "Teste", "Categoria de teste"))
+            .getId();
+  }
 
   @Test
   void checksOutCartUsingServerPriceCouponAndStock() {
@@ -64,7 +78,7 @@ class OrderServiceTest {
                 "Cohida",
                 "Tênis esportivo",
                 null,
-                List.of(2L),
+                List.of(categoryId),
                 1,
                 true,
                 List.of(
@@ -147,7 +161,7 @@ class OrderServiceTest {
                 "Cohida",
                 "Teste",
                 null,
-                List.of(2L),
+                List.of(categoryId),
                 1,
                 true,
                 List.of(
@@ -234,7 +248,7 @@ class OrderServiceTest {
                 "Cohida",
                 "Teste",
                 null,
-                List.of(2L),
+                List.of(categoryId),
                 1,
                 true,
                 List.of(
@@ -284,7 +298,7 @@ class OrderServiceTest {
                 "Cohida",
                 "Teste",
                 null,
-                List.of(2L),
+                List.of(categoryId),
                 1,
                 true,
                 List.of(
@@ -347,7 +361,7 @@ class OrderServiceTest {
                 "Cohida",
                 "Teste",
                 null,
-                List.of(2L),
+                List.of(categoryId),
                 1,
                 true,
                 List.of(
@@ -409,7 +423,7 @@ class OrderServiceTest {
                 "Cohida",
                 "Teste",
                 null,
-                List.of(2L),
+                List.of(categoryId),
                 1,
                 true,
                 List.of(
@@ -460,7 +474,7 @@ class OrderServiceTest {
                 "Cohida",
                 "Teste",
                 null,
-                List.of(2L),
+                List.of(categoryId),
                 1,
                 true,
                 List.of(
@@ -540,7 +554,7 @@ class OrderServiceTest {
                 "Cohida",
                 "Teste",
                 null,
-                List.of(2L),
+                List.of(categoryId),
                 1,
                 true,
                 List.of(

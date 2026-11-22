@@ -1,8 +1,11 @@
 package com.hida.cohida.product.service;
 
+import com.hida.cohida.category.domain.Category;
+import com.hida.cohida.category.repository.CategoryRepository;
 import com.hida.cohida.product.domain.Product;
 import com.hida.cohida.product.dto.ProductUpsertRequest;
 import com.hida.cohida.product.dto.ProductVariantRequest;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -16,6 +19,17 @@ import static org.junit.jupiter.api.Assertions.*;
 @Transactional
 class ProductServiceTest {
   @Autowired private ProductService products;
+  @Autowired private CategoryRepository categories;
+
+  private Long categoryId;
+
+  @BeforeEach
+  void createCategory() {
+    categoryId =
+        categories
+            .save(new Category("teste-produto", "Teste", "Categoria de teste"))
+            .getId();
+  }
 
   @Test
   void createsUpdatesStockAndDeactivatesProduct() {
@@ -45,14 +59,14 @@ class ProductServiceTest {
     assertFalse(products.findForAdmin(product.getId()).isActive());
   }
 
-  private static ProductUpsertRequest request(
+  private ProductUpsertRequest request(
       String name, long priceCents, int stockQuantity) {
     return new ProductUpsertRequest(
         name,
         "Cohida",
         "Camisa esportiva",
         null,
-        List.of(1L),
+        List.of(categoryId),
         2,
         true,
         List.of(
