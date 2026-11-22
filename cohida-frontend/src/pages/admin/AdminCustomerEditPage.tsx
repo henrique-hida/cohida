@@ -1,15 +1,15 @@
-import { useEffect, useState } from "react";
-import { Link, useParams } from "react-router";
+import { useEffect, useState } from 'react';
+import { Link, useParams } from 'react-router';
 
-import { AdminPageLayout } from "@/components/admin/AdminPageLayout";
-import { Button } from "@/components/ui/button";
-import { AdminCustomerFormPage } from "@/pages/admin/AdminCustomerCreatePage";
-import { customerApi, type CustomerResponse } from "@/lib/customerApi";
+import { AdminPageLayout } from '@/components/admin/AdminPageLayout';
+import { Button } from '@/components/ui/button';
+import { AdminCustomerFormPage } from '@/pages/admin/AdminCustomerCreatePage';
+import { customerApi, type CustomerResponse } from '@/lib/customerApi';
 
 export function AdminCustomerEditPage() {
   const { customerId } = useParams();
   const [customer, setCustomer] = useState<CustomerResponse>();
-  const [error, setError] = useState("");
+  const [error, setError] = useState('');
 
   useEffect(() => {
     if (!customerId) return;
@@ -20,7 +20,7 @@ export function AdminCustomerEditPage() {
         setError(
           reason instanceof Error
             ? reason.message
-            : "Não foi possível carregar o cliente.",
+            : 'Não foi possível carregar o cliente.',
         ),
       );
   }, [customerId]);
@@ -28,14 +28,14 @@ export function AdminCustomerEditPage() {
   if (error)
     return (
       <AdminPageLayout
-        description="Atualize os dados cadastrais e endereços do cliente."
-        title="Editar cliente"
+        description='Atualize os dados cadastrais e endereços do cliente.'
+        title='Editar cliente'
       >
-        <p className="text-destructive">{error}</p>
+        <p className='text-destructive'>{error}</p>
         <Button
-          className="mt-4"
-          render={<Link to="/admin/clientes" />}
-          variant="outline"
+          className='mt-4'
+          render={<Link to='/admin/clientes' />}
+          variant='outline'
         >
           Voltar para clientes
         </Button>
@@ -44,18 +44,18 @@ export function AdminCustomerEditPage() {
   if (!customer)
     return (
       <AdminPageLayout
-        description="Atualize os dados cadastrais e endereços do cliente."
-        title="Editar cliente"
+        description='Atualize os dados cadastrais e endereços do cliente.'
+        title='Editar cliente'
       >
         Carregando cliente...
       </AdminPageLayout>
     );
 
   const billingAddress = customer.addresses.find(
-    (address) => address.type === "BILLING",
+    (address) => address.type === 'BILLING',
   );
   const deliveryAddress = customer.addresses.find(
-    (address) => address.type === "DELIVERY",
+    (address) => address.type === 'DELIVERY',
   );
 
   return (

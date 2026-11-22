@@ -1,26 +1,29 @@
-import { useEffect, useRef, useState, type FormEvent } from "react";
-import { Check, Plus, Save, Trash2, Upload } from "lucide-react";
-import { Link, useNavigate } from "react-router";
+import { useEffect, useRef, useState, type FormEvent } from 'react';
+import { Check, Plus, Save, Trash2, Upload } from 'lucide-react';
+import { Link, useNavigate } from 'react-router';
 
-import { AdminCategoryMultiSelect } from "@/components/admin/AdminCategoryMultiSelect";
+// prettier-ignore
+import {
+  AdminCategoryMultiSelect,
+} from '@/components/admin/AdminCategoryMultiSelect';
 import {
   adminInputClassName as inputClassName,
   adminSuccessNoticeClassName,
   adminTextareaClassName,
-} from "@/components/admin/AdminFormField";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+} from '@/components/admin/AdminFormField';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
-import { useCategories } from "@/data/useCategories";
-import { useCommerce } from "@/data/useCommerce";
-import { commerceApi, resolveProductImageUrl } from "@/lib/commerceApi";
-import type { Product, ProductStatus } from "@/types";
+} from '@/components/ui/select';
+import { useCategories } from '@/data/useCategories';
+import { useCommerce } from '@/data/useCommerce';
+import { commerceApi, resolveProductImageUrl } from '@/lib/commerceApi';
+import type { Product, ProductStatus } from '@/types';
 
 interface VariantDraft {
   id?: string;
@@ -32,13 +35,13 @@ interface VariantDraft {
 }
 
 function blankVariant(): VariantDraft {
-  return { color: "", price: "", size: "", sku: "", stock: "0" };
+  return { color: '', price: '', size: '', sku: '', stock: '0' };
 }
 
-function variantLabel(variant: Pick<VariantDraft, "color" | "size">) {
+function variantLabel(variant: Pick<VariantDraft, 'color' | 'size'>) {
   return (
-    [variant.color.trim(), variant.size.trim()].filter(Boolean).join(" · ") ||
-    "Padrão"
+    [variant.color.trim(), variant.size.trim()].filter(Boolean).join(' · ') ||
+    'Padrão'
   );
 }
 
@@ -50,27 +53,27 @@ export function ProductForm({ product }: { product?: Product }) {
     product?.categoryIds ?? [],
   );
   const [status, setStatus] = useState<ProductStatus>(
-    product?.status === "inactive" ? "inactive" : "active",
+    product?.status === 'inactive' ? 'inactive' : 'active',
   );
   const [variants, setVariants] = useState<VariantDraft[]>(() =>
     product?.variants.length
       ? product.variants.map((variant) => ({
           id: variant.id,
-          color: variant.color ?? "",
+          color: variant.color ?? '',
           price: String((variant.priceCents ?? product.priceCents) / 100),
-          size: variant.size ?? "",
+          size: variant.size ?? '',
           sku: variant.sku,
           stock: String(variant.stockQuantity),
         }))
       : [blankVariant()],
   );
-  const [imageUrl, setImageUrl] = useState(product?.images[0]?.src ?? "");
+  const [imageUrl, setImageUrl] = useState(product?.images[0]?.src ?? '');
   const [selectedImage, setSelectedImage] = useState<File | null>(null);
-  const [localImagePreview, setLocalImagePreview] = useState("");
+  const [localImagePreview, setLocalImagePreview] = useState('');
   const [imagePreviewError, setImagePreviewError] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
-  const [error, setError] = useState("");
+  const [error, setError] = useState('');
   const imageInputRef = useRef<HTMLInputElement>(null);
   const objectUrlRef = useRef<string | null>(null);
 
@@ -83,7 +86,7 @@ export function ProductForm({ product }: { product?: Product }) {
 
   function updateVariant(
     index: number,
-    field: keyof Omit<VariantDraft, "id">,
+    field: keyof Omit<VariantDraft, 'id'>,
     value: string,
   ) {
     setVariants((current) =>
@@ -95,34 +98,34 @@ export function ProductForm({ product }: { product?: Product }) {
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setError("");
+    setError('');
     const form = new FormData(event.currentTarget);
     if (!selectedCategories.length) {
-      setError("Selecione ao menos uma categoria.");
+      setError('Selecione ao menos uma categoria.');
       return;
     }
 
     const skus = variants.map((variant) =>
-      variant.sku.trim().toLocaleUpperCase("pt-BR"),
+      variant.sku.trim().toLocaleUpperCase('pt-BR'),
     );
     if (skus.some((sku) => !sku) || new Set(skus).size !== skus.length) {
-      setError("Cada variação precisa ter um SKU único.");
+      setError('Cada variação precisa ter um SKU único.');
       return;
     }
 
     const optionCombinations = variants.map((variant) =>
       JSON.stringify([
-        variant.color.trim().toLocaleLowerCase("pt-BR"),
-        variant.size.trim().toLocaleLowerCase("pt-BR"),
+        variant.color.trim().toLocaleLowerCase('pt-BR'),
+        variant.size.trim().toLocaleLowerCase('pt-BR'),
       ]),
     );
     if (new Set(optionCombinations).size !== optionCombinations.length) {
-      setError("As combinações de cor e tamanho devem ser únicas.");
+      setError('As combinações de cor e tamanho devem ser únicas.');
       return;
     }
 
     const parsedVariants = variants.map((variant) => ({
-      id: variant.id ?? "new",
+      id: variant.id ?? 'new',
       sku: variant.sku.trim(),
       label: variantLabel(variant),
       color: variant.color.trim() || undefined,
@@ -139,7 +142,7 @@ export function ProductForm({ product }: { product?: Product }) {
           variant.stockQuantity < 0,
       )
     ) {
-      setError("Informe preço e estoque válidos para todas as variações.");
+      setError('Informe preço e estoque válidos para todas as variações.');
       return;
     }
 
@@ -149,12 +152,12 @@ export function ProductForm({ product }: { product?: Product }) {
         ? (await commerceApi.uploadProductImage(selectedImage)).imageUrl
         : imageUrl.trim();
       const next: Product = {
-        id: product?.id ?? "new",
+        id: product?.id ?? 'new',
         sku: product?.sku ?? parsedVariants[0].sku,
-        slug: product?.slug ?? "new",
-        name: String(form.get("name")),
-        brand: String(form.get("brand")),
-        description: String(form.get("description")),
+        slug: product?.slug ?? 'new',
+        name: String(form.get('name')),
+        brand: String(form.get('brand')),
+        description: String(form.get('description')),
         priceCents: Math.min(
           ...parsedVariants.map((variant) => variant.priceCents),
         ),
@@ -163,8 +166,8 @@ export function ProductForm({ product }: { product?: Product }) {
         images: savedImageUrl
           ? [
               {
-                alt: String(form.get("name")),
-                id: `${product?.id ?? "new"}-main`,
+                alt: String(form.get('name')),
+                id: `${product?.id ?? 'new'}-main`,
                 src: savedImageUrl,
               },
             ]
@@ -173,19 +176,19 @@ export function ProductForm({ product }: { product?: Product }) {
         reviewCount: product?.reviewCount ?? 0,
         attributes: {
           ...(product?.attributes ?? {}),
-          minimumStock: String(form.get("minimumStock") ?? 0),
+          minimumStock: String(form.get('minimumStock') ?? 0),
         },
         createdAt: product?.createdAt ?? new Date().toISOString(),
         variants: parsedVariants,
       };
       await saveProduct(next);
       setSaved(true);
-      setTimeout(() => navigate("/admin/produtos"), 500);
+      setTimeout(() => navigate('/admin/produtos'), 500);
     } catch (cause) {
       setError(
         cause instanceof Error
           ? cause.message
-          : "Não foi possível salvar o produto.",
+          : 'Não foi possível salvar o produto.',
       );
     } finally {
       setSaving(false);
@@ -193,26 +196,26 @@ export function ProductForm({ product }: { product?: Product }) {
   }
 
   return (
-    <form className="space-y-6" onSubmit={(event) => void submit(event)}>
+    <form className='space-y-6' onSubmit={(event) => void submit(event)}>
       {saved ? (
         <div className={adminSuccessNoticeClassName}>
-          <Check className="size-5" />
+          <Check className='size-5' />
           Produto salvo com sucesso.
         </div>
       ) : null}
       {error ? (
-        <p className="rounded-lg bg-error p-3 text-sm text-error-foreground">
+        <p className='rounded-lg bg-error p-3 text-sm text-error-foreground'>
           {error}
         </p>
       ) : null}
       <Card>
-        <CardContent className="grid gap-5 md:grid-cols-2">
+        <CardContent className='grid gap-5 md:grid-cols-2'>
           <label>
             Nome
             <input
               className={inputClassName}
               defaultValue={product?.name}
-              name="name"
+              name='name'
               required
             />
           </label>
@@ -221,37 +224,37 @@ export function ProductForm({ product }: { product?: Product }) {
             <input
               className={inputClassName}
               defaultValue={product?.brand}
-              name="brand"
+              name='brand'
               required
             />
           </label>
-          <label className="md:col-span-2">
+          <label className='md:col-span-2'>
             Descrição
             <textarea
               className={adminTextareaClassName}
               defaultValue={product?.description}
-              name="description"
+              name='description'
               required
             />
           </label>
-          <div className="grid gap-2 md:col-span-2">
-            <span className="text-sm font-medium">Foto do produto</span>
+          <div className='grid gap-2 md:col-span-2'>
+            <span className='text-sm font-medium'>Foto do produto</span>
             <input
-              accept="image/jpeg,image/png,image/webp"
-              aria-label="Selecionar foto do produto"
-              className="sr-only"
+              accept='image/jpeg,image/png,image/webp'
+              aria-label='Selecionar foto do produto'
+              className='sr-only'
               disabled={saving}
               onChange={(event) => {
                 const file = event.currentTarget.files?.[0];
                 if (!file) return;
                 if (!file.type.match(/^image\/(jpeg|png|webp)$/)) {
-                  setError("Envie uma foto PNG, JPEG ou WebP.");
-                  event.currentTarget.value = "";
+                  setError('Envie uma foto PNG, JPEG ou WebP.');
+                  event.currentTarget.value = '';
                   return;
                 }
                 if (file.size > 8 * 1024 * 1024) {
-                  setError("A foto deve ter no máximo 8 MB.");
-                  event.currentTarget.value = "";
+                  setError('A foto deve ter no máximo 8 MB.');
+                  event.currentTarget.value = '';
                   return;
                 }
                 if (objectUrlRef.current) {
@@ -262,30 +265,35 @@ export function ProductForm({ product }: { product?: Product }) {
                 setSelectedImage(file);
                 setLocalImagePreview(previewUrl);
                 setImagePreviewError(false);
-                setError("");
-                event.currentTarget.value = "";
+                setError('');
+                event.currentTarget.value = '';
               }}
               ref={imageInputRef}
-              type="file"
+              type='file'
             />
-            <div className="flex flex-wrap items-center gap-3">
+            <div className='flex flex-wrap items-center gap-3'>
               <Button
                 disabled={saving}
                 onClick={() => imageInputRef.current?.click()}
-                type="button"
-                variant="outline"
+                type='button'
+                variant='outline'
               >
-                <Upload aria-hidden="true" />
-                {selectedImage ? "Trocar foto" : "Enviar foto"}
+                <Upload aria-hidden='true' />
+                {selectedImage ? 'Trocar foto' : 'Enviar foto'}
               </Button>
               {selectedImage ? (
-                <span className="max-w-64 truncate text-sm text-muted-foreground">
+                <span
+                  className={[
+                    'max-w-64 truncate text-sm',
+                    'text-muted-foreground',
+                  ].join(' ')}
+                >
                   {selectedImage.name}
                 </span>
               ) : null}
               {selectedImage || imageUrl ? (
                 <Button
-                  aria-label="Remover foto do produto"
+                  aria-label='Remover foto do produto'
                   disabled={saving}
                   onClick={() => {
                     if (objectUrlRef.current) {
@@ -293,28 +301,31 @@ export function ProductForm({ product }: { product?: Product }) {
                       objectUrlRef.current = null;
                     }
                     setSelectedImage(null);
-                    setLocalImagePreview("");
-                    setImageUrl("");
+                    setLocalImagePreview('');
+                    setImageUrl('');
                     setImagePreviewError(false);
-                    if (imageInputRef.current) imageInputRef.current.value = "";
+                    if (imageInputRef.current) imageInputRef.current.value = '';
                   }}
-                  size="icon-sm"
-                  type="button"
-                  variant="ghost"
+                  size='icon-sm'
+                  type='button'
+                  variant='ghost'
                 >
-                  <Trash2 aria-hidden="true" />
+                  <Trash2 aria-hidden='true' />
                 </Button>
               ) : null}
             </div>
             {localImagePreview || imageUrl ? (
               imagePreviewError ? (
-                <p className="text-sm text-muted-foreground">
+                <p className='text-sm text-muted-foreground'>
                   Não foi possível carregar a prévia desta imagem.
                 </p>
               ) : (
                 <img
-                  alt="Prévia da foto do produto"
-                  className="size-32 rounded-lg border border-border bg-muted object-contain p-2"
+                  alt='Prévia da foto do produto'
+                  className={[
+                    'size-32 rounded-lg border border-border',
+                    'bg-muted object-contain p-2',
+                  ].join(' ')}
                   onError={() => setImagePreviewError(true)}
                   src={
                     localImagePreview ||
@@ -325,13 +336,13 @@ export function ProductForm({ product }: { product?: Product }) {
               )
             ) : null}
           </div>
-          <div className="grid gap-2 md:col-span-2">
-            <span className="text-sm font-medium">Categorias</span>
+          <div className='grid gap-2 md:col-span-2'>
+            <span className='text-sm font-medium'>Categorias</span>
             <AdminCategoryMultiSelect
-              ariaLabel="Selecionar categorias do produto"
+              ariaLabel='Selecionar categorias do produto'
               categories={categories}
               onValueChange={setSelectedCategories}
-              placeholder="Selecione as categorias"
+              placeholder='Selecione as categorias'
               showSelectedBadges
               values={selectedCategories}
             />
@@ -341,55 +352,73 @@ export function ProductForm({ product }: { product?: Product }) {
             <input
               className={inputClassName}
               defaultValue={product?.attributes.minimumStock ?? 0}
-              min="0"
-              name="minimumStock"
-              type="number"
+              min='0'
+              name='minimumStock'
+              type='number'
             />
           </label>
-          <label className="grid gap-2 text-sm font-medium">
+          <label className='grid gap-2 text-sm font-medium'>
             Situação
             <Select
               onValueChange={(value) =>
-                setStatus(value === "inactive" ? "inactive" : "active")
+                setStatus(value === 'inactive' ? 'inactive' : 'active')
               }
               value={status}
             >
-              <SelectTrigger className="h-10 w-full bg-background data-[size=default]:h-10">
+              <SelectTrigger
+                className={[
+                  'h-10 w-full bg-background',
+                  'data-[size=default]:h-10',
+                ].join(' ')}
+              >
                 <SelectValue>
-                  {status === "active" ? "Ativo" : "Inativo"}
+                  {status === 'active' ? 'Ativo' : 'Inativo'}
                 </SelectValue>
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="active">Ativo</SelectItem>
-                <SelectItem value="inactive">Inativo</SelectItem>
+                <SelectItem value='active'>Ativo</SelectItem>
+                <SelectItem value='inactive'>Inativo</SelectItem>
               </SelectContent>
             </Select>
           </label>
         </CardContent>
       </Card>
       <Card>
-        <CardHeader className="flex flex-row items-center justify-between gap-3">
+        <CardHeader
+          className={[
+            'flex flex-row items-center justify-between',
+            'gap-3',
+          ].join(' ')}
+        >
           <CardTitle>Variações</CardTitle>
           <Button
             onClick={() =>
               setVariants((current) => [...current, blankVariant()])
             }
-            size="sm"
-            type="button"
-            variant="outline"
+            size='sm'
+            type='button'
+            variant='outline'
           >
-            <Plus aria-hidden="true" />
+            <Plus aria-hidden='true' />
             Adicionar variação
           </Button>
         </CardHeader>
-        <CardContent className="grid gap-4">
+        <CardContent className='grid gap-4'>
           {variants.map((variant, index) => (
             <div
-              className="grid gap-4 rounded-xl border border-border p-4 md:grid-cols-2 xl:grid-cols-3"
+              className={[
+                'grid gap-4 rounded-xl border border-border',
+                'p-4 md:grid-cols-2 xl:grid-cols-3',
+              ].join(' ')}
               key={variant.id ?? `nova-${index}`}
             >
-              <div className="flex items-center justify-between gap-3 md:col-span-2 xl:col-span-3">
-                <p className="font-medium">{variantLabel(variant)}</p>
+              <div
+                className={[
+                  'flex items-center justify-between gap-3',
+                  'md:col-span-2 xl:col-span-3',
+                ].join(' ')}
+              >
+                <p className='font-medium'>{variantLabel(variant)}</p>
                 <Button
                   aria-label={`Remover variação ${variantLabel(variant)}`}
                   disabled={variants.length === 1}
@@ -400,11 +429,11 @@ export function ProductForm({ product }: { product?: Product }) {
                       ),
                     )
                   }
-                  size="icon-sm"
-                  type="button"
-                  variant="ghost"
+                  size='icon-sm'
+                  type='button'
+                  variant='ghost'
                 >
-                  <Trash2 aria-hidden="true" />
+                  <Trash2 aria-hidden='true' />
                 </Button>
               </div>
               <label>
@@ -412,7 +441,7 @@ export function ProductForm({ product }: { product?: Product }) {
                 <input
                   className={inputClassName}
                   onChange={(event) =>
-                    updateVariant(index, "sku", event.target.value)
+                    updateVariant(index, 'sku', event.target.value)
                   }
                   required
                   value={variant.sku}
@@ -423,9 +452,9 @@ export function ProductForm({ product }: { product?: Product }) {
                 <input
                   className={inputClassName}
                   onChange={(event) =>
-                    updateVariant(index, "color", event.target.value)
+                    updateVariant(index, 'color', event.target.value)
                   }
-                  placeholder="Opcional"
+                  placeholder='Opcional'
                   value={variant.color}
                 />
               </label>
@@ -434,9 +463,9 @@ export function ProductForm({ product }: { product?: Product }) {
                 <input
                   className={inputClassName}
                   onChange={(event) =>
-                    updateVariant(index, "size", event.target.value)
+                    updateVariant(index, 'size', event.target.value)
                   }
-                  placeholder="Opcional"
+                  placeholder='Opcional'
                   value={variant.size}
                 />
               </label>
@@ -444,13 +473,13 @@ export function ProductForm({ product }: { product?: Product }) {
                 Preço (R$)
                 <input
                   className={inputClassName}
-                  min="0.01"
+                  min='0.01'
                   onChange={(event) =>
-                    updateVariant(index, "price", event.target.value)
+                    updateVariant(index, 'price', event.target.value)
                   }
                   required
-                  step="0.01"
-                  type="number"
+                  step='0.01'
+                  type='number'
                   value={variant.price}
                 />
               </label>
@@ -458,13 +487,13 @@ export function ProductForm({ product }: { product?: Product }) {
                 Estoque
                 <input
                   className={inputClassName}
-                  min="0"
+                  min='0'
                   onChange={(event) =>
-                    updateVariant(index, "stock", event.target.value)
+                    updateVariant(index, 'stock', event.target.value)
                   }
                   required
-                  step="1"
-                  type="number"
+                  step='1'
+                  type='number'
                   value={variant.stock}
                 />
               </label>
@@ -472,17 +501,17 @@ export function ProductForm({ product }: { product?: Product }) {
           ))}
         </CardContent>
       </Card>
-      <div className="flex justify-end gap-3">
+      <div className='flex justify-end gap-3'>
         <Button
-          render={<Link to="/admin/produtos" />}
-          type="button"
-          variant="outline"
+          render={<Link to='/admin/produtos' />}
+          type='button'
+          variant='outline'
         >
           Cancelar
         </Button>
-        <Button disabled={saving} type="submit">
+        <Button disabled={saving} type='submit'>
           <Save />
-          {saving ? "Salvando…" : "Salvar produto"}
+          {saving ? 'Salvando…' : 'Salvar produto'}
         </Button>
       </div>
     </form>

@@ -8,33 +8,35 @@ import lombok.Getter;
 @Entity
 @Table(name = "notifications")
 public class Notification extends DomainEntity {
-    @Getter
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "customer_id", nullable = false)
-    private Customer customer;
-    @Getter
-    @Column(nullable = false, length = 60)
-    private String type;
-    @Getter
-    @Column(nullable = false, length = 240)
-    private String message;
-    @Getter
-    @Column(name = "target_path", length = 240)
-    private String targetPath;
-    @Getter
-    private boolean read;
+  @Getter
+  @ManyToOne(fetch = FetchType.LAZY, optional = false)
+  @JoinColumn(name = "customer_id", nullable = false)
+  private Customer customer;
 
-    protected Notification() {
-    }
+  @Getter
+  @Column(nullable = false, length = 60)
+  private String type;
 
-    public Notification(Customer c, String t, String m, String p) {
-        customer = c;
-        type = t;
-        message = m;
-        targetPath = p;
-    }
+  @Getter
+  @Column(nullable = false, length = 240)
+  private String message;
 
-    public void markRead() {
-        read = true;
-    }
+  @Getter
+  @Column(name = "target_path", length = 240)
+  private String targetPath;
+
+  @Getter private boolean read;
+
+  protected Notification() {}
+
+  public Notification(Customer c, String t, String m, String p) {
+    customer = c;
+    type = t;
+    message = m;
+    targetPath = p;
+  }
+
+  public void markRead() {
+    read = true;
+  }
 }

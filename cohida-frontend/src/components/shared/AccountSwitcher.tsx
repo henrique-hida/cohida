@@ -1,4 +1,4 @@
-import { ArrowLeftRight, UserPlus } from "lucide-react";
+import { ArrowLeftRight, UserPlus } from 'lucide-react';
 
 import {
   Select,
@@ -6,10 +6,10 @@ import {
   SelectItem,
   SelectSeparator,
   SelectTrigger,
-} from "@/components/ui/select";
-import type { SavedAccount } from "@/lib/customerApi";
+} from '@/components/ui/select';
+import type { SavedAccount } from '@/lib/customerApi';
 
-const addAccountValue = "__add_account__";
+const addAccountValue = '__add_account__';
 
 interface AccountSwitcherProps {
   accounts: SavedAccount[];
@@ -27,7 +27,7 @@ export function AccountSwitcher({
   return (
     <Select
       onValueChange={(token) => {
-        if (typeof token !== "string") return;
+        if (typeof token !== 'string') return;
         if (token === addAccountValue) {
           onAddAccount?.();
           return;
@@ -35,30 +35,35 @@ export function AccountSwitcher({
         onSwitchAccount(token);
       }}
     >
-      <SelectTrigger className="h-9 w-full border-0 px-2 shadow-none hover:bg-accent">
+      <SelectTrigger
+        className={[
+          'h-9 w-full border-0 px-2 shadow-none',
+          'hover:bg-accent',
+        ].join(' ')}
+      >
         {accounts.length < 2 ? (
-          <UserPlus className="text-foreground" />
+          <UserPlus className='text-foreground' />
         ) : (
-          <ArrowLeftRight className="text-foreground" />
+          <ArrowLeftRight className='text-foreground' />
         )}
-        <span className="flex-1 text-left text-foreground">
-          {accounts.length < 2 ? "Adicionar conta" : "Alternar conta"}
+        <span className='flex-1 text-left text-foreground'>
+          {accounts.length < 2 ? 'Adicionar conta' : 'Alternar conta'}
         </span>
       </SelectTrigger>
-      <SelectContent align="end" className="p-2">
+      <SelectContent align='end' className='p-2'>
         {accounts.map((account) => (
           <SelectItem
-            className="px-3 py-2.5"
+            className='px-3 py-2.5'
             key={account.token}
             value={account.token}
           >
-            <span className="flex min-w-0 flex-1 items-center gap-2">
-              <span className="truncate">{account.name}</span>
-              {account.token === localStorage.getItem("cohida-access-token") ? (
+            <span className='flex min-w-0 flex-1 items-center gap-2'>
+              <span className='truncate'>{account.name}</span>
+              {account.token === localStorage.getItem('cohida-access-token') ? (
                 <span
-                  aria-label="Conta atual"
-                  className="size-2 shrink-0 rounded-full bg-primary"
-                  title="Conta atual"
+                  aria-label='Conta atual'
+                  className='size-2 shrink-0 rounded-full bg-primary'
+                  title='Conta atual'
                 />
               ) : null}
             </span>
@@ -66,12 +71,12 @@ export function AccountSwitcher({
         ))}
         {onAddAccount ? (
           <>
-            {accounts.length ? <SelectSeparator className="my-1" /> : null}
+            {accounts.length ? <SelectSeparator className='my-1' /> : null}
             <SelectItem
-              className="px-3 py-2.5 text-muted-foreground"
+              className='px-3 py-2.5 text-muted-foreground'
               value={addAccountValue}
             >
-              <UserPlus className="text-muted-foreground" />
+              <UserPlus className='text-muted-foreground' />
               Adicionar outra conta
             </SelectItem>
           </>

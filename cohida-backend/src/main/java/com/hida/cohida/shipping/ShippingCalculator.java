@@ -6,5 +6,5 @@ import com.hida.cohida.customer.domain.CustomerAddress;
 import java.util.List;
 
 public interface ShippingCalculator {
-    long calculate(List<CartItem> items, CustomerAddress address);
+  long calculate(List<CartItem> items, CustomerAddress address);
 }

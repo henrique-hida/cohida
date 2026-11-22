@@ -1,9 +1,9 @@
 const baseUrl =
-  import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8080/api";
-const tokenKey = "cohida-access-token";
-const savedAccountsKey = "cohida-saved-accounts";
+  import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8080/api';
+const tokenKey = 'cohida-access-token';
+const savedAccountsKey = 'cohida-saved-accounts';
 
-export type SessionRole = "ADMIN" | "CUSTOMER";
+export type SessionRole = 'ADMIN' | 'CUSTOMER';
 
 export interface SavedAccount {
   name: string;
@@ -11,45 +11,71 @@ export interface SavedAccount {
   token: string;
 }
 
-function parseSessionRole(token: string): SessionRole | null {
-  const encodedPayload = token.split(".")[1];
+function parseSession(
+  token: string,
+): { role: SessionRole; subject?: string } | null {
+  const encodedPayload = token.split('.')[1];
   if (!encodedPayload) return null;
 
   try {
     const payload = JSON.parse(
       atob(
         encodedPayload
-          .replace(/-/g, "+")
-          .replace(/_/g, "/")
-          .padEnd(Math.ceil(encodedPayload.length / 4) * 4, "="),
+          .replace(/-/g, '+')
+          .replace(/_/g, '/')
+          .padEnd(Math.ceil(encodedPayload.length / 4) * 4, '='),
       ),
-    ) as { exp?: number; role?: string };
+    ) as { exp?: number; role?: string; sub?: unknown };
 
     if (payload.exp && payload.exp * 1000 <= Date.now()) return null;
-    return payload.role === "ADMIN" || payload.role === "CUSTOMER"
-      ? payload.role
+    return payload.role === 'ADMIN' || payload.role === 'CUSTOMER'
+      ? {
+          role: payload.role,
+          subject:
+            typeof payload.sub === 'string' && payload.sub
+              ? payload.sub
+              : undefined,
+        }
       : null;
   } catch {
     return null;
   }
 }
 
+function parseSessionRole(token: string): SessionRole | null {
+  return parseSession(token)?.role ?? null;
+}
+
+function accountKey(token: string): string {
+  const subject = parseSession(token)?.subject;
+  return subject ? `subject:${subject}` : `token:${token}`;
+}
+
 function readSavedAccounts(): SavedAccount[] {
   try {
     const stored = JSON.parse(
-      localStorage.getItem(savedAccountsKey) ?? "[]",
+      localStorage.getItem(savedAccountsKey) ?? '[]',
     ) as unknown;
     if (!Array.isArray(stored)) return [];
 
-    return stored.filter(
+    const accounts = stored.filter(
       (account): account is SavedAccount =>
-        typeof account === "object" &&
+        typeof account === 'object' &&
         account !== null &&
-        typeof account.name === "string" &&
-        typeof account.token === "string" &&
-        (account.role === "ADMIN" || account.role === "CUSTOMER") &&
+        typeof account.name === 'string' &&
+        typeof account.token === 'string' &&
+        (account.role === 'ADMIN' || account.role === 'CUSTOMER') &&
         parseSessionRole(account.token) === account.role,
     );
+    const currentToken = localStorage.getItem(tokenKey);
+    const uniqueAccounts = new Map<string, SavedAccount>();
+    for (const account of accounts) {
+      const key = accountKey(account.token);
+      if (!uniqueAccounts.has(key) || account.token === currentToken) {
+        uniqueAccounts.set(key, account);
+      }
+    }
+    return [...uniqueAccounts.values()];
   } catch {
     return [];
   }
@@ -66,13 +92,15 @@ function saveAccount(token: string, role: string, name?: string) {
   const account: SavedAccount = {
     name:
       name?.trim() ||
-      (sessionRole === "ADMIN" ? "Administradora" : "Minha conta"),
+      (sessionRole === 'ADMIN' ? 'Administradora' : 'Minha conta'),
     role: sessionRole,
     token,
   };
   saveAccounts([
     account,
-    ...readSavedAccounts().filter((saved) => saved.token !== token),
+    ...readSavedAccounts().filter(
+      (saved) => accountKey(saved.token) !== accountKey(token),
+    ),
   ]);
 }
 
@@ -82,10 +110,10 @@ export function getSavedAccounts() {
 
 export function switchAccount(account: SavedAccount) {
   localStorage.setItem(tokenKey, account.token);
-  if (account.role === "ADMIN") {
-    localStorage.setItem("cohida-admin-name", account.name);
+  if (account.role === 'ADMIN') {
+    localStorage.setItem('cohida-admin-name', account.name);
   } else {
-    localStorage.removeItem("cohida-admin-name");
+    localStorage.removeItem('cohida-admin-name');
   }
 }
 
@@ -102,7 +130,7 @@ export function getSessionRole(): SessionRole | null {
 }
 
 export function hasAdminSession() {
-  return getSessionRole() === "ADMIN";
+  return getSessionRole() === 'ADMIN';
 }
 
 export interface CustomerAddressInput {
@@ -139,13 +167,16 @@ export interface CustomerUpdateInput {
 
 export interface CustomerResponse extends Omit<
   CustomerCreateInput,
-  "password" | "passwordConfirmation"
+  'password' | 'passwordConfirmation'
 > {
   id: number;
   code: string;
   active: boolean;
   addresses: Array<
-    CustomerAddressInput & { id: number; type: "BILLING" | "DELIVERY" }
+    CustomerAddressInput & {
+      id: number;
+      type: 'BILLING' | 'DELIVERY';
+    }
   >;
 }
 
@@ -156,12 +187,12 @@ export async function apiRequest<T>(
   const token = localStorage.getItem(tokenKey);
   const headers = new Headers(options.headers);
   const isMultipartBody =
-    typeof FormData !== "undefined" && options.body instanceof FormData;
-  if (!isMultipartBody && !headers.has("Content-Type")) {
-    headers.set("Content-Type", "application/json");
+    typeof FormData !== 'undefined' && options.body instanceof FormData;
+  if (!isMultipartBody && !headers.has('Content-Type')) {
+    headers.set('Content-Type', 'application/json');
   }
-  if (token && !headers.has("Authorization")) {
-    headers.set("Authorization", `Bearer ${token}`);
+  if (token && !headers.has('Authorization')) {
+    headers.set('Authorization', `Bearer ${token}`);
   }
   const response = await fetch(`${baseUrl}${path}`, {
     ...options,
@@ -171,7 +202,7 @@ export async function apiRequest<T>(
     const body = (await response.json().catch(() => null)) as {
       message?: string;
     } | null;
-    const isAuthenticationEndpoint = path.startsWith("/auth/");
+    const isAuthenticationEndpoint = path.startsWith('/auth/');
     if (
       (response.status === 401 || response.status === 403) &&
       token &&
@@ -181,13 +212,13 @@ export async function apiRequest<T>(
       // token just saved by a successful login.
       if (localStorage.getItem(tokenKey) === token) {
         logout();
-        if (window.location.pathname !== "/entrar") {
-          window.location.replace("/entrar");
+        if (window.location.pathname !== '/entrar') {
+          window.location.replace('/entrar');
         }
       }
-      throw new Error("Sua sessão expirou. Entre novamente para continuar.");
+      throw new Error('Sua sessão expirou. Entre novamente para continuar.');
     }
-    throw new Error(body?.message ?? "Não foi possível concluir a operação.");
+    throw new Error(body?.message ?? 'Não foi possível concluir a operação.');
   }
   return response.status === 204
     ? (undefined as T)
@@ -199,12 +230,12 @@ export async function login(email: string, password: string) {
     accessToken: string;
     role: string;
     customerName?: string;
-  }>("/auth/login", {
+  }>('/auth/login', {
     body: JSON.stringify({ email, password }),
-    method: "POST",
+    method: 'POST',
   });
   localStorage.setItem(tokenKey, authentication.accessToken);
-  localStorage.removeItem("cohida-admin-name");
+  localStorage.removeItem('cohida-admin-name');
   saveAccount(
     authentication.accessToken,
     authentication.role,
@@ -217,12 +248,12 @@ export async function register(input: CustomerCreateInput) {
   const authentication = await apiRequest<{
     accessToken: string;
     role: string;
-  }>("/auth/register", {
+  }>('/auth/register', {
     body: JSON.stringify(input),
-    method: "POST",
+    method: 'POST',
   });
   localStorage.setItem(tokenKey, authentication.accessToken);
-  localStorage.removeItem("cohida-admin-name");
+  localStorage.removeItem('cohida-admin-name');
   saveAccount(authentication.accessToken, authentication.role);
   return authentication;
 }
@@ -235,11 +266,11 @@ export function logout() {
     );
   }
   localStorage.removeItem(tokenKey);
-  localStorage.removeItem("cohida-admin-name");
+  localStorage.removeItem('cohida-admin-name');
 }
 
 export const customerApi = {
-  list: (search = "", page = 0, size = 10, status = "ACTIVE", sort = "ASC") => {
+  list: (search = '', page = 0, size = 10, status = 'ACTIVE', sort = 'ASC') => {
     const query = new URLSearchParams({
       search,
       page: String(page),
@@ -247,65 +278,82 @@ export const customerApi = {
       status,
       sort,
     });
-    return apiRequest<{ content: CustomerResponse[]; totalElements: number }>(
-      `/customers?${query}`,
-    );
+    return apiRequest<{
+      content: CustomerResponse[];
+      totalElements: number;
+    }>(`/customers?${query}`);
   },
   create: (input: CustomerCreateInput) =>
-    apiRequest<CustomerResponse>("/customers", {
+    apiRequest<CustomerResponse>('/customers', {
       body: JSON.stringify(input),
-      method: "POST",
+      method: 'POST',
     }),
   findById: (id: string) => apiRequest<CustomerResponse>(`/customers/${id}`),
-  me: () => apiRequest<CustomerResponse>("/customers/me"),
+  me: () => apiRequest<CustomerResponse>('/customers/me'),
   updateProfile: (
-    input: Pick<CustomerCreateInput, "name" | "birthDate" | "phone" | "email">,
+    input: Pick<CustomerCreateInput, 'name' | 'birthDate' | 'phone' | 'email'>,
   ) =>
-    apiRequest<CustomerResponse>("/customers/me", {
+    apiRequest<CustomerResponse>('/customers/me', {
       body: JSON.stringify(input),
-      method: "PATCH",
+      method: 'PATCH',
     }),
   changePassword: (
     currentPassword: string,
     newPassword: string,
     newPasswordConfirmation: string,
   ) =>
-    apiRequest<void>("/customers/me/password", {
+    apiRequest<void>('/customers/me/password', {
       body: JSON.stringify({
         currentPassword,
         newPassword,
         newPasswordConfirmation,
       }),
-      method: "PATCH",
+      method: 'PATCH',
     }),
   deactivateOwnAccount: () =>
-    apiRequest<void>("/customers/me/deactivate", { method: "PATCH" }),
+    apiRequest<void>('/customers/me/deactivate', {
+      method: 'PATCH',
+    }),
   addAddress: (
-    input: CustomerAddressInput & { type: "BILLING" | "DELIVERY" },
+    input: CustomerAddressInput & {
+      type: 'BILLING' | 'DELIVERY';
+    },
   ) =>
     apiRequest<
-      CustomerAddressInput & { id: number; type: "BILLING" | "DELIVERY" }
-    >("/customers/me/addresses", {
+      CustomerAddressInput & {
+        id: number;
+        type: 'BILLING' | 'DELIVERY';
+      }
+    >('/customers/me/addresses', {
       body: JSON.stringify(input),
-      method: "POST",
+      method: 'POST',
     }),
   updateAddress: (
     id: string,
-    input: CustomerAddressInput & { type: "BILLING" | "DELIVERY" },
+    input: CustomerAddressInput & {
+      type: 'BILLING' | 'DELIVERY';
+    },
   ) =>
     apiRequest<
-      CustomerAddressInput & { id: number; type: "BILLING" | "DELIVERY" }
+      CustomerAddressInput & {
+        id: number;
+        type: 'BILLING' | 'DELIVERY';
+      }
     >(`/customers/me/addresses/${id}`, {
       body: JSON.stringify(input),
-      method: "PATCH",
+      method: 'PATCH',
     }),
   removeAddress: (id: string) =>
-    apiRequest<void>(`/customers/me/addresses/${id}`, { method: "DELETE" }),
+    apiRequest<void>(`/customers/me/addresses/${id}`, {
+      method: 'DELETE',
+    }),
   update: (id: string, input: CustomerUpdateInput) =>
     apiRequest<CustomerResponse>(`/customers/${id}`, {
       body: JSON.stringify(input),
-      method: "PUT",
+      method: 'PUT',
     }),
   deactivate: (id: string) =>
-    apiRequest<void>(`/customers/${id}/deactivate`, { method: "PATCH" }),
+    apiRequest<void>(`/customers/${id}/deactivate`, {
+      method: 'PATCH',
+    }),
 };

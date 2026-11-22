@@ -13,21 +13,23 @@ import java.util.List;
 @RequestMapping("/api/admin/returns")
 @PreAuthorize("hasRole('ADMIN')")
 public class AdminReturnController {
-    private final ReturnService returns;
+  private final ReturnService returns;
 
-    public AdminReturnController(ReturnService returns) {
-        this.returns = returns;
-    }
+  public AdminReturnController(ReturnService returns) {
+    this.returns = returns;
+  }
 
-    @GetMapping
-    @Transactional(readOnly = true)
-    public List<ReturnResponse> all() {
-        return returns.all().stream().map(ReturnResponse::from).toList();
-    }
+  @GetMapping
+  @Transactional(readOnly = true)
+  public List<ReturnResponse> all() {
+    return returns.all().stream().map(ReturnResponse::from).toList();
+  }
 
-    @PatchMapping("/{id}/status")
-    @Transactional
-    public ReturnResponse status(@PathVariable Long id, @RequestBody ReturnStatusRequest r) {
-        return ReturnResponse.from(returns.status(id, r.status(), r.restockItems()));
-    }
+  @PatchMapping("/{id}/status")
+  @Transactional
+  public ReturnResponse status(
+      @PathVariable Long id, @RequestBody ReturnStatusRequest r) {
+    return ReturnResponse.from(
+        returns.status(id, r.status(), r.restockItems()));
+  }
 }

@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import type { ReactNode } from 'react';
 
 import {
   Card,
@@ -6,8 +6,8 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
-} from "@/components/ui/card";
-import { cn } from "@/lib/utils";
+} from '@/components/ui/card';
+import { cn } from '@/lib/utils';
 
 interface AccountSectionCardProps {
   action?: ReactNode;
@@ -25,15 +25,22 @@ export function AccountSectionCard({
   title,
 }: AccountSectionCardProps) {
   return (
-    <Card className="gap-0 py-0">
-      <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-4 border-b border-border px-5 pt-3 pb-4 sm:px-6 sm:pt-4">
-        <div className="min-w-0">
-          <CardTitle className="text-lg">{title}</CardTitle>
-          <CardDescription className="mt-1">{description}</CardDescription>
+    <Card className='gap-0 py-0'>
+      <CardHeader
+        className={[
+          'flex flex-row flex-wrap items-center',
+          'justify-between gap-4 border-b',
+          'border-border px-5 pt-3 pb-4 sm:px-6',
+          'sm:pt-4',
+        ].join(' ')}
+      >
+        <div className='min-w-0'>
+          <CardTitle className='text-lg'>{title}</CardTitle>
+          <CardDescription className='mt-1'>{description}</CardDescription>
         </div>
-        {action ? <div className="shrink-0">{action}</div> : null}
+        {action ? <div className='shrink-0'>{action}</div> : null}
       </CardHeader>
-      <CardContent className={cn("p-5 sm:p-6", contentClassName)}>
+      <CardContent className={cn('p-5 sm:p-6', contentClassName)}>
         {children}
       </CardContent>
     </Card>

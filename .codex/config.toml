@@ -1,0 +1,15 @@
+default_permissions = "cohida"
+
+  [permissions.cohida]
+    extends = ":workspace"
+
+      [permissions.cohida.filesystem.":workspace_roots"]
+        ".env" = "deny"
+
+  [mcp_servers.playwright]
+    command = "npx"
+    args = ["--yes", "@playwright/mcp@0.0.85", "--browser", "chrome", "--isolated"]
+
+  [mcp_servers.idea]
+    url = "http://127.0.0.1:64342/stream"
+    enabled = true

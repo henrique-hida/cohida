@@ -13,36 +13,37 @@ import java.util.List;
 @RequestMapping("/api/admin/coupons")
 @PreAuthorize("hasRole('ADMIN')")
 public class AdminCouponController {
-    private final CouponService coupons;
+  private final CouponService coupons;
 
-    public AdminCouponController(CouponService coupons) {
-        this.coupons = coupons;
-    }
+  public AdminCouponController(CouponService coupons) {
+    this.coupons = coupons;
+  }
 
-    @GetMapping
-    public List<CouponResponse> findAll() {
-        return coupons.findAll().stream().map(CouponResponse::from).toList();
-    }
+  @GetMapping
+  public List<CouponResponse> findAll() {
+    return coupons.findAll().stream().map(CouponResponse::from).toList();
+  }
 
-    @GetMapping("/{id}")
-    public CouponResponse findById(@PathVariable Long id) {
-        return CouponResponse.from(coupons.findById(id));
-    }
+  @GetMapping("/{id}")
+  public CouponResponse findById(@PathVariable Long id) {
+    return CouponResponse.from(coupons.findById(id));
+  }
 
-    @PostMapping
-    @ResponseStatus(HttpStatus.CREATED)
-    public CouponResponse create(@RequestBody CouponUpsertRequest request) {
-        return CouponResponse.from(coupons.create(request));
-    }
+  @PostMapping
+  @ResponseStatus(HttpStatus.CREATED)
+  public CouponResponse create(@RequestBody CouponUpsertRequest request) {
+    return CouponResponse.from(coupons.create(request));
+  }
 
-    @PutMapping("/{id}")
-    public CouponResponse update(@PathVariable Long id, @RequestBody CouponUpsertRequest request) {
-        return CouponResponse.from(coupons.update(id, request));
-    }
+  @PutMapping("/{id}")
+  public CouponResponse update(
+      @PathVariable Long id, @RequestBody CouponUpsertRequest request) {
+    return CouponResponse.from(coupons.update(id, request));
+  }
 
-    @DeleteMapping("/{id}")
-    @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void deactivate(@PathVariable Long id) {
-        coupons.deactivate(id);
-    }
+  @DeleteMapping("/{id}")
+  @ResponseStatus(HttpStatus.NO_CONTENT)
+  public void deactivate(@PathVariable Long id) {
+    coupons.deactivate(id);
+  }
 }

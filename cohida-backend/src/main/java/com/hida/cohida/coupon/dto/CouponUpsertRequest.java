@@ -6,16 +6,14 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 public record CouponUpsertRequest(
-        String code,
-        String description,
-        CouponDiscountType discountType,
-        Long discountCents,
-        BigDecimal discountPercentage,
-        Long maximumDiscountCents,
-        Long minimumOrderValueCents,
-        LocalDateTime validFrom,
-        LocalDateTime expiresAt,
-        Integer maximumUses,
-        Boolean active
-) {
-}
+    String code,
+    String description,
+    CouponDiscountType discountType,
+    Long discountCents,
+    BigDecimal discountPercentage,
+    Long maximumDiscountCents,
+    Long minimumOrderValueCents,
+    LocalDateTime validFrom,
+    LocalDateTime expiresAt,
+    Integer maximumUses,
+    Boolean active) {}

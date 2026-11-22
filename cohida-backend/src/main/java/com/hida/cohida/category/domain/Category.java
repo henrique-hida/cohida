@@ -9,23 +9,28 @@ import lombok.Getter;
 @Entity
 @Table(name = "categories")
 public class Category extends DomainEntity {
-    @Getter @Column(nullable = false, unique = true, length = 80)
-    private String slug;
-    @Getter @Column(nullable = false, length = 100)
-    private String name;
-    @Getter @Column(nullable = false, length = 500)
-    private String description;
+  @Getter
+  @Column(nullable = false, unique = true, length = 80)
+  private String slug;
 
-    protected Category() { }
+  @Getter
+  @Column(nullable = false, length = 100)
+  private String name;
 
-    public Category(String slug, String name, String description) {
-        this.slug = slug;
-        this.name = name;
-        this.description = description;
-    }
+  @Getter
+  @Column(nullable = false, length = 500)
+  private String description;
 
-    public void update(String name, String description) {
-        this.name = name;
-        this.description = description;
-    }
+  protected Category() {}
+
+  public Category(String slug, String name, String description) {
+    this.slug = slug;
+    this.name = name;
+    this.description = description;
+  }
+
+  public void update(String name, String description) {
+    this.name = name;
+    this.description = description;
+  }
 }

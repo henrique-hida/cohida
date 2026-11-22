@@ -1,16 +1,16 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from 'react';
 
-import { AdminDataState } from "@/components/admin/AdminDataState";
-import { AdminFilterSelect } from "@/components/admin/AdminFilterSelect";
-import { AdminListFiltersCard } from "@/components/admin/AdminListFiltersCard";
-import { AdminListToolbar } from "@/components/admin/AdminListToolbar";
-import { AdminPageLayout } from "@/components/admin/AdminPageLayout";
-import { AdminPagination } from "@/components/admin/AdminPagination";
-import { Badge } from "@/components/ui/badge";
-import { Card, CardContent } from "@/components/ui/card";
-import { StatusMessage } from "@/components/ui/status-message";
-import { Table } from "@/components/ui/table";
-import { commerceApi, type ApiProduct } from "@/lib/commerceApi";
+import { AdminDataState } from '@/components/admin/AdminDataState';
+import { AdminFilterSelect } from '@/components/admin/AdminFilterSelect';
+import { AdminListFiltersCard } from '@/components/admin/AdminListFiltersCard';
+import { AdminListToolbar } from '@/components/admin/AdminListToolbar';
+import { AdminPageLayout } from '@/components/admin/AdminPageLayout';
+import { AdminPagination } from '@/components/admin/AdminPagination';
+import { Badge } from '@/components/ui/badge';
+import { Card, CardContent } from '@/components/ui/card';
+import { StatusMessage } from '@/components/ui/status-message';
+import { Table } from '@/components/ui/table';
+import { commerceApi, type ApiProduct } from '@/lib/commerceApi';
 
 type StockRow = {
   currentStock: number;
@@ -40,26 +40,26 @@ function productRows(products: ApiProduct[]): StockRow[] {
 
 export function AdminStockPage() {
   const [products, setProducts] = useState<ApiProduct[]>([]);
-  const [search, setSearch] = useState("");
-  const [stockFilter, setStockFilter] = useState("");
+  const [search, setSearch] = useState('');
+  const [stockFilter, setStockFilter] = useState('');
   const [page, setPage] = useState(1);
   const [drafts, setDrafts] = useState<Record<number, string>>({});
   const [saving, setSaving] = useState<number | null>(null);
   const saveTimers = useRef<Record<number, number>>({});
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
-  const [notice, setNotice] = useState("");
+  const [error, setError] = useState('');
+  const [notice, setNotice] = useState('');
 
   async function load() {
     setLoading(true);
     try {
       setProducts(await commerceApi.adminProducts());
-      setError("");
+      setError('');
     } catch (reason) {
       setError(
         reason instanceof Error
           ? reason.message
-          : "Não foi possível carregar o estoque.",
+          : 'Não foi possível carregar o estoque.',
       );
     } finally {
       setLoading(false);
@@ -81,20 +81,20 @@ export function AdminStockPage() {
   );
 
   const rows = useMemo(() => {
-    const term = search.trim().toLocaleLowerCase("pt-BR");
+    const term = search.trim().toLocaleLowerCase('pt-BR');
     return productRows(products)
       .filter(
         (row) =>
           !term ||
           [row.productName, row.sku, row.variantLabel].some((value) =>
-            value.toLocaleLowerCase("pt-BR").includes(term),
+            value.toLocaleLowerCase('pt-BR').includes(term),
           ),
       )
       .filter(
         (row) =>
           !stockFilter ||
-          (stockFilter === "limite" && row.currentStock <= row.minimumStock) ||
-          (stockFilter === "disponivel" && row.currentStock > row.minimumStock),
+          (stockFilter === 'limite' && row.currentStock <= row.minimumStock) ||
+          (stockFilter === 'disponivel' && row.currentStock > row.minimumStock),
       );
   }, [products, search, stockFilter]);
   const totalPages = Math.max(1, Math.ceil(rows.length / pageSize));
@@ -107,13 +107,13 @@ export function AdminStockPage() {
   async function saveStock(row: StockRow, rawValue: string) {
     const quantity = Number(rawValue);
     if (!Number.isInteger(quantity) || quantity < 0) {
-      setError("Informe uma quantidade inteira igual ou maior que zero.");
+      setError('Informe uma quantidade inteira igual ou maior que zero.');
       return;
     }
 
     setSaving(row.variantId);
-    setError("");
-    setNotice("");
+    setError('');
+    setNotice('');
     try {
       const updated = await commerceApi.updateStock(
         String(row.productId),
@@ -142,7 +142,7 @@ export function AdminStockPage() {
       setError(
         reason instanceof Error
           ? reason.message
-          : "Não foi possível atualizar o estoque.",
+          : 'Não foi possível atualizar o estoque.',
       );
     } finally {
       setSaving(null);
@@ -151,31 +151,35 @@ export function AdminStockPage() {
 
   return (
     <AdminPageLayout
-      description="Consulte a disponibilidade por produto e atualize as quantidades em estoque."
-      title="Estoque"
+      description={[
+        'Consulte a disponibilidade por',
+        'produto e atualize as quantidades',
+        'em estoque.',
+      ].join(' ')}
+      title='Estoque'
     >
-      <div className="mt-8 grid gap-4">
+      <div className='mt-8 grid gap-4'>
         <AdminListFiltersCard>
           <AdminListToolbar
             onSearchChange={(value) => {
               setSearch(value);
               setPage(1);
             }}
-            searchLabel="Pesquisar no estoque"
-            searchPlaceholder="Produto, variação ou SKU"
+            searchLabel='Pesquisar no estoque'
+            searchPlaceholder='Produto, variação ou SKU'
             searchValue={search}
           >
             <AdminFilterSelect
-              ariaLabel="Filtrar estoque por disponibilidade"
+              ariaLabel='Filtrar estoque por disponibilidade'
               onValueChange={(value) => {
                 setStockFilter(value);
                 setPage(1);
               }}
               options={[
-                { label: "No limite mínimo", value: "limite" },
-                { label: "Disponíveis", value: "disponivel" },
+                { label: 'No limite mínimo', value: 'limite' },
+                { label: 'Disponíveis', value: 'disponivel' },
               ]}
-              placeholder="Disponibilidade"
+              placeholder='Disponibilidade'
               value={stockFilter}
             />
           </AdminListToolbar>
@@ -183,37 +187,43 @@ export function AdminStockPage() {
         <Card>
           <CardContent>
             {error ? (
-              <div className="mb-4">
-                <StatusMessage message={error} variant="danger" />
+              <div className='mb-4'>
+                <StatusMessage message={error} variant='danger' />
               </div>
             ) : null}
             {notice ? (
-              <div className="mb-4">
+              <div className='mb-4'>
                 <StatusMessage
                   key={notice}
                   message={notice}
-                  onDismiss={() => setNotice("")}
-                  variant="success"
+                  onDismiss={() => setNotice('')}
+                  variant='success'
                 />
               </div>
             ) : null}
             {loading ? (
               <AdminDataState
-                description="Consultando as quantidades cadastradas."
-                title="Carregando estoque"
-                variant="loading"
+                description='Consultando as quantidades cadastradas.'
+                title='Carregando estoque'
+                variant='loading'
               />
             ) : rows.length ? (
               <>
-                <Table className="min-w-[48rem] text-left">
-                  <thead className="border-b border-border text-xs tracking-wide text-muted-foreground uppercase">
+                <Table className='min-w-[48rem] text-left'>
+                  <thead
+                    className={[
+                      'border-b border-border text-xs',
+                      'tracking-wide text-muted-foreground',
+                      'uppercase',
+                    ].join(' ')}
+                  >
                     <tr>
-                      <th className="pb-3 font-medium">Produto</th>
-                      <th className="pb-3 font-medium">Variação</th>
-                      <th className="pb-3 font-medium">SKU</th>
-                      <th className="pb-3 font-medium">Situação</th>
-                      <th className="pb-3 text-right font-medium">Mínimo</th>
-                      <th className="pb-3 text-right font-medium">Saldo</th>
+                      <th className='pb-3 font-medium'>Produto</th>
+                      <th className='pb-3 font-medium'>Variação</th>
+                      <th className='pb-3 font-medium'>SKU</th>
+                      <th className='pb-3 font-medium'>Situação</th>
+                      <th className='pb-3 text-right font-medium'>Mínimo</th>
+                      <th className='pb-3 text-right font-medium'>Saldo</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -221,30 +231,40 @@ export function AdminStockPage() {
                       const lowStock = row.currentStock <= row.minimumStock;
                       return (
                         <tr
-                          className="border-b border-border last:border-0"
+                          className='border-b border-border last:border-0'
                           key={row.variantId}
                         >
-                          <td className="py-3 font-medium">
+                          <td className='py-3 font-medium'>
                             {row.productName}
                           </td>
-                          <td className="py-3">{row.variantLabel}</td>
-                          <td className="py-3 text-muted-foreground">
+                          <td className='py-3'>{row.variantLabel}</td>
+                          <td className='py-3 text-muted-foreground'>
                             {row.sku}
                           </td>
-                          <td className="py-3">
-                            <Badge variant={lowStock ? "warning" : "success"}>
-                              {lowStock ? "NO LIMITE" : "DISPONÍVEL"}
+                          <td className='py-3'>
+                            <Badge variant={lowStock ? 'warning' : 'success'}>
+                              {lowStock ? 'NO LIMITE' : 'DISPONÍVEL'}
                             </Badge>
                           </td>
-                          <td className="py-3 text-right">
+                          <td className='py-3 text-right'>
                             {row.minimumStock} un.
                           </td>
-                          <td className="py-3 text-right">
+                          <td className='py-3 text-right'>
                             <input
-                              aria-label={`Saldo de ${row.productName} ${row.variantLabel}`}
-                              className="h-9 w-24 rounded-lg border border-input bg-background px-2 text-right text-sm outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
+                              aria-label={[
+                                'Saldo de ',
+                                String(row.productName),
+                                ' ',
+                                String(row.variantLabel),
+                              ].join('')}
+                              className={[
+                                'h-9 w-24 rounded-lg border border-input',
+                                'bg-background px-2 text-right text-sm',
+                                'outline-none focus-visible:ring-3',
+                                'focus-visible:ring-ring/50',
+                              ].join(' ')}
                               disabled={saving === row.variantId}
-                              min="0"
+                              min='0'
                               onChange={(event) => {
                                 const value = event.target.value;
                                 setDrafts((current) => ({
@@ -277,7 +297,10 @@ export function AdminStockPage() {
                                   Number(value) < 0
                                 ) {
                                   setError(
-                                    "Informe um saldo inteiro igual ou maior que zero.",
+                                    [
+                                      'Informe um saldo inteiro igual ou',
+                                      'maior que zero.',
+                                    ].join(' '),
                                   );
                                 } else if (
                                   saving !== row.variantId &&
@@ -286,8 +309,8 @@ export function AdminStockPage() {
                                   void saveStock(row, value);
                                 }
                               }}
-                              step="1"
-                              type="number"
+                              step='1'
+                              type='number'
                               value={
                                 drafts[row.variantId] ??
                                 String(row.currentStock)
@@ -308,9 +331,9 @@ export function AdminStockPage() {
               </>
             ) : (
               <AdminDataState
-                description="A busca não encontrou nenhuma variação cadastrada."
-                title="Nenhum item de estoque"
-                variant="empty"
+                description='A busca não encontrou nenhuma variação cadastrada.'
+                title='Nenhum item de estoque'
+                variant='empty'
               />
             )}
           </CardContent>

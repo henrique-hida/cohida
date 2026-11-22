@@ -14,33 +14,42 @@ import java.util.List;
 @RequestMapping("/api/customers/me/orders")
 @PreAuthorize("hasRole('CUSTOMER')")
 public class CustomerOrderController {
-    private final OrderService orders;
+  private final OrderService orders;
 
-    public CustomerOrderController(OrderService orders) {
-        this.orders = orders;
-    }
+  public CustomerOrderController(OrderService orders) {
+    this.orders = orders;
+  }
 
-    @GetMapping
-    @Transactional(readOnly = true)
-    public List<OrderResponse> list(@AuthenticationPrincipal AuthenticatedCustomer p) {
-        return orders.customerOrders(p.customerId()).stream().map(OrderResponse::from).toList();
-    }
+  @GetMapping
+  @Transactional(readOnly = true)
+  public List<OrderResponse> list(
+      @AuthenticationPrincipal AuthenticatedCustomer p) {
+    return orders.customerOrders(p.customerId()).stream()
+        .map(OrderResponse::from)
+        .toList();
+  }
 
-    @GetMapping("/{id}")
-    @Transactional(readOnly = true)
-    public OrderResponse detail(@AuthenticationPrincipal AuthenticatedCustomer p, @PathVariable Long id) {
-        return OrderResponse.from(orders.customerOrder(p.customerId(), id));
-    }
+  @GetMapping("/{id}")
+  @Transactional(readOnly = true)
+  public OrderResponse detail(
+      @AuthenticationPrincipal AuthenticatedCustomer p, @PathVariable Long id) {
+    return OrderResponse.from(orders.customerOrder(p.customerId(), id));
+  }
 
-    @PostMapping("/{id}/cancel")
-    @Transactional
-    public OrderResponse cancel(@AuthenticationPrincipal AuthenticatedCustomer p, @PathVariable Long id, @RequestBody com.hida.cohida.order.dto.CancellationRequest request) {
-        return OrderResponse.from(orders.cancel(p.customerId(), id, request.reason()));
-    }
+  @PostMapping("/{id}/cancel")
+  @Transactional
+  public OrderResponse cancel(
+      @AuthenticationPrincipal AuthenticatedCustomer p,
+      @PathVariable Long id,
+      @RequestBody com.hida.cohida.order.dto.CancellationRequest request) {
+    return OrderResponse.from(
+        orders.cancel(p.customerId(), id, request.reason()));
+  }
 
-    @PostMapping("/{id}/confirm-receipt")
-    @Transactional
-    public OrderResponse confirmReceipt(@AuthenticationPrincipal AuthenticatedCustomer p, @PathVariable Long id) {
-        return OrderResponse.from(orders.confirmReceipt(p.customerId(), id));
-    }
+  @PostMapping("/{id}/confirm-receipt")
+  @Transactional
+  public OrderResponse confirmReceipt(
+      @AuthenticationPrincipal AuthenticatedCustomer p, @PathVariable Long id) {
+    return OrderResponse.from(orders.confirmReceipt(p.customerId(), id));
+  }
 }

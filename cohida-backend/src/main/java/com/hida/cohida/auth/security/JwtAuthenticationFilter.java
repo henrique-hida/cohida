@@ -17,24 +17,36 @@ import java.util.List;
 
 @Component
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
-    private final JwtService jwtService;
+  private final JwtService jwtService;
 
-    public JwtAuthenticationFilter(JwtService jwtService) {
-        this.jwtService = jwtService;
-    }
+  public JwtAuthenticationFilter(JwtService jwtService) {
+    this.jwtService = jwtService;
+  }
 
-    @Override
-    protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response,
-                                    FilterChain filterChain) throws ServletException, IOException {
-        String header = request.getHeader(HttpHeaders.AUTHORIZATION);
-        if (header != null && header.startsWith("Bearer ")
-                && SecurityContextHolder.getContext().getAuthentication() == null) {
-            jwtService.parse(header.substring(7)).ifPresent(principal -> {
-                var authority = new SimpleGrantedAuthority("ROLE_" + principal.role().name());
-                var authentication = new UsernamePasswordAuthenticationToken(principal, null, List.of(authority));
-                SecurityContextHolder.getContext().setAuthentication(authentication);
-            });
-        }
-        filterChain.doFilter(request, response);
+  @Override
+  protected void doFilterInternal(
+      HttpServletRequest request,
+      HttpServletResponse response,
+      FilterChain filterChain)
+      throws ServletException, IOException {
+    String header = request.getHeader(HttpHeaders.AUTHORIZATION);
+    if (header != null
+        && header.startsWith("Bearer ")
+        && SecurityContextHolder.getContext().getAuthentication() == null) {
+      jwtService
+          .parse(header.substring(7))
+          .ifPresent(
+              principal -> {
+                var authority =
+                    new SimpleGrantedAuthority(
+                        "ROLE_" + principal.role().name());
+                var authentication =
+                    new UsernamePasswordAuthenticationToken(
+                        principal, null, List.of(authority));
+                SecurityContextHolder.getContext()
+                    .setAuthentication(authentication);
+              });
     }
+    filterChain.doFilter(request, response);
+  }
 }

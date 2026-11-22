@@ -1,38 +1,38 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { Plus } from "lucide-react";
-import { Link } from "react-router";
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Plus } from 'lucide-react';
+import { Link } from 'react-router';
 
-import { AdminDataState } from "@/components/admin/AdminDataState";
-import { AdminFilterSelect } from "@/components/admin/AdminFilterSelect";
-import { AdminListFiltersCard } from "@/components/admin/AdminListFiltersCard";
-import { AdminListToolbar } from "@/components/admin/AdminListToolbar";
-import { AdminPageLayout } from "@/components/admin/AdminPageLayout";
-import { AdminPagination } from "@/components/admin/AdminPagination";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
-import { formatCurrency } from "@/lib/currency";
-import { useCommerce } from "@/data/useCommerce";
+import { AdminDataState } from '@/components/admin/AdminDataState';
+import { AdminFilterSelect } from '@/components/admin/AdminFilterSelect';
+import { AdminListFiltersCard } from '@/components/admin/AdminListFiltersCard';
+import { AdminListToolbar } from '@/components/admin/AdminListToolbar';
+import { AdminPageLayout } from '@/components/admin/AdminPageLayout';
+import { AdminPagination } from '@/components/admin/AdminPagination';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
+import { formatCurrency } from '@/lib/currency';
+import { useCommerce } from '@/data/useCommerce';
 
 const pageSize = 10;
 
 export function AdminCouponsPage() {
   const { loadCoupons, state, toggleCoupon } = useCommerce();
-  const [search, setSearch] = useState("");
-  const [kindFilter, setKindFilter] = useState("");
-  const [statusFilter, setStatusFilter] = useState("");
+  const [search, setSearch] = useState('');
+  const [kindFilter, setKindFilter] = useState('');
+  const [statusFilter, setStatusFilter] = useState('');
   const [page, setPage] = useState(1);
-  const [loadError, setLoadError] = useState("");
+  const [loadError, setLoadError] = useState('');
   const [loading, setLoading] = useState(true);
 
   const refreshCoupons = useCallback(() => {
     setLoading(true);
     void loadCoupons()
-      .then(() => setLoadError(""))
+      .then(() => setLoadError(''))
       .catch((reason: unknown) =>
         setLoadError(
           reason instanceof Error
             ? reason.message
-            : "Não foi possível carregar os cupons.",
+            : 'Não foi possível carregar os cupons.',
         ),
       )
       .finally(() => setLoading(false));
@@ -44,21 +44,21 @@ export function AdminCouponsPage() {
   }, [refreshCoupons]);
 
   const filteredCoupons = useMemo(() => {
-    const term = search.trim().toLocaleLowerCase("pt-BR");
+    const term = search.trim().toLocaleLowerCase('pt-BR');
     return state.coupons
       .filter(
         (coupon) =>
           !term ||
           `${coupon.code} ${coupon.kind}`
-            .toLocaleLowerCase("pt-BR")
+            .toLocaleLowerCase('pt-BR')
             .includes(term),
       )
       .filter((coupon) => !kindFilter || coupon.kind === kindFilter)
       .filter(
         (coupon) =>
           !statusFilter ||
-          (statusFilter === "ativos" && coupon.active) ||
-          (statusFilter === "inativos" && !coupon.active),
+          (statusFilter === 'ativos' && coupon.active) ||
+          (statusFilter === 'inativos' && !coupon.active),
       );
   }, [kindFilter, search, state.coupons, statusFilter]);
   const totalPages = Math.max(1, Math.ceil(filteredCoupons.length / pageSize));
@@ -71,49 +71,49 @@ export function AdminCouponsPage() {
   return (
     <AdminPageLayout
       action={
-        <Button render={<Link to="/admin/cupons/novo" />}>
-          <Plus aria-hidden="true" />
+        <Button render={<Link to='/admin/cupons/novo' />}>
+          <Plus aria-hidden='true' />
           Novo cupom
         </Button>
       }
-      description="Gerencie cupons promocionais e créditos de troca."
-      title="Cupons"
+      description='Gerencie cupons promocionais e créditos de troca.'
+      title='Cupons'
     >
-      <div className="mt-8 grid gap-4">
+      <div className='mt-8 grid gap-4'>
         <AdminListFiltersCard>
           <AdminListToolbar
             onSearchChange={(value) => {
               setSearch(value);
               setPage(1);
             }}
-            searchLabel="Pesquisar cupons"
-            searchPlaceholder="Código do cupom"
+            searchLabel='Pesquisar cupons'
+            searchPlaceholder='Código do cupom'
             searchValue={search}
           >
             <AdminFilterSelect
-              ariaLabel="Filtrar cupons por tipo"
+              ariaLabel='Filtrar cupons por tipo'
               onValueChange={(value) => {
                 setKindFilter(value);
                 setPage(1);
               }}
               options={[
-                { label: "Promocionais", value: "promotional" },
-                { label: "Troca", value: "exchange" },
+                { label: 'Promocionais', value: 'promotional' },
+                { label: 'Troca', value: 'exchange' },
               ]}
-              placeholder="Tipo"
+              placeholder='Tipo'
               value={kindFilter}
             />
             <AdminFilterSelect
-              ariaLabel="Filtrar cupons por situação"
+              ariaLabel='Filtrar cupons por situação'
               onValueChange={(value) => {
                 setStatusFilter(value);
                 setPage(1);
               }}
               options={[
-                { label: "Ativos", value: "ativos" },
-                { label: "Inativos", value: "inativos" },
+                { label: 'Ativos', value: 'ativos' },
+                { label: 'Inativos', value: 'inativos' },
               ]}
-              placeholder="Situação"
+              placeholder='Situação'
               value={statusFilter}
             />
           </AdminListToolbar>
@@ -122,56 +122,61 @@ export function AdminCouponsPage() {
           <CardContent>
             {loading ? (
               <AdminDataState
-                description="Consultando os cupons cadastrados."
-                title="Carregando cupons"
-                variant="loading"
+                description='Consultando os cupons cadastrados.'
+                title='Carregando cupons'
+                variant='loading'
               />
             ) : loadError ? (
               <AdminDataState
                 action={
-                  <Button onClick={refreshCoupons} variant="outline">
+                  <Button onClick={refreshCoupons} variant='outline'>
                     Tentar novamente
                   </Button>
                 }
                 description={loadError}
-                title="Não foi possível carregar os cupons"
-                variant="error"
+                title='Não foi possível carregar os cupons'
+                variant='error'
               />
             ) : visibleCoupons.length ? (
               <>
-                <div className="overflow-x-auto">
-                  <table className="w-full min-w-[32rem] text-left text-sm">
-                    <thead className="border-b border-border text-muted-foreground">
+                <div className='overflow-x-auto'>
+                  <table className='w-full min-w-[32rem] text-left text-sm'>
+                    <thead
+                      className={[
+                        'border-b border-border',
+                        'text-muted-foreground',
+                      ].join(' ')}
+                    >
                       <tr>
-                        <th className="pb-3">Código</th>
-                        <th className="pb-3">Tipo</th>
-                        <th className="pb-3">Valor</th>
-                        <th className="pb-3">Situação</th>
+                        <th className='pb-3'>Código</th>
+                        <th className='pb-3'>Tipo</th>
+                        <th className='pb-3'>Valor</th>
+                        <th className='pb-3'>Situação</th>
                         <th />
                       </tr>
                     </thead>
                     <tbody>
                       {visibleCoupons.map((coupon) => (
-                        <tr className="border-b border-border" key={coupon.id}>
-                          <td className="py-4 font-medium">{coupon.code}</td>
-                          <td className="py-4">
-                            {coupon.kind === "exchange"
-                              ? "Troca"
-                              : "Promocional"}
+                        <tr className='border-b border-border' key={coupon.id}>
+                          <td className='py-4 font-medium'>{coupon.code}</td>
+                          <td className='py-4'>
+                            {coupon.kind === 'exchange'
+                              ? 'Troca'
+                              : 'Promocional'}
                           </td>
-                          <td className="py-4">
+                          <td className='py-4'>
                             {formatCurrency(coupon.valueCents)}
                           </td>
-                          <td className="py-4">
-                            {coupon.active ? "Ativo" : "Inativo"}
+                          <td className='py-4'>
+                            {coupon.active ? 'Ativo' : 'Inativo'}
                           </td>
-                          <td className="py-4 text-right">
+                          <td className='py-4 text-right'>
                             <Button
                               onClick={() => void toggleCoupon(coupon.id)}
-                              size="sm"
-                              variant="outline"
+                              size='sm'
+                              variant='outline'
                             >
-                              {coupon.active ? "Inativar" : "Ativar"}
+                              {coupon.active ? 'Inativar' : 'Ativar'}
                             </Button>
                           </td>
                         </tr>
@@ -188,9 +193,12 @@ export function AdminCouponsPage() {
               </>
             ) : (
               <AdminDataState
-                description="Ajuste a busca ou os filtros para encontrar cupons."
-                title="Nenhum cupom encontrado"
-                variant="empty"
+                description={[
+                  'Ajuste a busca ou os filtros para',
+                  'encontrar cupons.',
+                ].join(' ')}
+                title='Nenhum cupom encontrado'
+                variant='empty'
               />
             )}
           </CardContent>

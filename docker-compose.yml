@@ -30,6 +30,8 @@ services:
       COHIDA_CART_RESERVATION_MINUTES: ${COHIDA_CART_RESERVATION_MINUTES:-30}
       COHIDA_CART_RESERVATION_CHECK_MS: ${COHIDA_CART_RESERVATION_CHECK_MS:-60000}
       COHIDA_UPLOAD_DIRECTORY: /app/uploads/products
+      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-unconfigured}
+      OPENROUTER_MODEL: ${OPENROUTER_MODEL:-openrouter/free}
     volumes:
       - ./cohida-backend:/app
       - product_uploads:/app/uploads/products

@@ -11,8 +11,14 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/categories")
 public class CategoryController {
-    private final CategoryService categories;
-    public CategoryController(CategoryService categories) { this.categories = categories; }
-    @GetMapping
-    public List<CategoryResponse> findAll() { return categories.findAll().stream().map(CategoryResponse::from).toList(); }
+  private final CategoryService categories;
+
+  public CategoryController(CategoryService categories) {
+    this.categories = categories;
+  }
+
+  @GetMapping
+  public List<CategoryResponse> findAll() {
+    return categories.findAll().stream().map(CategoryResponse::from).toList();
+  }
 }

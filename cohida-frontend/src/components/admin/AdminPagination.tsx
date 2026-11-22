@@ -1,1 +1,1 @@
-export { Pagination as AdminPagination } from "@/components/shared/Pagination";
+export { Pagination as AdminPagination } from '@/components/shared/Pagination';

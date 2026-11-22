@@ -1,6 +1,6 @@
-import { createContext } from "react";
+import { createContext } from 'react';
 
-import { demoCommerceRepository } from "./demoCommerceRepository";
+import { demoCommerceRepository } from './demoCommerceRepository';
 
 export const CommerceContext = createContext<
   typeof demoCommerceRepository | null

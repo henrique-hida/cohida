@@ -14,62 +14,76 @@ import org.springframework.web.bind.annotation.*;
 @RequestMapping("/api/customers/me/cart")
 @PreAuthorize("hasRole('CUSTOMER')")
 public class CartController {
-    private final CartService carts;
+  private final CartService carts;
 
-    public CartController(CartService carts) {
-        this.carts = carts;
-    }
+  public CartController(CartService carts) {
+    this.carts = carts;
+  }
 
-    @GetMapping
-    public CartResponse view(@AuthenticationPrincipal AuthenticatedCustomer p) {
-        return carts.view(p.customerId());
-    }
+  @GetMapping
+  public CartResponse view(@AuthenticationPrincipal AuthenticatedCustomer p) {
+    return carts.view(p.customerId());
+  }
 
-    @PostMapping("/items")
-    public CartResponse add(@AuthenticationPrincipal AuthenticatedCustomer p, @RequestBody AddCartItemRequest r) {
-        return carts.add(p.customerId(), r.variantId(), r.quantity());
-    }
+  @PostMapping("/items")
+  public CartResponse add(
+      @AuthenticationPrincipal AuthenticatedCustomer p,
+      @RequestBody AddCartItemRequest r) {
+    return carts.add(p.customerId(), r.variantId(), r.quantity());
+  }
 
-    @PatchMapping("/items/{itemId}")
-    public CartResponse update(@AuthenticationPrincipal AuthenticatedCustomer p, @PathVariable Long itemId, @RequestBody UpdateCartItemRequest r) {
-        return carts.update(p.customerId(), itemId, r.quantity());
-    }
+  @PatchMapping("/items/{itemId}")
+  public CartResponse update(
+      @AuthenticationPrincipal AuthenticatedCustomer p,
+      @PathVariable Long itemId,
+      @RequestBody UpdateCartItemRequest r) {
+    return carts.update(p.customerId(), itemId, r.quantity());
+  }
 
-    @DeleteMapping("/items/{itemId}")
-    @ResponseStatus(org.springframework.http.HttpStatus.NO_CONTENT)
-    public void remove(@AuthenticationPrincipal AuthenticatedCustomer p, @PathVariable Long itemId) {
-        carts.remove(p.customerId(), itemId);
-    }
+  @DeleteMapping("/items/{itemId}")
+  @ResponseStatus(org.springframework.http.HttpStatus.NO_CONTENT)
+  public void remove(
+      @AuthenticationPrincipal AuthenticatedCustomer p,
+      @PathVariable Long itemId) {
+    carts.remove(p.customerId(), itemId);
+  }
 
-    @PostMapping("/coupon")
-    public CartResponse coupon(@AuthenticationPrincipal AuthenticatedCustomer p, @RequestBody ApplyCouponRequest r) {
-        return carts.applyCoupon(p.customerId(), r.code());
-    }
+  @PostMapping("/coupon")
+  public CartResponse coupon(
+      @AuthenticationPrincipal AuthenticatedCustomer p,
+      @RequestBody ApplyCouponRequest r) {
+    return carts.applyCoupon(p.customerId(), r.code());
+  }
 
-    @DeleteMapping("/coupon")
-    public CartResponse removeCoupon(@AuthenticationPrincipal AuthenticatedCustomer p) {
-        return carts.removeCoupon(p.customerId());
-    }
+  @DeleteMapping("/coupon")
+  public CartResponse removeCoupon(
+      @AuthenticationPrincipal AuthenticatedCustomer p) {
+    return carts.removeCoupon(p.customerId());
+  }
 
-    @DeleteMapping("/coupon/{code}")
-    public CartResponse removeCoupon(@AuthenticationPrincipal AuthenticatedCustomer p, @PathVariable String code) {
-        return carts.removeCoupon(p.customerId(), code);
-    }
+  @DeleteMapping("/coupon/{code}")
+  public CartResponse removeCoupon(
+      @AuthenticationPrincipal AuthenticatedCustomer p,
+      @PathVariable String code) {
+    return carts.removeCoupon(p.customerId(), code);
+  }
 
-    @DeleteMapping
-    @ResponseStatus(org.springframework.http.HttpStatus.NO_CONTENT)
-    public void clear(@AuthenticationPrincipal AuthenticatedCustomer p) {
-        carts.clear(p.customerId());
-    }
+  @DeleteMapping
+  @ResponseStatus(org.springframework.http.HttpStatus.NO_CONTENT)
+  public void clear(@AuthenticationPrincipal AuthenticatedCustomer p) {
+    carts.clear(p.customerId());
+  }
 
-    @GetMapping("/expired-items")
-    public java.util.List<com.hida.cohida.cart.dto.ExpiredCartItemResponse> expired(@AuthenticationPrincipal AuthenticatedCustomer p) {
-        return carts.expired(p.customerId());
-    }
+  @GetMapping("/expired-items")
+  public java.util.List<com.hida.cohida.cart.dto.ExpiredCartItemResponse>
+      expired(@AuthenticationPrincipal AuthenticatedCustomer p) {
+    return carts.expired(p.customerId());
+  }
 
-    @PostMapping("/expired-items/{id}/acknowledge")
-    @ResponseStatus(org.springframework.http.HttpStatus.NO_CONTENT)
-    public void acknowledgeExpired(@AuthenticationPrincipal AuthenticatedCustomer p, @PathVariable Long id) {
-        carts.acknowledgeExpired(p.customerId(), id);
-    }
+  @PostMapping("/expired-items/{id}/acknowledge")
+  @ResponseStatus(org.springframework.http.HttpStatus.NO_CONTENT)
+  public void acknowledgeExpired(
+      @AuthenticationPrincipal AuthenticatedCustomer p, @PathVariable Long id) {
+    carts.acknowledgeExpired(p.customerId(), id);
+  }
 }

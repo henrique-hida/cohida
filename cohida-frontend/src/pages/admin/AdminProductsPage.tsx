@@ -1,27 +1,27 @@
-import { useEffect, useMemo, useState } from "react";
-import { ArrowDownUp, Plus } from "lucide-react";
-import { Link, useNavigate } from "react-router";
+import { useEffect, useMemo, useState } from 'react';
+import { ArrowDownUp, Plus } from 'lucide-react';
+import { Link, useNavigate } from 'react-router';
 
-import { AdminDataState } from "@/components/admin/AdminDataState";
-import { AdminFilterSelect } from "@/components/admin/AdminFilterSelect";
-import { AdminListFiltersCard } from "@/components/admin/AdminListFiltersCard";
-import { AdminListToolbar } from "@/components/admin/AdminListToolbar";
-import { AdminPagination } from "@/components/admin/AdminPagination";
-import { AdminPageLayout } from "@/components/admin/AdminPageLayout";
-import { RowActionsMenu } from "@/components/admin/RowActionsMenu";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
-import { Table } from "@/components/ui/table";
-import { useCommerce } from "@/data/useCommerce";
-import { useCategories } from "@/data/useCategories";
+import { AdminDataState } from '@/components/admin/AdminDataState';
+import { AdminFilterSelect } from '@/components/admin/AdminFilterSelect';
+import { AdminListFiltersCard } from '@/components/admin/AdminListFiltersCard';
+import { AdminListToolbar } from '@/components/admin/AdminListToolbar';
+import { AdminPagination } from '@/components/admin/AdminPagination';
+import { AdminPageLayout } from '@/components/admin/AdminPageLayout';
+import { RowActionsMenu } from '@/components/admin/RowActionsMenu';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
+import { Table } from '@/components/ui/table';
+import { useCommerce } from '@/data/useCommerce';
+import { useCategories } from '@/data/useCategories';
 
 const pageSize = 10;
 
 function formatPrice(priceCents: number) {
-  return (priceCents / 100).toLocaleString("pt-BR", {
-    currency: "BRL",
-    style: "currency",
+  return (priceCents / 100).toLocaleString('pt-BR', {
+    currency: 'BRL',
+    style: 'currency',
   });
 }
 
@@ -36,13 +36,13 @@ export function AdminProductsPage() {
       ),
     [availableCategories],
   );
-  const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState("");
-  const [categoryFilter, setCategoryFilter] = useState("");
-  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
+  const [search, setSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState('');
+  const [categoryFilter, setCategoryFilter] = useState('');
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
   const [currentPage, setCurrentPage] = useState(1);
   const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState("");
+  const [error, setError] = useState('');
 
   useEffect(() => {
     void loadAdminProducts()
@@ -50,14 +50,14 @@ export function AdminProductsPage() {
         setError(
           reason instanceof Error
             ? reason.message
-            : "Não foi possível carregar os produtos.",
+            : 'Não foi possível carregar os produtos.',
         ),
       )
       .finally(() => setIsLoading(false));
   }, [loadAdminProducts]);
 
   const filteredProducts = useMemo(() => {
-    const normalizedSearch = search.trim().toLocaleLowerCase("pt-BR");
+    const normalizedSearch = search.trim().toLocaleLowerCase('pt-BR');
 
     return state.products
       .filter((product) => {
@@ -70,22 +70,22 @@ export function AdminProductsPage() {
           ...product.categoryIds,
           ...product.categoryIds.map((id) => categoryNames.get(id) ?? id),
         ].some((value) =>
-          value.toLocaleLowerCase("pt-BR").includes(normalizedSearch),
+          value.toLocaleLowerCase('pt-BR').includes(normalizedSearch),
         );
       })
       .filter(
         (product) =>
           !statusFilter ||
-          (statusFilter === "ATIVO" && product.status === "active") ||
-          (statusFilter === "INATIVO" && product.status === "inactive"),
+          (statusFilter === 'ATIVO' && product.status === 'active') ||
+          (statusFilter === 'INATIVO' && product.status === 'inactive'),
       )
       .filter(
         (product) =>
           !categoryFilter || product.categoryIds.includes(categoryFilter),
       )
       .sort((first, second) => {
-        const result = first.name.localeCompare(second.name, "pt-BR");
-        return sortDirection === "asc" ? result : -result;
+        const result = first.name.localeCompare(second.name, 'pt-BR');
+        return sortDirection === 'asc' ? result : -result;
       });
   }, [
     categoryFilter,
@@ -103,7 +103,7 @@ export function AdminProductsPage() {
         .sort((first, second) =>
           (categoryNames.get(first) ?? first).localeCompare(
             categoryNames.get(second) ?? second,
-            "pt-BR",
+            'pt-BR',
           ),
         ),
     [categoryNames, state.products],
@@ -117,14 +117,14 @@ export function AdminProductsPage() {
   );
 
   async function deactivateProduct(id: string) {
-    setError("");
+    setError('');
     try {
-      await setProductStatus(id, "inactive");
+      await setProductStatus(id, 'inactive');
     } catch (reason) {
       setError(
         reason instanceof Error
           ? reason.message
-          : "Não foi possível desativar o produto.",
+          : 'Não foi possível desativar o produto.',
       );
     }
   }
@@ -137,49 +137,53 @@ export function AdminProductsPage() {
   return (
     <AdminPageLayout
       action={
-        <Button render={<Link to="/admin/produtos/novo" />}>
+        <Button render={<Link to='/admin/produtos/novo' />}>
           <Plus />
           Novo produto
         </Button>
       }
-      description="Gerencie o catálogo, atributos, precificação e status dos equipamentos."
-      title="Produtos"
+      description={[
+        'Gerencie o catálogo, atributos,',
+        'precificação e status dos',
+        'equipamentos.',
+      ].join(' ')}
+      title='Produtos'
     >
-      <div className="mt-8 grid gap-4">
+      <div className='mt-8 grid gap-4'>
         <AdminListFiltersCard>
           <AdminListToolbar
             onSearchChange={updateSearch}
-            searchLabel="Pesquisar em produtos"
-            searchPlaceholder="Nome, marca, SKU ou categoria"
+            searchLabel='Pesquisar em produtos'
+            searchPlaceholder='Nome, marca, SKU ou categoria'
             searchValue={search}
           >
             <Button
-              aria-label="Alternar ordem alfabética"
+              aria-label='Alternar ordem alfabética'
               onClick={() =>
                 setSortDirection((direction) =>
-                  direction === "asc" ? "desc" : "asc",
+                  direction === 'asc' ? 'desc' : 'asc',
                 )
               }
-              size="icon-lg"
-              variant="outline"
+              size='icon-lg'
+              variant='outline'
             >
-              <ArrowDownUp className="text-muted-foreground" />
+              <ArrowDownUp className='text-muted-foreground' />
             </Button>
             <AdminFilterSelect
-              ariaLabel="Filtrar produtos por status"
+              ariaLabel='Filtrar produtos por status'
               onValueChange={(value) => {
                 setStatusFilter(value);
                 setCurrentPage(1);
               }}
               options={[
-                { label: "Ativos", value: "ATIVO" },
-                { label: "Inativos", value: "INATIVO" },
+                { label: 'Ativos', value: 'ATIVO' },
+                { label: 'Inativos', value: 'INATIVO' },
               ]}
-              placeholder="Status"
+              placeholder='Status'
               value={statusFilter}
             />
             <AdminFilterSelect
-              ariaLabel="Filtrar produtos por categoria"
+              ariaLabel='Filtrar produtos por categoria'
               onValueChange={(value) => {
                 setCategoryFilter(value);
                 setCurrentPage(1);
@@ -190,7 +194,7 @@ export function AdminProductsPage() {
                   value: category,
                 })),
               ]}
-              placeholder="Categoria"
+              placeholder='Categoria'
               value={categoryFilter}
             />
           </AdminListToolbar>
@@ -199,39 +203,51 @@ export function AdminProductsPage() {
           <CardContent>
             {error ? (
               <p
-                className="mb-4 rounded-lg bg-error p-3 text-sm text-error-foreground"
-                role="alert"
+                className={[
+                  'mb-4 rounded-lg bg-error p-3 text-sm',
+                  'text-error-foreground',
+                ].join(' ')}
+                role='alert'
               >
                 {error}
               </p>
             ) : null}
             {isLoading ? (
               <AdminDataState
-                description="Consultando o catálogo cadastrado."
-                title="Carregando produtos"
-                variant="loading"
+                description='Consultando o catálogo cadastrado.'
+                title='Carregando produtos'
+                variant='loading'
               />
             ) : (
               <>
-                <div className="hidden md:block">
-                  <Table className="table-fixed text-left">
-                    <thead className="border-b border-border text-xs tracking-wide text-muted-foreground uppercase">
+                <div className='hidden md:block'>
+                  <Table className='table-fixed text-left'>
+                    <thead
+                      className={[
+                        'border-b border-border text-xs',
+                        'tracking-wide text-muted-foreground',
+                        'uppercase',
+                      ].join(' ')}
+                    >
                       <tr>
                         {[
-                          "Produto",
-                          "Categoria",
-                          "Estoque",
-                          "Preço",
-                          "Status",
+                          'Produto',
+                          'Categoria',
+                          'Estoque',
+                          'Preço',
+                          'Status',
                         ].map((column) => (
                           <th
-                            className={`pb-3 font-medium ${column === "Categoria" ? "pl-6" : ""}`}
+                            className={[
+                              'pb-3 font-medium ',
+                              String(column === 'Categoria' ? 'pl-6' : ''),
+                            ].join('')}
                             key={column}
                           >
                             {column}
                           </th>
                         ))}
-                        <th className="pb-3 text-right font-medium">Ações</th>
+                        <th className='pb-3 text-right font-medium'>Ações</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -246,45 +262,49 @@ export function AdminProductsPage() {
                           return (
                             <tr
                               aria-label={`Abrir ${product.name}`}
-                              className="cursor-pointer border-b border-border last:border-0 hover:bg-muted/50 focus-visible:bg-muted/50"
+                              className={[
+                                'cursor-pointer border-b border-border',
+                                'last:border-0 hover:bg-muted/50',
+                                'focus-visible:bg-muted/50',
+                              ].join(' ')}
                               key={product.id}
                               onClick={() => navigate(detailPath)}
                               onKeyDown={(event) => {
                                 if (
-                                  event.key === "Enter" ||
-                                  event.key === " "
+                                  event.key === 'Enter' ||
+                                  event.key === ' '
                                 ) {
                                   event.preventDefault();
                                   navigate(detailPath);
                                 }
                               }}
-                              role="link"
+                              role='link'
                               tabIndex={0}
                             >
-                              <td className="py-4 pr-6 font-medium">
+                              <td className='py-4 pr-6 font-medium'>
                                 {product.name}
                               </td>
-                              <td className="py-4 pl-6">
+                              <td className='py-4 pl-6'>
                                 {product.categoryIds
                                   .map((id) => categoryNames.get(id) ?? id)
-                                  .join(", ")}
+                                  .join(', ')}
                               </td>
-                              <td className="py-4">{stock} un.</td>
-                              <td className="py-4">{formatPrice(price)}</td>
-                              <td className="py-4">
+                              <td className='py-4'>{stock} un.</td>
+                              <td className='py-4'>{formatPrice(price)}</td>
+                              <td className='py-4'>
                                 <Badge
                                   variant={
-                                    product.status === "active"
-                                      ? "success"
-                                      : "outline"
+                                    product.status === 'active'
+                                      ? 'success'
+                                      : 'outline'
                                   }
                                 >
-                                  {product.status === "active"
-                                    ? "ATIVO"
-                                    : "INATIVO"}
+                                  {product.status === 'active'
+                                    ? 'ATIVO'
+                                    : 'INATIVO'}
                                 </Badge>
                               </td>
-                              <td className="py-4 text-right">
+                              <td className='py-4 text-right'>
                                 <RowActionsMenu
                                   editTo={`${detailPath}/editar`}
                                   label={product.name}
@@ -299,11 +319,16 @@ export function AdminProductsPage() {
                         })
                       ) : (
                         <tr>
-                          <td className="p-0" colSpan={6}>
+                          <td className='p-0' colSpan={6}>
                             <AdminDataState
-                              description={`Não encontramos produtos para “${search || "os filtros selecionados"}”.`}
-                              title="Nenhum resultado encontrado"
-                              variant="empty"
+                              description={[
+                                'Não encontramos produtos para ',
+                                '“',
+                                String(search || 'os filtros selecionados'),
+                                '”.',
+                              ].join('')}
+                              title='Nenhum resultado encontrado'
+                              variant='empty'
                             />
                           </td>
                         </tr>
@@ -311,7 +336,7 @@ export function AdminProductsPage() {
                     </tbody>
                   </Table>
                 </div>
-                <div className="space-y-3 md:hidden">
+                <div className='space-y-3 md:hidden'>
                   {visibleProducts.map((product) => {
                     const stock = product.variants.reduce(
                       (total, variant) => total + variant.stockQuantity,
@@ -320,41 +345,49 @@ export function AdminProductsPage() {
                     const price = product.priceCents;
                     return (
                       <Link
-                        className="block rounded-xl border border-border p-4 transition-colors hover:bg-muted/50"
+                        className={[
+                          'block rounded-xl border border-border p-4',
+                          'transition-colors hover:bg-muted/50',
+                        ].join(' ')}
                         key={product.id}
                         to={`/admin/produtos/${product.id}`}
                       >
-                        <div className="flex items-start justify-between gap-3">
-                          <span className="font-medium">{product.name}</span>
+                        <div className='flex items-start justify-between gap-3'>
+                          <span className='font-medium'>{product.name}</span>
                           <Badge
                             variant={
-                              product.status === "active"
-                                ? "success"
-                                : "outline"
+                              product.status === 'active'
+                                ? 'success'
+                                : 'outline'
                             }
                           >
-                            {product.status === "active" ? "ATIVO" : "INATIVO"}
+                            {product.status === 'active' ? 'ATIVO' : 'INATIVO'}
                           </Badge>
                         </div>
-                        <dl className="mt-3 grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
+                        <dl
+                          className={[
+                            'mt-3 grid grid-cols-2 gap-x-4 gap-y-2',
+                            'text-sm',
+                          ].join(' ')}
+                        >
                           <div>
-                            <dt className="text-xs text-muted-foreground">
+                            <dt className='text-xs text-muted-foreground'>
                               Categoria
                             </dt>
                             <dd>
                               {product.categoryIds
                                 .map((id) => categoryNames.get(id) ?? id)
-                                .join(", ")}
+                                .join(', ')}
                             </dd>
                           </div>
                           <div>
-                            <dt className="text-xs text-muted-foreground">
+                            <dt className='text-xs text-muted-foreground'>
                               Estoque
                             </dt>
                             <dd>{stock} un.</dd>
                           </div>
                           <div>
-                            <dt className="text-xs text-muted-foreground">
+                            <dt className='text-xs text-muted-foreground'>
                               Preço
                             </dt>
                             <dd>{formatPrice(price)}</dd>
@@ -365,9 +398,14 @@ export function AdminProductsPage() {
                   })}
                   {!visibleProducts.length ? (
                     <AdminDataState
-                      description={`Não encontramos produtos para “${search || "os filtros selecionados"}”.`}
-                      title="Nenhum resultado encontrado"
-                      variant="empty"
+                      description={[
+                        'Não encontramos produtos para ',
+                        '“',
+                        String(search || 'os filtros selecionados'),
+                        '”.',
+                      ].join('')}
+                      title='Nenhum resultado encontrado'
+                      variant='empty'
                     />
                   ) : null}
                 </div>

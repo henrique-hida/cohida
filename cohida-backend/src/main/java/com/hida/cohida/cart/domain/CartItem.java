@@ -10,41 +10,55 @@ import java.time.LocalDateTime;
 @Entity
 @Table(name = "cart_items")
 public class CartItem extends DomainEntity {
-    @Getter
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "cart_id", nullable = false)
-    private Cart cart;
+  @Getter
+  @ManyToOne(fetch = FetchType.LAZY, optional = false)
+  @JoinColumn(name = "cart_id", nullable = false)
+  private Cart cart;
 
-    @Getter
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "variant_id", nullable = false)
-    private ProductVariant variant;
+  @Getter
+  @ManyToOne(fetch = FetchType.LAZY, optional = false)
+  @JoinColumn(name = "variant_id", nullable = false)
+  private ProductVariant variant;
 
-    @Getter
-    private int quantity;
+  @Getter private int quantity;
 
-    @Getter
-    @Column(name = "reserved_until")
-    private LocalDateTime reservedUntil;
-    @Column(name = "expiry_warning_sent")
-    private boolean expiryWarningSent;
+  @Getter
+  @Column(name = "reserved_until")
+  private LocalDateTime reservedUntil;
 
-    protected CartItem() {
-    }
+  @Column(name = "expiry_warning_sent")
+  private boolean expiryWarningSent;
 
-    CartItem(Cart cart, ProductVariant variant, int quantity, LocalDateTime reservedUntil) {
-        this.cart = cart;
-        this.variant = variant;
-        this.quantity = quantity;
-        this.reservedUntil = reservedUntil;
-    }
+  protected CartItem() {}
 
-    public void reserve(int quantity, LocalDateTime reservedUntil) {
-        this.quantity = quantity;
-        this.reservedUntil = reservedUntil;
-    }
+  CartItem(
+      Cart cart,
+      ProductVariant variant,
+      int quantity,
+      LocalDateTime reservedUntil) {
+    this.cart = cart;
+    this.variant = variant;
+    this.quantity = quantity;
+    this.reservedUntil = reservedUntil;
+  }
 
-    public boolean isExpired(LocalDateTime now) { return reservedUntil != null && !reservedUntil.isAfter(now); }
-    public boolean needsExpiryWarning(LocalDateTime now) { return !expiryWarningSent && reservedUntil != null && !reservedUntil.isAfter(now.plusMinutes(5)) && reservedUntil.isAfter(now); }
-    public void markExpiryWarningSent() { expiryWarningSent = true; }
+  public void reserve(int quantity, LocalDateTime reservedUntil) {
+    this.quantity = quantity;
+    this.reservedUntil = reservedUntil;
+  }
+
+  public boolean isExpired(LocalDateTime now) {
+    return reservedUntil != null && !reservedUntil.isAfter(now);
+  }
+
+  public boolean needsExpiryWarning(LocalDateTime now) {
+    return !expiryWarningSent
+        && reservedUntil != null
+        && !reservedUntil.isAfter(now.plusMinutes(5))
+        && reservedUntil.isAfter(now);
+  }
+
+  public void markExpiryWarningSent() {
+    expiryWarningSent = true;
+  }
 }

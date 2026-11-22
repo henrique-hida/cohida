@@ -1,16 +1,16 @@
-import { Ticket } from "lucide-react";
-import { useEffect, useState } from "react";
-import { Link, Navigate } from "react-router";
+import { Ticket } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { Link, Navigate } from 'react-router';
 
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Pagination } from "@/components/shared/Pagination";
-import { AccountSectionCard } from "@/components/shared/AccountSectionCard";
-import { useCommerce } from "@/data/useCommerce";
-import { formatCurrency } from "@/lib/currency";
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Pagination } from '@/components/shared/Pagination';
+import { AccountSectionCard } from '@/components/shared/AccountSectionCard';
+import { useCommerce } from '@/data/useCommerce';
+import { formatCurrency } from '@/lib/currency';
 
 export function CouponsPage() {
-  return <Navigate replace to="/conta?secao=coupons" />;
+  return <Navigate replace to='/conta?secao=coupons' />;
 }
 
 export function CouponsSection() {
@@ -31,40 +31,44 @@ export function CouponsSection() {
   return (
     <AccountSectionCard
       action={
-        <Button render={<Link to="/produtos" />}>Usar em uma compra</Button>
+        <Button render={<Link to='/produtos' />}>Usar em uma compra</Button>
       }
-      description="Consulte seus cupons disponíveis e utilizados."
-      title="Meus cupons"
+      description='Consulte seus cupons disponíveis e utilizados.'
+      title='Meus cupons'
     >
       {state.coupons.length ? (
-        <div className="grid gap-4 sm:grid-cols-2">
+        <div className='grid gap-4 sm:grid-cols-2'>
           {coupons.map((coupon) => (
             <article
-              className="flex items-start justify-between gap-4 rounded-xl border border-border bg-background p-5"
+              className={[
+                'flex items-start justify-between gap-4',
+                'rounded-xl border border-border',
+                'bg-background p-5',
+              ].join(' ')}
               key={coupon.id}
             >
               <div>
-                <div className="flex items-center gap-2">
-                  <Ticket className="size-5 text-primary" />
-                  <p className="font-semibold">{coupon.code}</p>
+                <div className='flex items-center gap-2'>
+                  <Ticket className='size-5 text-primary' />
+                  <p className='font-semibold'>{coupon.code}</p>
                 </div>
-                <p className="mt-3 text-lg font-semibold">
+                <p className='mt-3 text-lg font-semibold'>
                   {formatCurrency(coupon.valueCents)}
                 </p>
-                <p className="mt-1 text-sm text-muted-foreground">
-                  {coupon.kind === "exchange"
-                    ? "Cupom de troca"
-                    : "Cupom promocional"}
+                <p className='mt-1 text-sm text-muted-foreground'>
+                  {coupon.kind === 'exchange'
+                    ? 'Cupom de troca'
+                    : 'Cupom promocional'}
                 </p>
               </div>
-              <Badge variant={coupon.active ? "success" : "secondary"}>
-                {coupon.active ? "Ativo" : "Inativo"}
+              <Badge variant={coupon.active ? 'success' : 'secondary'}>
+                {coupon.active ? 'Ativo' : 'Inativo'}
               </Badge>
             </article>
           ))}
         </div>
       ) : (
-        <p className="text-sm text-muted-foreground">
+        <p className='text-sm text-muted-foreground'>
           Você ainda não tem cupons disponíveis.
         </p>
       )}

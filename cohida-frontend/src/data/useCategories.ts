@@ -1,7 +1,7 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState } from 'react';
 
-import { commerceApi } from "@/lib/commerceApi";
-import type { Category } from "@/types";
+import { commerceApi } from '@/lib/commerceApi';
+import type { Category } from '@/types';
 
 export function useCategories() {
   const [categories, setCategories] = useState<Category[]>([]);
@@ -15,7 +15,7 @@ export function useCategories() {
           setCategories(
             items.map((item) => ({
               description: item.description,
-              id: item.slug,
+              id: String(item.id),
               name: item.name,
               slug: item.slug,
             })),

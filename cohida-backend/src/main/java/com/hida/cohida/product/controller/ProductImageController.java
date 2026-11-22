@@ -20,23 +20,26 @@ import java.util.concurrent.TimeUnit;
 @RestController
 @RequestMapping("/api/products/images")
 public class ProductImageController {
-    private final ProductImageStorageService images;
+  private final ProductImageStorageService images;
 
-    public ProductImageController(ProductImageStorageService images) {
-        this.images = images;
-    }
+  public ProductImageController(ProductImageStorageService images) {
+    this.images = images;
+  }
 
-    @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<ProductImageUploadResponse> upload(@RequestPart("file") MultipartFile file) {
-        return ResponseEntity.status(201).body(new ProductImageUploadResponse(images.store(file)));
-    }
+  @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+  @PreAuthorize("hasRole('ADMIN')")
+  public ResponseEntity<ProductImageUploadResponse> upload(
+      @RequestPart("file") MultipartFile file) {
+    return ResponseEntity.status(201)
+        .body(new ProductImageUploadResponse(images.store(file)));
+  }
 
-    @GetMapping("/{filename:.+}")
-    public ResponseEntity<Resource> get(@PathVariable String filename) {
-        return ResponseEntity.ok()
-                .contentType(images.mediaType(filename))
-                .cacheControl(CacheControl.maxAge(365, TimeUnit.DAYS).cachePublic().immutable())
-                .body(images.load(filename));
-    }
+  @GetMapping("/{filename:.+}")
+  public ResponseEntity<Resource> get(@PathVariable String filename) {
+    return ResponseEntity.ok()
+        .contentType(images.mediaType(filename))
+        .cacheControl(
+            CacheControl.maxAge(365, TimeUnit.DAYS).cachePublic().immutable())
+        .body(images.load(filename));
+  }
 }

@@ -12,14 +12,14 @@ import java.util.Map;
 @RequestMapping("/api/admin/cart-reservations")
 @PreAuthorize("hasRole('ADMIN')")
 public class AdminCartReservationController {
-    private final CartService carts;
+  private final CartService carts;
 
-    public AdminCartReservationController(CartService carts) {
-        this.carts = carts;
-    }
+  public AdminCartReservationController(CartService carts) {
+    this.carts = carts;
+  }
 
-    @PostMapping("/expire")
-    public Map<String, Integer> expireAll() {
-        return Map.of("expiredItems", carts.expireAllReservations());
-    }
+  @PostMapping("/expire")
+  public Map<String, Integer> expireAll() {
+    return Map.of("expiredItems", carts.expireAllReservations());
+  }
 }

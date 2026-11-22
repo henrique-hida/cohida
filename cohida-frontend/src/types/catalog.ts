@@ -1,4 +1,4 @@
-export type ProductStatus = "active" | "inactive";
+export type ProductStatus = 'active' | 'inactive';
 
 export interface Category {
   id: string;

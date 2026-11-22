@@ -1,37 +1,37 @@
-import { useEffect, useMemo, useState } from "react";
-import { Pencil, Plus, Trash2 } from "lucide-react";
-import { Link } from "react-router";
+import { useEffect, useMemo, useState } from 'react';
+import { Pencil, Plus, Trash2 } from 'lucide-react';
+import { Link } from 'react-router';
 
-import { AdminDataState } from "@/components/admin/AdminDataState";
-import { AdminListFiltersCard } from "@/components/admin/AdminListFiltersCard";
-import { AdminListToolbar } from "@/components/admin/AdminListToolbar";
-import { AdminPageLayout } from "@/components/admin/AdminPageLayout";
-import { AdminPagination } from "@/components/admin/AdminPagination";
-import { ConfirmDialog } from "@/components/admin/ConfirmDialog";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
-import { commerceApi, type ApiCategory } from "@/lib/commerceApi";
+import { AdminDataState } from '@/components/admin/AdminDataState';
+import { AdminListFiltersCard } from '@/components/admin/AdminListFiltersCard';
+import { AdminListToolbar } from '@/components/admin/AdminListToolbar';
+import { AdminPageLayout } from '@/components/admin/AdminPageLayout';
+import { AdminPagination } from '@/components/admin/AdminPagination';
+import { ConfirmDialog } from '@/components/admin/ConfirmDialog';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
+import { commerceApi, type ApiCategory } from '@/lib/commerceApi';
 
 const pageSize = 10;
 
 export function AdminAdministrationPage() {
   const [categories, setCategories] = useState<ApiCategory[]>([]);
-  const [search, setSearch] = useState("");
+  const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
   const [deleting, setDeleting] = useState<ApiCategory | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
+  const [error, setError] = useState('');
 
   async function load() {
     setLoading(true);
     try {
       setCategories(await commerceApi.adminCategories());
-      setError("");
+      setError('');
     } catch (reason) {
       setError(
         reason instanceof Error
           ? reason.message
-          : "Não foi possível carregar as categorias.",
+          : 'Não foi possível carregar as categorias.',
       );
     } finally {
       setLoading(false);
@@ -44,10 +44,10 @@ export function AdminAdministrationPage() {
   }, []);
 
   const filteredCategories = useMemo(() => {
-    const term = search.trim().toLocaleLowerCase("pt-BR");
+    const term = search.trim().toLocaleLowerCase('pt-BR');
     return categories.filter((category) =>
-      `${category.name} ${category.description} ${category.slug}`
-        .toLocaleLowerCase("pt-BR")
+      `${category.name} ${category.description}`
+        .toLocaleLowerCase('pt-BR')
         .includes(term),
     );
   }, [categories, search]);
@@ -63,7 +63,7 @@ export function AdminAdministrationPage() {
 
   async function removeCategory() {
     if (!deleting) return;
-    setError("");
+    setError('');
     try {
       await commerceApi.deleteCategory(deleting.id);
       setCategories((current) =>
@@ -73,7 +73,7 @@ export function AdminAdministrationPage() {
       setError(
         reason instanceof Error
           ? reason.message
-          : "Não foi possível remover a categoria.",
+          : 'Não foi possível remover a categoria.',
       );
     } finally {
       setDeleting(null);
@@ -83,23 +83,27 @@ export function AdminAdministrationPage() {
   return (
     <AdminPageLayout
       action={
-        <Button render={<Link to="/admin/administracao/nova" />}>
-          <Plus aria-hidden="true" />
+        <Button render={<Link to='/admin/administracao/nova' />}>
+          <Plus aria-hidden='true' />
           Nova categoria
         </Button>
       }
-      description="Gerencie as categorias que organizam o catálogo e filtram as análises."
-      title="Administração"
+      description={[
+        'Gerencie as categorias que',
+        'organizam o catálogo e filtram as',
+        'análises.',
+      ].join(' ')}
+      title='Administração'
     >
-      <div className="mt-8 grid gap-4">
+      <div className='mt-8 grid gap-4'>
         <AdminListFiltersCard>
           <AdminListToolbar
             onSearchChange={(value) => {
               setSearch(value);
               setPage(1);
             }}
-            searchLabel="Pesquisar categorias"
-            searchPlaceholder="Nome, descrição ou slug"
+            searchLabel='Pesquisar categorias'
+            searchPlaceholder='Nome, descrição ou slug'
             searchValue={search}
           />
         </AdminListFiltersCard>
@@ -107,36 +111,39 @@ export function AdminAdministrationPage() {
           <CardContent>
             {error ? (
               <p
-                className="mb-4 rounded-lg bg-error p-3 text-sm text-error-foreground"
-                role="alert"
+                className={[
+                  'mb-4 rounded-lg bg-error p-3 text-sm',
+                  'text-error-foreground',
+                ].join(' ')}
+                role='alert'
               >
                 {error}
               </p>
             ) : null}
             {loading ? (
               <AdminDataState
-                description="Consultando as categorias cadastradas."
-                title="Carregando categorias"
-                variant="loading"
+                description='Consultando as categorias cadastradas.'
+                title='Carregando categorias'
+                variant='loading'
               />
             ) : visibleCategories.length ? (
               <>
-                <div className="divide-y divide-border">
+                <div className='divide-y divide-border'>
                   {visibleCategories.map((category) => (
                     <div
-                      className="flex flex-wrap items-center justify-between gap-4 py-4"
+                      className={[
+                        'flex flex-wrap items-center',
+                        'justify-between gap-4 py-4',
+                      ].join(' ')}
                       key={category.id}
                     >
                       <div>
-                        <p className="font-medium">{category.name}</p>
-                        <p className="mt-1 text-sm text-muted-foreground">
-                          {category.description || "Sem descrição"}
-                        </p>
-                        <p className="mt-1 text-xs text-muted-foreground">
-                          /{category.slug}
+                        <p className='font-medium'>{category.name}</p>
+                        <p className='mt-1 text-sm text-muted-foreground'>
+                          {category.description || 'Sem descrição'}
                         </p>
                       </div>
-                      <div className="flex gap-2">
+                      <div className='flex gap-2'>
                         <Button
                           aria-label={`Editar ${category.name}`}
                           render={
@@ -144,16 +151,16 @@ export function AdminAdministrationPage() {
                               to={`/admin/administracao/${category.id}/editar`}
                             />
                           }
-                          size="icon-sm"
-                          variant="outline"
+                          size='icon-sm'
+                          variant='outline'
                         >
                           <Pencil />
                         </Button>
                         <Button
                           aria-label={`Excluir ${category.name}`}
                           onClick={() => setDeleting(category)}
-                          size="icon-sm"
-                          variant="destructive"
+                          size='icon-sm'
+                          variant='destructive'
                         >
                           <Trash2 />
                         </Button>
@@ -172,13 +179,16 @@ export function AdminAdministrationPage() {
               <AdminDataState
                 description={
                   search
-                    ? "A busca não encontrou categorias."
-                    : "Cadastre uma categoria para começar a organizar o catálogo."
+                    ? 'A busca não encontrou categorias.'
+                    : [
+                        'Cadastre uma categoria para',
+                        'começar a organizar o catálogo.',
+                      ].join(' ')
                 }
                 title={
-                  search ? "Nenhum resultado encontrado" : "Nenhuma categoria"
+                  search ? 'Nenhum resultado encontrado' : 'Nenhuma categoria'
                 }
-                variant="empty"
+                variant='empty'
               />
             )}
           </CardContent>
@@ -186,11 +196,17 @@ export function AdminAdministrationPage() {
       </div>
       {deleting ? (
         <ConfirmDialog
-          confirmLabel="Excluir categoria"
-          description={`A categoria “${deleting.name}” deixará de aparecer no catálogo. Produtos já cadastrados não serão alterados.`}
+          confirmLabel='Excluir categoria'
+          description={[
+            'A categoria “',
+            String(deleting.name),
+            '” deixará de aparecer no catál',
+            'ogo. Produtos já cadastrados n',
+            'ão serão alterados.',
+          ].join('')}
           onCancel={() => setDeleting(null)}
           onConfirm={() => void removeCategory()}
-          title="Excluir categoria?"
+          title='Excluir categoria?'
         />
       ) : null}
     </AdminPageLayout>

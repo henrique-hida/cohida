@@ -15,30 +15,53 @@ import static org.junit.jupiter.api.Assertions.*;
 @SpringBootTest
 @Transactional
 class ProductServiceTest {
-    @Autowired
-    private ProductService products;
+  @Autowired private ProductService products;
 
-    @Test
-    void createsUpdatesStockAndDeactivatesProduct() {
-        Product product = products.create(request("Camisa Oficial", 18990, 8));
+  @Test
+  void createsUpdatesStockAndDeactivatesProduct() {
+    Product product = products.create(request("Camisa Oficial", 18990, 8));
 
-        assertTrue(product.isActive());
-        assertEquals(1, products.findPublic(null, null).size());
+    assertTrue(product.isActive());
+    assertEquals(1, products.findPublic(null, null).size());
 
-        Product updated = products.update(product.getId(), request("Camisa Oficial 2026", 19990, 6));
-        assertEquals("Camisa Oficial 2026", updated.getName());
-        assertEquals(19990, updated.getVariants().getFirst().getPriceCents());
+    Product updated =
+        products.update(
+            product.getId(), request("Camisa Oficial 2026", 19990, 6));
+    assertEquals("Camisa Oficial 2026", updated.getName());
+    assertEquals(19990, updated.getVariants().getFirst().getPriceCents());
 
-        products.updateStock(product.getId(), updated.getVariants().getFirst().getId(), 3);
-        assertEquals(3, products.findForAdmin(product.getId()).getVariants().getFirst().getStockQuantity());
+    products.updateStock(
+        product.getId(), updated.getVariants().getFirst().getId(), 3);
+    assertEquals(
+        3,
+        products
+            .findForAdmin(product.getId())
+            .getVariants()
+            .getFirst()
+            .getStockQuantity());
 
-        products.deactivate(product.getId());
-        assertTrue(products.findPublic(null, null).isEmpty());
-        assertFalse(products.findForAdmin(product.getId()).isActive());
-    }
+    products.deactivate(product.getId());
+    assertTrue(products.findPublic(null, null).isEmpty());
+    assertFalse(products.findForAdmin(product.getId()).isActive());
+  }
 
-    private static ProductUpsertRequest request(String name, long priceCents, int stockQuantity) {
-        return new ProductUpsertRequest(name, "Cohida", "Camisa esportiva", null, List.of("Futebol"), 2, true,
-                List.of(new ProductVariantRequest("CAMISA-OFICIAL-M", "M", "Azul", "M", priceCents, stockQuantity)));
-    }
+  private static ProductUpsertRequest request(
+      String name, long priceCents, int stockQuantity) {
+    return new ProductUpsertRequest(
+        name,
+        "Cohida",
+        "Camisa esportiva",
+        null,
+        List.of(1L),
+        2,
+        true,
+        List.of(
+            new ProductVariantRequest(
+                "CAMISA-OFICIAL-M",
+                "M",
+                "Azul",
+                "M",
+                priceCents,
+                stockQuantity)));
+  }
 }

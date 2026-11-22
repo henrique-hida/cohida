@@ -23,6 +23,7 @@ import com.hida.cohida.paymentcard.exception.PaymentCardNotFoundException;
 import com.hida.cohida.paymentcard.repository.PaymentCardRepository;
 import com.hida.cohida.product.domain.ProductVariant;
 import com.hida.cohida.product.repository.ProductVariantRepository;
+import com.hida.cohida.product.repository.ProductReviewRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -34,235 +35,398 @@ import java.util.UUID;
 
 @Service
 public class OrderService {
-    private final OrderRepository orders;
-    private final CartService carts;
-    private final CustomerRepository customers;
-    private final PaymentCardRepository cards;
-    private final ProductVariantRepository variants;
-    private final CouponRepository coupons;
-    private final NotificationService notifications;
-    private final PaymentProcessor paymentProcessor;
-    private final ShippingCalculator shippingCalculator;
+  private final OrderRepository orders;
+  private final CartService carts;
+  private final CustomerRepository customers;
+  private final PaymentCardRepository cards;
+  private final ProductVariantRepository variants;
+  private final CouponRepository coupons;
+  private final NotificationService notifications;
+  private final PaymentProcessor paymentProcessor;
+  private final ShippingCalculator shippingCalculator;
+  private final ProductReviewRepository productReviews;
 
-    public OrderService(OrderRepository orders, CartService carts, CustomerRepository customers, PaymentCardRepository cards, ProductVariantRepository variants, CouponRepository coupons, NotificationService notifications, PaymentProcessor paymentProcessor, ShippingCalculator shippingCalculator) {
-        this.orders = orders;
-        this.carts = carts;
-        this.customers = customers;
-        this.cards = cards;
-        this.variants = variants;
-        this.coupons = coupons;
-        this.notifications = notifications;
-        this.paymentProcessor = paymentProcessor;
-        this.shippingCalculator = shippingCalculator;
+  public OrderService(
+      OrderRepository orders,
+      CartService carts,
+      CustomerRepository customers,
+      PaymentCardRepository cards,
+      ProductVariantRepository variants,
+      CouponRepository coupons,
+      NotificationService notifications,
+      PaymentProcessor paymentProcessor,
+      ShippingCalculator shippingCalculator,
+      ProductReviewRepository productReviews) {
+    this.orders = orders;
+    this.carts = carts;
+    this.customers = customers;
+    this.cards = cards;
+    this.variants = variants;
+    this.coupons = coupons;
+    this.notifications = notifications;
+    this.paymentProcessor = paymentProcessor;
+    this.shippingCalculator = shippingCalculator;
+    this.productReviews = productReviews;
+  }
+
+  @Transactional
+  public SaleOrder checkout(Long customerId, Long addressId, Long cardId) {
+    if (cardId == null)
+      throw new InvalidRequestException("Selecione ao menos um cartão.");
+    return checkout(
+        customerId,
+        addressId,
+        List.of(new PaymentAllocationRequest(cardId, null)));
+  }
+
+  @Transactional(noRollbackFor = InvalidRequestException.class)
+  public SaleOrder checkout(
+      Long customerId,
+      Long addressId,
+      List<PaymentAllocationRequest> requestedPayments) {
+    if (addressId == null)
+      throw new InvalidRequestException("Selecione o endereço de entrega.");
+    Cart cart = carts.cart(customerId);
+    if (carts.reconcileStockAtCheckout(cart))
+      throw new InvalidRequestException(
+          "O estoque foi alterado; o carrinho foi "
+              + "atualizado. Revise os itens antes de finalizar.");
+    if (cart.getItems().isEmpty())
+      throw new InvalidRequestException("O carrinho está vazio.");
+    Customer customer =
+        customers
+            .findWithDetailsById(customerId)
+            .orElseThrow(
+                () -> new InvalidRequestException("Cliente não encontrado."));
+    CustomerAddress address = customer.address(addressId);
+    List<Coupon> appliedCoupons =
+        cart.getCoupons().stream()
+            .map(
+                coupon ->
+                    coupons
+                        .findWithLockById(coupon.getId())
+                        .orElseThrow(
+                            () ->
+                                new InvalidRequestException("Cupom inválido.")))
+            .toList();
+    long subtotal = 0;
+    for (CartItem item : cart.getItems()) {
+      ProductVariant variant =
+          variants
+              .findWithLockById(item.getVariant().getId())
+              .orElseThrow(
+                  () ->
+                      new InvalidRequestException("Variação não encontrada."));
+      if (!variant.getProduct().isActive()
+          || item.getQuantity() > variant.getStockQuantity())
+        throw new InvalidRequestException(
+            "Estoque insuficiente para " + variant.getSku() + ".");
+      subtotal += variant.getPriceCents() * item.getQuantity();
     }
-
-    @Transactional
-    public SaleOrder checkout(Long customerId, Long addressId, Long cardId) {
-        if (cardId == null) throw new InvalidRequestException("Selecione ao menos um cartão.");
-        return checkout(customerId, addressId, List.of(new PaymentAllocationRequest(cardId, null)));
+    long couponValue = carts.couponValue(cart);
+    long discount = carts.discount(cart);
+    long shipping = shippingCalculator.calculate(cart.getItems(), address);
+    long total = Math.max(0, subtotal + shipping - discount);
+    List<PaymentAllocationRequest> allocations =
+        validateAllocations(requestedPayments, total, couponValue > 0);
+    List<PaymentCard> selectedCards = new ArrayList<>();
+    for (PaymentAllocationRequest allocation : allocations) {
+      selectedCards.add(
+          cards
+              .findByIdAndCustomerIdAndDeletedAtIsNull(
+                  allocation.paymentCardId(), customerId)
+              .orElseThrow(
+                  () ->
+                      new PaymentCardNotFoundException(
+                          allocation.paymentCardId())));
     }
-
-    @Transactional(noRollbackFor = InvalidRequestException.class)
-    public SaleOrder checkout(Long customerId, Long addressId, List<PaymentAllocationRequest> requestedPayments) {
-        if (addressId == null)
-            throw new InvalidRequestException("Selecione o endereço de entrega.");
-        Cart cart = carts.cart(customerId);
-        if (carts.reconcileStockAtCheckout(cart))
-            throw new InvalidRequestException("O estoque foi alterado; o carrinho foi atualizado. Revise os itens antes de finalizar.");
-        if (cart.getItems().isEmpty()) throw new InvalidRequestException("O carrinho está vazio.");
-        Customer customer = customers.findWithDetailsById(customerId).orElseThrow(() -> new InvalidRequestException("Cliente não encontrado."));
-        CustomerAddress address = customer.address(addressId);
-        List<Coupon> appliedCoupons = cart.getCoupons().stream()
-                .map(coupon -> coupons.findWithLockById(coupon.getId()).orElseThrow(() -> new InvalidRequestException("Cupom inválido.")))
-                .toList();
-        long subtotal = 0;
-        for (CartItem item : cart.getItems()) {
-            ProductVariant variant = variants.findWithLockById(item.getVariant().getId()).orElseThrow(() -> new InvalidRequestException("Variação não encontrada."));
-            if (!variant.getProduct().isActive() || item.getQuantity() > variant.getStockQuantity())
-                throw new InvalidRequestException("Estoque insuficiente para " + variant.getSku() + ".");
-            subtotal += variant.getPriceCents() * item.getQuantity();
-        }
-        long couponValue = carts.couponValue(cart);
-        long discount = carts.discount(cart);
-        long shipping = shippingCalculator.calculate(cart.getItems(), address);
-        long total = Math.max(0, subtotal + shipping - discount);
-        List<PaymentAllocationRequest> allocations = validateAllocations(requestedPayments, total, couponValue > 0);
-        List<PaymentCard> selectedCards = new ArrayList<>();
-        for (PaymentAllocationRequest allocation : allocations) {
-            selectedCards.add(cards.findByIdAndCustomerIdAndDeletedAtIsNull(allocation.paymentCardId(), customerId)
-                    .orElseThrow(() -> new PaymentCardNotFoundException(allocation.paymentCardId())));
-        }
-        PaymentCard primaryCard = selectedCards.isEmpty() ? null : selectedCards.getFirst();
-        SaleOrder order = new SaleOrder(customer, subtotal, discount, shipping, appliedCoupons.stream().map(Coupon::getCode).collect(java.util.stream.Collectors.joining(",")), primaryCard == null ? "CUPOM" : primaryCard.getBrand(), primaryCard == null ? "0000" : primaryCard.getLastDigits(), address.getLabel(), address.getStreet(), address.getNumber(), address.getNeighborhood(), address.getZipCode(), address.getCity(), address.getState(), address.getCountry());
-        order.setCouponValueCents(couponValue);
-        for (int index = 0; index < allocations.size(); index++) {
-            order.addPayment(selectedCards.get(index), allocations.get(index).amountCents());
-        }
-        for (CartItem item : cart.getItems()) {
-            ProductVariant variant = variants.findWithLockById(item.getVariant().getId()).orElseThrow();
-            order.addItem(new OrderItem(variant.getId(), variant.getProduct().getName(), variant.getSku(), variant.getLabel(), variant.getPriceCents(), item.getQuantity()));
-        }
-        SaleOrder saved = orders.save(order);
-        cart.clear();
-        notifications.notify(customer, "ORDER_CREATED", "Seu pedido foi criado.", "/pedidos/" + saved.getId());
-        var authorization = paymentProcessor.authorize(selectedCards, total);
-        return processPayment(saved.getId(), authorization.approved(), authorization.reason());
+    PaymentCard primaryCard =
+        selectedCards.isEmpty() ? null : selectedCards.getFirst();
+    SaleOrder order =
+        new SaleOrder(
+            customer,
+            subtotal,
+            discount,
+            shipping,
+            appliedCoupons.stream()
+                .map(Coupon::getCode)
+                .collect(java.util.stream.Collectors.joining(",")),
+            primaryCard == null ? "CUPOM" : primaryCard.getBrand(),
+            primaryCard == null ? "0000" : primaryCard.getLastDigits(),
+            address.getLabel(),
+            address.getStreet(),
+            address.getNumber(),
+            address.getNeighborhood(),
+            address.getZipCode(),
+            address.getCity(),
+            address.getState(),
+            address.getCountry());
+    order.setCouponValueCents(couponValue);
+    for (int index = 0; index < allocations.size(); index++) {
+      order.addPayment(
+          selectedCards.get(index), allocations.get(index).amountCents());
     }
-
-    private static List<PaymentAllocationRequest> validateAllocations(
-            List<PaymentAllocationRequest> requestedPayments,
-            long totalCents,
-            boolean couponsApplied
-    ) {
-        if (totalCents > 0 && totalCents < 1_000 && !couponsApplied)
-            throw new InvalidRequestException("O valor cobrado no cartão deve ser de no mínimo R$ 10,00.");
-        if ((requestedPayments == null || requestedPayments.isEmpty()) && totalCents == 0) return List.of();
-        if (requestedPayments == null || requestedPayments.isEmpty())
-            throw new InvalidRequestException("Informe ao menos um cartão de crédito.");
-
-        List<PaymentAllocationRequest> normalizedPayments = requestedPayments;
-        if (requestedPayments.size() == 1 && requestedPayments.getFirst() != null
-                && requestedPayments.getFirst().amountCents() == null) {
-            normalizedPayments = List.of(new PaymentAllocationRequest(
-                    requestedPayments.getFirst().paymentCardId(), totalCents));
-        }
-        Set<Long> cardIds = new HashSet<>();
-        long allocatedCents = 0;
-        for (PaymentAllocationRequest payment : normalizedPayments) {
-            if (payment == null || payment.paymentCardId() == null || payment.amountCents() == null
-                    || payment.amountCents() < 0 || !cardIds.add(payment.paymentCardId()))
-                throw new InvalidRequestException("Informe cartões e valores válidos para o pagamento.");
-            if (totalCents > 0 && payment.amountCents() < 1_000 && !couponsApplied)
-                throw new InvalidRequestException("O valor pago em cada cartão deve ser de no mínimo R$ 10,00.");
-            allocatedCents += payment.amountCents();
-        }
-        if (allocatedCents != totalCents)
-            throw new InvalidRequestException("Os valores dos cartões devem totalizar o valor do pedido.");
-        if (totalCents == 0 && normalizedPayments.size() > 1)
-            throw new InvalidRequestException("Um pedido sem valor a pagar aceita somente um cartão.");
-        return normalizedPayments;
+    for (CartItem item : cart.getItems()) {
+      ProductVariant variant =
+          variants.findWithLockById(item.getVariant().getId()).orElseThrow();
+      order.addItem(
+          new OrderItem(
+              variant.getId(),
+              variant.getProduct().getName(),
+              variant.getSku(),
+              variant.getLabel(),
+              variant.getPriceCents(),
+              item.getQuantity()));
     }
+    SaleOrder saved = orders.save(order);
+    cart.clear();
+    notifications.notify(
+        customer,
+        "ORDER_CREATED",
+        "Seu pedido foi criado.",
+        "/pedidos/" + saved.getId());
+    var authorization = paymentProcessor.authorize(selectedCards, total);
+    return processPayment(
+        saved.getId(), authorization.approved(), authorization.reason());
+  }
 
-    @Transactional(readOnly = true)
-    public List<SaleOrder> customerOrders(Long customerId) {
-        return orders.findByCustomerIdOrderByCreatedAtDesc(customerId);
+  private static List<PaymentAllocationRequest> validateAllocations(
+      List<PaymentAllocationRequest> requestedPayments,
+      long totalCents,
+      boolean couponsApplied) {
+    if (totalCents > 0 && totalCents < 1_000 && !couponsApplied)
+      throw new InvalidRequestException(
+          "O valor cobrado no cartão deve ser de no mínimo R$ 10,00.");
+    if ((requestedPayments == null || requestedPayments.isEmpty())
+        && totalCents == 0) return List.of();
+    if (requestedPayments == null || requestedPayments.isEmpty())
+      throw new InvalidRequestException(
+          "Informe ao menos um cartão de crédito.");
+
+    List<PaymentAllocationRequest> normalizedPayments = requestedPayments;
+    if (requestedPayments.size() == 1
+        && requestedPayments.getFirst() != null
+        && requestedPayments.getFirst().amountCents() == null) {
+      normalizedPayments =
+          List.of(
+              new PaymentAllocationRequest(
+                  requestedPayments.getFirst().paymentCardId(), totalCents));
     }
-
-    @Transactional(readOnly = true)
-    public SaleOrder customerOrder(Long customerId, Long id) {
-        return orders.findByIdAndCustomerId(id, customerId).orElseThrow(() -> new OrderNotFoundException(id));
+    Set<Long> cardIds = new HashSet<>();
+    long allocatedCents = 0;
+    for (PaymentAllocationRequest payment : normalizedPayments) {
+      if (payment == null
+          || payment.paymentCardId() == null
+          || payment.amountCents() == null
+          || payment.amountCents() < 0
+          || !cardIds.add(payment.paymentCardId()))
+        throw new InvalidRequestException(
+            "Informe cartões e valores válidos para o pagamento.");
+      if (totalCents > 0 && payment.amountCents() < 1_000 && !couponsApplied)
+        throw new InvalidRequestException(
+            "O valor pago em cada cartão deve ser de no mínimo R$ 10,00.");
+      allocatedCents += payment.amountCents();
     }
+    if (allocatedCents != totalCents)
+      throw new InvalidRequestException(
+          "Os valores dos cartões devem totalizar o valor do pedido.");
+    if (totalCents == 0 && normalizedPayments.size() > 1)
+      throw new InvalidRequestException(
+          "Um pedido sem valor a pagar aceita somente um cartão.");
+    return normalizedPayments;
+  }
 
-    @Transactional(readOnly = true)
-    public List<SaleOrder> adminOrders() {
-        return orders.findAllByOrderByCreatedAtDesc();
+  @Transactional(readOnly = true)
+  public List<SaleOrder> customerOrders(Long customerId) {
+    return orders.findByCustomerIdOrderByCreatedAtDesc(customerId);
+  }
+
+  @Transactional(readOnly = true)
+  public SaleOrder customerOrder(Long customerId, Long id) {
+    return orders
+        .findByIdAndCustomerId(id, customerId)
+        .orElseThrow(() -> new OrderNotFoundException(id));
+  }
+
+  @Transactional(readOnly = true)
+  public List<SaleOrder> adminOrders() {
+    return orders.findAllByOrderByCreatedAtDesc();
+  }
+
+  @Transactional(readOnly = true)
+  public SaleOrder adminOrder(Long id) {
+    return orders
+        .findById(id)
+        .orElseThrow(() -> new OrderNotFoundException(id));
+  }
+
+  @Transactional
+  public SaleOrder changeStatus(Long id, OrderStatus status) {
+    if (status == null)
+      throw new InvalidRequestException("Informe o próximo status do pedido.");
+    SaleOrder order = adminOrder(id);
+    if (status != OrderStatus.ENTREGUE)
+      throw new InvalidRequestException(
+          "O administrador só pode confirmar "
+              + "pedidos em transporte como entregues.");
+    order.confirmDelivery();
+    return orders.save(order);
+  }
+
+  @Transactional
+  public SaleOrder processPayment(Long id, boolean approved) {
+    return processPayment(id, approved, null);
+  }
+
+  @Transactional
+  public SaleOrder processPayment(Long id, boolean approved, String reason) {
+    SaleOrder order = adminOrder(id);
+    order.recordPaymentAuthorization(reason);
+    if (approved) {
+      for (OrderItem item : order.getItems()) {
+        ProductVariant variant =
+            variants.findWithLockById(item.getVariantId()).orElseThrow();
+        if (item.getQuantity() > variant.getStockQuantity())
+          throw new InvalidRequestException(
+              "Estoque insuficiente para aprovar o pedido.");
+        variant.updateStock(variant.getStockQuantity() - item.getQuantity());
+      }
+      consumeAppliedCoupons(order);
+      order.approve();
+    } else {
+      order.reject();
     }
+    SaleOrder saved = orders.save(order);
+    if (approved) notifyProductReviews(saved);
+    return saved;
+  }
 
-    @Transactional(readOnly = true)
-    public SaleOrder adminOrder(Long id) {
-        return orders.findById(id).orElseThrow(() -> new OrderNotFoundException(id));
+  /**
+   * Settles coupons only after the payment processor authorizes the order.
+   * A return-credit coupon is consumed in full and any amount not needed
+   * after promotional discounts is reissued as a new
+   * return-credit coupon, preserving the DRS credit trail.
+   */
+  private void consumeAppliedCoupons(SaleOrder order) {
+    if (order.getCouponCode() == null || order.getCouponCode().isBlank())
+      return;
+    List<Coupon> applied =
+        java.util.Arrays.stream(order.getCouponCode().split(","))
+            .map(String::trim)
+            .filter(code -> !code.isEmpty())
+            .map(
+                code ->
+                    coupons
+                        .findByCode(code)
+                        .orElseThrow(
+                            () ->
+                                new InvalidRequestException("Cupom inválido.")))
+            .toList();
+    for (Coupon coupon : applied) {
+      if (coupon.isReturnCredit())
+        coupon.consumeCredit(coupon.getRemainingCreditCents());
+      else coupon.registerRedemption();
     }
-
-    @Transactional
-    public SaleOrder changeStatus(Long id, OrderStatus status) {
-        if (status == null) throw new InvalidRequestException("Informe o próximo status do pedido.");
-        SaleOrder order = adminOrder(id);
-        if (status != OrderStatus.ENTREGUE)
-            throw new InvalidRequestException("O administrador só pode confirmar pedidos em transporte como entregues.");
-        order.confirmDelivery();
-        return orders.save(order);
+    // The DRS requires the unused value of all applied coupons to become
+    // a return-credit coupon; promotional coupons therefore also take part
+    // in this calculation when their combined value exceeds the items.
+    long surplusCredit =
+        Math.max(
+            0,
+            order.getCouponValueCents()
+                - order.getSubtotalCents()
+                - order.getShippingCents());
+    if (surplusCredit > 0) {
+      Coupon issued =
+          coupons.save(
+              Coupon.returnCredit(
+                  "TROCA-"
+                      + UUID.randomUUID()
+                          .toString()
+                          .substring(0, 8)
+                          .toUpperCase(),
+                  order.getCustomer(),
+                  surplusCredit));
+      order.issueCoupon(issued);
     }
+  }
 
-    @Transactional
-    public SaleOrder processPayment(Long id, boolean approved) {
-        return processPayment(id, approved, null);
+  @Transactional
+  public SaleOrder dispatch(Long id, String trackingCode) {
+    if (trackingCode == null || trackingCode.isBlank())
+      throw new InvalidRequestException("Informe o código de rastreio.");
+    SaleOrder order = adminOrder(id);
+    order.dispatch(trackingCode.trim());
+    SaleOrder saved = orders.save(order);
+    notifications.notify(
+        order.getCustomer(),
+        "ORDER_DISPATCHED",
+        "Seu pedido foi despachado.",
+        "/pedidos/" + id);
+    return saved;
+  }
+
+  @Transactional
+  public SaleOrder cancel(Long customerId, Long orderId, String reason) {
+    SaleOrder order = customerOrder(customerId, orderId);
+    order.cancel(reason == null ? null : reason.trim());
+    for (OrderItem item : order.getItems()) {
+      ProductVariant variant =
+          variants.findWithLockById(item.getVariantId()).orElseThrow();
+      variant.updateStock(variant.getStockQuantity() + item.getQuantity());
     }
+    if (order.getCouponCode() != null)
+      coupons
+          .findByCode(order.getCouponCode())
+          .ifPresent(
+              coupon -> {
+                if (coupon.isReturnCredit())
+                  coupon.restoreCredit(order.getCouponValueCents());
+                else coupon.revertRedemption();
+              });
+    if (order.getIssuedCoupon() != null) order.getIssuedCoupon().deactivate();
+    SaleOrder saved = orders.save(order);
+    notifications.notify(
+        order.getCustomer(),
+        "ORDER_CANCELLED",
+        "Seu pedido foi cancelado.",
+        "/pedidos/" + orderId);
+    return saved;
+  }
 
-    @Transactional
-    public SaleOrder processPayment(Long id, boolean approved, String reason) {
-        SaleOrder order = adminOrder(id);
-        order.recordPaymentAuthorization(reason);
-        if (approved) {
-            for (OrderItem item : order.getItems()) {
-                ProductVariant variant = variants.findWithLockById(item.getVariantId()).orElseThrow();
-                if (item.getQuantity() > variant.getStockQuantity())
-                    throw new InvalidRequestException("Estoque insuficiente para aprovar o pedido.");
-                variant.updateStock(variant.getStockQuantity() - item.getQuantity());
-            }
-            consumeAppliedCoupons(order);
-            order.approve();
-        } else {
-            order.reject();
-        }
-        return orders.save(order);
+  @Transactional
+  public SaleOrder confirmReceipt(Long customerId, Long orderId) {
+    SaleOrder order = customerOrder(customerId, orderId);
+    if (order.getStatus() != OrderStatus.EM_TRANSITO)
+      throw new InvalidRequestException(
+          "A confirmação está disponível somente para pedidos em trânsito.");
+    order.confirmDelivery();
+    return orders.save(order);
+  }
+
+  private void notifyProductReviews(SaleOrder order) {
+    Set<Long> notifiedProducts = new HashSet<>();
+    for (OrderItem item : order.getItems()) {
+      variants
+          .findById(item.getVariantId())
+          .ifPresent(
+              variant -> {
+                var product = variant.getProduct();
+                if (notifiedProducts.add(product.getId())
+                    && !productReviews.existsByCustomerIdAndProductId(
+                        order.getCustomer().getId(), product.getId())) {
+                  notifications.notify(
+                      order.getCustomer(),
+                      "PRODUCT_REVIEW_REQUEST",
+                      "Avalie "
+                          + product.getName()
+                          + " quando receber seu pedido.",
+                      "/produtos/"
+                          + product.getSlug()
+                          + "?avaliar="
+                          + order.getId());
+                }
+              });
     }
-
-    /**
-     * Settles coupons only after the payment processor authorizes the order.
-     * A return-credit coupon is consumed in full and any amount not needed
-     * after promotional discounts is reissued as a new return-credit coupon,
-     * preserving the DRS credit trail.
-     */
-    private void consumeAppliedCoupons(SaleOrder order) {
-        if (order.getCouponCode() == null || order.getCouponCode().isBlank()) return;
-        List<Coupon> applied = java.util.Arrays.stream(order.getCouponCode().split(","))
-                .map(String::trim)
-                .filter(code -> !code.isEmpty())
-                .map(code -> coupons.findByCode(code).orElseThrow(() -> new InvalidRequestException("Cupom inválido.")))
-                .toList();
-        for (Coupon coupon : applied) {
-            if (coupon.isReturnCredit()) coupon.consumeCredit(coupon.getRemainingCreditCents());
-            else coupon.registerRedemption();
-        }
-        // The DRS requires the unused value of all applied coupons to become
-        // a return-credit coupon; promotional coupons therefore also take part
-        // in this calculation when their combined value exceeds the items.
-        long surplusCredit = Math.max(0, order.getCouponValueCents()
-                - order.getSubtotalCents() - order.getShippingCents());
-        if (surplusCredit > 0) {
-            Coupon issued = coupons.save(Coupon.returnCredit(
-                    "TROCA-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase(),
-                    order.getCustomer(), surplusCredit));
-            order.issueCoupon(issued);
-        }
-    }
-
-
-    @Transactional
-    public SaleOrder dispatch(Long id, String trackingCode) {
-        if (trackingCode == null || trackingCode.isBlank())
-            throw new InvalidRequestException("Informe o código de rastreio.");
-        SaleOrder order = adminOrder(id);
-        order.dispatch(trackingCode.trim());
-        SaleOrder saved = orders.save(order);
-        notifications.notify(order.getCustomer(), "ORDER_DISPATCHED", "Seu pedido foi despachado.", "/pedidos/" + id);
-        return saved;
-    }
-
-    @Transactional
-    public SaleOrder cancel(Long customerId, Long orderId, String reason) {
-        SaleOrder order = customerOrder(customerId, orderId);
-        order.cancel(reason == null ? null : reason.trim());
-        for (OrderItem item : order.getItems()) {
-            ProductVariant variant = variants.findWithLockById(item.getVariantId()).orElseThrow();
-            variant.updateStock(variant.getStockQuantity() + item.getQuantity());
-        }
-        if (order.getCouponCode() != null) coupons.findByCode(order.getCouponCode()).ifPresent(coupon -> {
-            if (coupon.isReturnCredit()) coupon.restoreCredit(order.getCouponValueCents());
-            else coupon.revertRedemption();
-        });
-        if (order.getIssuedCoupon() != null) order.getIssuedCoupon().deactivate();
-        SaleOrder saved = orders.save(order);
-        notifications.notify(order.getCustomer(), "ORDER_CANCELLED", "Seu pedido foi cancelado.", "/pedidos/" + orderId);
-        return saved;
-    }
-
-    @Transactional
-    public SaleOrder confirmReceipt(Long customerId, Long orderId) {
-        SaleOrder order = customerOrder(customerId, orderId);
-        if (order.getStatus() != OrderStatus.EM_TRANSITO)
-            throw new InvalidRequestException("A confirmação está disponível somente para pedidos em trânsito.");
-        order.confirmDelivery();
-        return orders.save(order);
-    }
+  }
 }

@@ -1,7 +1,7 @@
-@import "tailwindcss";
-@import "tw-animate-css";
-@import "shadcn/tailwind.css";
-@import "@fontsource-variable/geist";
+@import 'tailwindcss';
+@import 'tw-animate-css';
+@import 'shadcn/tailwind.css';
+@import '@fontsource-variable/geist';
 
 :root {
   --background: oklch(0.9606 0.005 165.0064);
@@ -59,7 +59,7 @@
 }
 
 @theme {
-  --font-sans: "Geist Variable", sans-serif;
+  --font-sans: 'Geist Variable', sans-serif;
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
@@ -125,6 +125,27 @@
   to {
     transform: scaleX(0);
   }
+}
+
+@keyframes testimonials-scroll {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-testimonials-scroll {
+    animation: none;
+  }
+}
+
+.animate-testimonials-scroll {
+  animation-name: testimonials-scroll;
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
 }
 
 .status-message-progress {

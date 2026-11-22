@@ -16,19 +16,19 @@ import java.util.List;
 @RequestMapping("/api/customers/me/coupons")
 @PreAuthorize("hasRole('CUSTOMER')")
 public class CustomerCouponController {
-    private final CouponRepository coupons;
+  private final CouponRepository coupons;
 
-    public CustomerCouponController(CouponRepository coupons) {
-        this.coupons = coupons;
-    }
+  public CustomerCouponController(CouponRepository coupons) {
+    this.coupons = coupons;
+  }
 
-    @GetMapping
-    public List<CouponResponse> list(@AuthenticationPrincipal AuthenticatedCustomer principal) {
-        LocalDateTime now = LocalDateTime.now();
-        return coupons.findAvailableToCustomer(principal.customerId())
-                .stream()
-                .filter(coupon -> coupon.isCurrentlyValid(now))
-                .map(CouponResponse::from)
-                .toList();
-    }
+  @GetMapping
+  public List<CouponResponse> list(
+      @AuthenticationPrincipal AuthenticatedCustomer principal) {
+    LocalDateTime now = LocalDateTime.now();
+    return coupons.findAvailableToCustomer(principal.customerId()).stream()
+        .filter(coupon -> coupon.isCurrentlyValid(now))
+        .map(CouponResponse::from)
+        .toList();
+  }
 }

@@ -17,24 +17,37 @@ import java.util.List;
 @RequestMapping("/api/admin/analytics")
 @PreAuthorize("hasRole('ADMIN')")
 public class AnalyticsController {
-    private final AnalyticsService analytics;
+  private final AnalyticsService analytics;
 
-    public AnalyticsController(AnalyticsService a) {
-        analytics = a;
-    }
+  public AnalyticsController(AnalyticsService a) {
+    analytics = a;
+  }
 
-    @GetMapping("/overview")
-    public AnalyticsOverviewResponse overview(@RequestParam(required = false) LocalDate from, @RequestParam(required = false) LocalDate to, @RequestParam(name = "category", required = false) List<String> categories) {
-        return analytics.overview(from, to, categories);
-    }
+  @GetMapping("/overview")
+  public AnalyticsOverviewResponse overview(
+      @RequestParam(required = false) LocalDate from,
+      @RequestParam(required = false) LocalDate to,
+      @RequestParam(name = "categoryId", required = false)
+          List<Long> categoryIds) {
+    return analytics.overview(from, to, categoryIds);
+  }
 
-    @GetMapping("/sales")
-    public List<SalesPointResponse> sales(@RequestParam(required = false) LocalDate from, @RequestParam(required = false) LocalDate to, @RequestParam(defaultValue = "day") String groupBy, @RequestParam(name = "category", required = false) List<String> categories) {
-        return analytics.sales(from, to, groupBy, categories);
-    }
+  @GetMapping("/sales")
+  public List<SalesPointResponse> sales(
+      @RequestParam(required = false) LocalDate from,
+      @RequestParam(required = false) LocalDate to,
+      @RequestParam(defaultValue = "day") String groupBy,
+      @RequestParam(name = "categoryId", required = false)
+          List<Long> categoryIds) {
+    return analytics.sales(from, to, groupBy, categoryIds);
+  }
 
-    @GetMapping("/products/top")
-    public List<TopProductResponse> top(@RequestParam(required = false) LocalDate from, @RequestParam(required = false) LocalDate to, @RequestParam(name = "category", required = false) List<String> categories) {
-        return analytics.top(from, to, categories);
-    }
+  @GetMapping("/products/top")
+  public List<TopProductResponse> top(
+      @RequestParam(required = false) LocalDate from,
+      @RequestParam(required = false) LocalDate to,
+      @RequestParam(name = "categoryId", required = false)
+          List<Long> categoryIds) {
+    return analytics.top(from, to, categoryIds);
+  }
 }

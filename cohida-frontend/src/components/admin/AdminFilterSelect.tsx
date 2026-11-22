@@ -1,7 +1,7 @@
 import {
   FilterSelect,
   type FilterSelectOption,
-} from "@/components/shared/FilterSelect";
+} from '@/components/shared/FilterSelect';
 
 interface AdminFilterSelectProps {
   ariaLabel: string;

@@ -42,232 +42,576 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 @SpringBootTest
 @Transactional
 class OrderServiceTest {
-    @Autowired
-    private CustomerRepository customers;
-    @Autowired
-    private ProductService products;
-    @Autowired
-    private ProductVariantRepository variants;
-    @Autowired
-    private CouponService coupons;
-    @Autowired
-    private PaymentCardService cards;
-    @Autowired
-    private CartService carts;
-    @Autowired
-    private OrderService orders;
-    @Autowired
-    private ReturnService returns;
-    @Autowired
-    private NotificationRepository notifications;
-    @Autowired
-    private EntityManager entityManager;
+  @Autowired private CustomerRepository customers;
+  @Autowired private ProductService products;
+  @Autowired private ProductVariantRepository variants;
+  @Autowired private CouponService coupons;
+  @Autowired private PaymentCardService cards;
+  @Autowired private CartService carts;
+  @Autowired private OrderService orders;
+  @Autowired private ReturnService returns;
+  @Autowired private NotificationRepository notifications;
+  @Autowired private EntityManager entityManager;
 
-    @Test
-    void checksOutCartUsingServerPriceCouponAndStock() {
-        Customer customer = customer();
-        customers.save(customer);
-        Product product = products.create(new ProductUpsertRequest("Tênis de teste", "Cohida", "Tênis esportivo", null, List.of("Corrida"), 1, true,
-                List.of(new ProductVariantRequest("TENIS-TESTE-40", "40", "Preto", "40", 20_000L, 5))));
-        Long variantId = product.getVariants().getFirst().getId();
-        Coupon coupon = coupons.create(new CouponUpsertRequest("DESC10", "10%", CouponDiscountType.PERCENTAGE, null, new BigDecimal("10"), 3_000L, 10_000L,
-                LocalDateTime.now().minusMinutes(1), LocalDateTime.now().plusDays(1), 1, true));
-        PaymentCard card = cards.create(customer.getId(), new PaymentCardCreateRequest("token-order-test", "4242 4242 4242 4242", "Pessoal", 12, 2030));
+  @Test
+  void checksOutCartUsingServerPriceCouponAndStock() {
+    Customer customer = customer();
+    customers.save(customer);
+    Product product =
+        products.create(
+            new ProductUpsertRequest(
+                "Tênis de teste",
+                "Cohida",
+                "Tênis esportivo",
+                null,
+                List.of(2L),
+                1,
+                true,
+                List.of(
+                    new ProductVariantRequest(
+                        "TENIS-TESTE-40", "40", "Preto", "40", 20_000L, 5))));
+    Long variantId = product.getVariants().getFirst().getId();
+    Coupon coupon =
+        coupons.create(
+            new CouponUpsertRequest(
+                "DESC10",
+                "10%",
+                CouponDiscountType.PERCENTAGE,
+                null,
+                new BigDecimal("10"),
+                3_000L,
+                10_000L,
+                LocalDateTime.now().minusMinutes(1),
+                LocalDateTime.now().plusDays(1),
+                1,
+                true));
+    PaymentCard card =
+        cards.create(
+            customer.getId(),
+            new PaymentCardCreateRequest(
+                "token-order-test",
+                "4242 4242 4242 4242",
+                "Pessoal",
+                12,
+                2030));
 
-        carts.add(customer.getId(), variantId, 2);
-        assertEquals(3_000L, carts.applyCoupon(customer.getId(), "DESC10").discountCents());
+    carts.add(customer.getId(), variantId, 2);
+    assertEquals(
+        3_000L, carts.applyCoupon(customer.getId(), "DESC10").discountCents());
 
-        Long addressId = customer.getAddresses().stream().filter(address -> address.getType() == AddressType.DELIVERY).findFirst().orElseThrow().getId();
-        SaleOrder order = orders.checkout(customer.getId(), addressId, card.getId());
+    Long addressId =
+        customer.getAddresses().stream()
+            .filter(address -> address.getType() == AddressType.DELIVERY)
+            .findFirst()
+            .orElseThrow()
+            .getId();
+    SaleOrder order =
+        orders.checkout(customer.getId(), addressId, card.getId());
 
-        assertEquals(OrderStatus.APROVADA, order.getStatus());
-        assertEquals(40_000L, order.getSubtotalCents());
-        assertEquals(3_000L, order.getDiscountCents());
-        assertEquals(38_200L, order.getTotalCents());
-        assertEquals(3, variants.findById(variantId).orElseThrow().getStockQuantity());
-        assertEquals(1, coupons.findById(coupon.getId()).getRedeemedCount());
-        assertTrue(carts.view(customer.getId()).items().isEmpty());
+    assertEquals(OrderStatus.APROVADA, order.getStatus());
+    assertEquals(40_000L, order.getSubtotalCents());
+    assertEquals(3_000L, order.getDiscountCents());
+    assertEquals(38_200L, order.getTotalCents());
+    assertEquals(
+        3, variants.findById(variantId).orElseThrow().getStockQuantity());
+    assertEquals(1, coupons.findById(coupon.getId()).getRedeemedCount());
+    assertTrue(carts.view(customer.getId()).items().isEmpty());
 
-        orders.dispatch(order.getId(), "BR123");
-        orders.changeStatus(order.getId(), OrderStatus.ENTREGUE);
+    orders.dispatch(order.getId(), "BR123");
+    orders.changeStatus(order.getId(), OrderStatus.ENTREGUE);
 
-        var returnRequest = returns.request(customer.getId(), order.getId(), order.getItems().getFirst().getId(), "Tamanho inadequado");
-        returns.status(returnRequest.getId(), ReturnStatus.TROCA_AUTORIZADA);
-        var processed = returns.status(returnRequest.getId(), ReturnStatus.TROCADO);
-        assertEquals(ReturnStatus.TROCADO, processed.getStatus());
-        assertEquals(5, variants.findById(variantId).orElseThrow().getStockQuantity());
-        assertTrue(processed.getIssuedCoupon().isReturnCredit());
-        assertEquals(40_000L, processed.getIssuedCoupon().getRemainingCreditCents());
-    }
+    var returnRequest =
+        returns.request(
+            customer.getId(),
+            order.getId(),
+            order.getItems().getFirst().getId(),
+            "Tamanho inadequado");
+    returns.status(returnRequest.getId(), ReturnStatus.TROCA_AUTORIZADA);
+    var processed = returns.status(returnRequest.getId(), ReturnStatus.TROCADO);
+    assertEquals(ReturnStatus.TROCADO, processed.getStatus());
+    assertEquals(
+        5, variants.findById(variantId).orElseThrow().getStockQuantity());
+    assertTrue(processed.getIssuedCoupon().isReturnCredit());
+    assertEquals(
+        40_000L, processed.getIssuedCoupon().getRemainingCreditCents());
+  }
 
-    @Test
-    void validatesAndRecordsSplitCardPayments() {
-        Customer customer = customer();
-        customers.save(customer);
-        Product product = products.create(new ProductUpsertRequest("Produto dividido", "Cohida", "Teste", null, List.of("Corrida"), 1, true,
-                List.of(new ProductVariantRequest("DIVIDIDO-1", "Único", "Preto", "Único", 20_000L, 4))));
-        Coupon coupon = coupons.create(new CouponUpsertRequest("DIVIDE5", "Desconto de teste", CouponDiscountType.FIXED_AMOUNT, 5_000L, null, null, null,
-                LocalDateTime.now().minusMinutes(1), LocalDateTime.now().plusDays(1), 5, true));
-        PaymentCard first = cards.create(customer.getId(), new PaymentCardCreateRequest("token-split-first", "4242 4242 4242 4242", "Pessoal", 12, 2030));
-        PaymentCard second = cards.create(customer.getId(), new PaymentCardCreateRequest("token-split-second", "5555 5555 5555 4444", "Trabalho", 12, 2030));
-        Long addressId = customer.getAddresses().stream().filter(address -> address.getType() == AddressType.DELIVERY).findFirst().orElseThrow().getId();
+  @Test
+  void validatesAndRecordsSplitCardPayments() {
+    Customer customer = customer();
+    customers.save(customer);
+    Product product =
+        products.create(
+            new ProductUpsertRequest(
+                "Produto dividido",
+                "Cohida",
+                "Teste",
+                null,
+                List.of(2L),
+                1,
+                true,
+                List.of(
+                    new ProductVariantRequest(
+                        "DIVIDIDO-1", "Único", "Preto", "Único", 20_000L, 4))));
+    Coupon coupon =
+        coupons.create(
+            new CouponUpsertRequest(
+                "DIVIDE5",
+                "Desconto de teste",
+                CouponDiscountType.FIXED_AMOUNT,
+                5_000L,
+                null,
+                null,
+                null,
+                LocalDateTime.now().minusMinutes(1),
+                LocalDateTime.now().plusDays(1),
+                5,
+                true));
+    PaymentCard first =
+        cards.create(
+            customer.getId(),
+            new PaymentCardCreateRequest(
+                "token-split-first",
+                "4242 4242 4242 4242",
+                "Pessoal",
+                12,
+                2030));
+    PaymentCard second =
+        cards.create(
+            customer.getId(),
+            new PaymentCardCreateRequest(
+                "token-split-second",
+                "5555 5555 5555 4444",
+                "Trabalho",
+                12,
+                2030));
+    Long addressId =
+        customer.getAddresses().stream()
+            .filter(address -> address.getType() == AddressType.DELIVERY)
+            .findFirst()
+            .orElseThrow()
+            .getId();
 
-        carts.add(customer.getId(), product.getVariants().getFirst().getId(), 1);
-        carts.applyCoupon(customer.getId(), coupon.getCode());
-        SaleOrder order = orders.checkout(customer.getId(), addressId, List.of(
+    carts.add(customer.getId(), product.getVariants().getFirst().getId(), 1);
+    carts.applyCoupon(customer.getId(), coupon.getCode());
+    SaleOrder order =
+        orders.checkout(
+            customer.getId(),
+            addressId,
+            List.of(
                 new PaymentAllocationRequest(first.getId(), 7_000L),
                 new PaymentAllocationRequest(second.getId(), 9_000L)));
 
-        assertEquals(OrderStatus.APROVADA, order.getStatus());
-        assertEquals(16_000L, order.getTotalCents());
-        assertEquals(2, order.getPayments().size());
-        List<Long> allocations = order.getPayments().stream()
-                .sorted(java.util.Comparator.comparingInt(com.hida.cohida.order.domain.OrderPayment::getPaymentPosition))
-                .map(payment -> payment.getAmountCents())
-                .toList();
-        assertEquals(List.of(7_000L, 9_000L), allocations);
+    assertEquals(OrderStatus.APROVADA, order.getStatus());
+    assertEquals(16_000L, order.getTotalCents());
+    assertEquals(2, order.getPayments().size());
+    List<Long> allocations =
+        order.getPayments().stream()
+            .sorted(
+                java.util.Comparator.comparingInt(
+                    com.hida.cohida.order.domain.OrderPayment
+                        ::getPaymentPosition))
+            .map(payment -> payment.getAmountCents())
+            .toList();
+    assertEquals(List.of(7_000L, 9_000L), allocations);
 
-        entityManager.flush();
-        entityManager.clear();
+    entityManager.flush();
+    entityManager.clear();
 
-        SaleOrder reloaded = orders.customerOrder(customer.getId(), order.getId());
-        assertEquals(1, reloaded.getItems().size());
-        assertEquals(2, reloaded.getPayments().size());
-    }
+    SaleOrder reloaded = orders.customerOrder(customer.getId(), order.getId());
+    assertEquals(1, reloaded.getItems().size());
+    assertEquals(2, reloaded.getPayments().size());
+  }
 
-    @Test
-    void blocksSplitPaymentWhenAnyCardIsBelowTenReaisWithoutCoupon() {
-        Customer customer = customer();
-        customers.save(customer);
-        Product product = products.create(new ProductUpsertRequest("Produto mínimo cartão", "Cohida", "Teste", null, List.of("Corrida"), 1, true,
-                List.of(new ProductVariantRequest("MIN-CARD-1", "Único", "Preto", "Único", 20_000L, 2))));
-        PaymentCard first = cards.create(customer.getId(), new PaymentCardCreateRequest("token-min-first", "4242 4242 4242 4242", "Pessoal", 12, 2030));
-        PaymentCard second = cards.create(customer.getId(), new PaymentCardCreateRequest("token-min-second", "5555 5555 5555 4444", "Trabalho", 12, 2030));
-        Long addressId = customer.getAddresses().stream().filter(address -> address.getType() == AddressType.DELIVERY).findFirst().orElseThrow().getId();
-        carts.add(customer.getId(), product.getVariants().getFirst().getId(), 1);
-
-        assertThrows(com.hida.cohida.auth.exception.InvalidRequestException.class, () -> orders.checkout(customer.getId(), addressId,
-                List.of(new PaymentAllocationRequest(first.getId(), 500L), new PaymentAllocationRequest(second.getId(), 20_500L))));
-    }
-
-    @Test
-    void allowsCardBelowTenReaisWhenCouponsCoverTheMaximumPossibleAmount() {
-        Customer customer = customer();
-        customers.save(customer);
-        Product product = products.create(new ProductUpsertRequest("Produto com cupom", "Cohida", "Teste", null, List.of("Corrida"), 1, true,
-                List.of(new ProductVariantRequest("CUPOM-CARD-1", "Único", "Preto", "Único", 20_000L, 2))));
-        Coupon coupon = coupons.create(new CouponUpsertRequest("COBRE-ITEM", "Cupom integral", CouponDiscountType.FIXED_AMOUNT, 20_500L, null, null, null,
-                LocalDateTime.now().minusMinutes(1), LocalDateTime.now().plusDays(1), 1, true));
-        PaymentCard card = cards.create(customer.getId(), new PaymentCardCreateRequest("token-coupon-card", "4242 4242 4242 4242", "Pessoal", 12, 2030));
-        Long addressId = customer.getAddresses().stream().filter(address -> address.getType() == AddressType.DELIVERY).findFirst().orElseThrow().getId();
-        carts.add(customer.getId(), product.getVariants().getFirst().getId(), 1);
-        carts.applyCoupon(customer.getId(), coupon.getCode());
-
-        SaleOrder order = orders.checkout(customer.getId(), addressId, List.of(new PaymentAllocationRequest(card.getId(), 500L)));
-        assertEquals(OrderStatus.APROVADA, order.getStatus());
-        assertEquals(500L, order.getPayments().iterator().next().getAmountCents());
-    }
-
-    @Test
-    void rejectsDeclinedProcessorTokenWithoutLoweringStockOrRedeemingCoupon() {
-        Customer customer = customer();
-        customers.save(customer);
-        Product product = products.create(new ProductUpsertRequest("Produto recusado", "Cohida", "Teste", null, List.of("Corrida"), 1, true,
-                List.of(new ProductVariantRequest("RECUSADO-1", "Único", "Preto", "Único", 20_000L, 4))));
-        Coupon coupon = coupons.create(new CouponUpsertRequest("RECUSADO5", "Desconto", CouponDiscountType.FIXED_AMOUNT, 5_000L, null, null, null,
-                LocalDateTime.now().minusMinutes(1), LocalDateTime.now().plusDays(1), 1, true));
-        PaymentCard card = cards.create(customer.getId(), new PaymentCardCreateRequest("declined-test-card", "4242 4242 4242 4242", "Pessoal", 12, 2030));
-        Long addressId = customer.getAddresses().stream().filter(address -> address.getType() == AddressType.DELIVERY).findFirst().orElseThrow().getId();
-
-        carts.add(customer.getId(), product.getVariants().getFirst().getId(), 1);
-        carts.applyCoupon(customer.getId(), coupon.getCode());
-        SaleOrder order = orders.checkout(customer.getId(), addressId, card.getId());
-
-        assertEquals(OrderStatus.REPROVADA, order.getStatus());
-        assertEquals(4, variants.findById(product.getVariants().getFirst().getId()).orElseThrow().getStockQuantity());
-        assertEquals(0, coupons.findById(coupon.getId()).getRedeemedCount());
-    }
-
-    @Test
-    void blocksReturnRequestUntilTheOrderIsDelivered() {
-        Customer customer = customer();
-        customers.save(customer);
-        Product product = products.create(new ProductUpsertRequest("Produto para troca", "Cohida", "Teste", null, List.of("Corrida"), 1, true,
-                List.of(new ProductVariantRequest("TROCA-BLOQUEADA-1", "Único", "Preto", "Único", 20_000L, 2))));
-        PaymentCard card = cards.create(customer.getId(), new PaymentCardCreateRequest("token-return-blocked", "4242 4242 4242 4242", "Pessoal", 12, 2030));
-        Long addressId = customer.getAddresses().stream().filter(address -> address.getType() == AddressType.DELIVERY).findFirst().orElseThrow().getId();
-        carts.add(customer.getId(), product.getVariants().getFirst().getId(), 1);
-        SaleOrder order = orders.checkout(customer.getId(), addressId, card.getId());
-
-        assertThrows(com.hida.cohida.auth.exception.InvalidRequestException.class,
-                () -> returns.request(customer.getId(), order.getId(), order.getItems().getFirst().getId(), "Ainda não foi entregue"));
-    }
-
-    @Test
-    void completesWholeOrderReturnWithCouponAndStockReentry() {
-        Customer customer = customer();
-        customers.save(customer);
-        Product product = products.create(new ProductUpsertRequest("Kit troca completa", "Cohida", "Teste", null, List.of("Corrida"), 1, true,
+  @Test
+  void blocksSplitPaymentWhenAnyCardIsBelowTenReaisWithoutCoupon() {
+    Customer customer = customer();
+    customers.save(customer);
+    Product product =
+        products.create(
+            new ProductUpsertRequest(
+                "Produto mínimo cartão",
+                "Cohida",
+                "Teste",
+                null,
+                List.of(2L),
+                1,
+                true,
                 List.of(
-                        new ProductVariantRequest("KIT-TROCA-A", "A", "Preto", "A", 20_000L, 3),
-                        new ProductVariantRequest("KIT-TROCA-B", "B", "Azul", "B", 20_000L, 3))));
-        PaymentCard card = cards.create(customer.getId(), new PaymentCardCreateRequest("token-whole-return", "4242 4242 4242 4242", "Pessoal", 12, 2030));
-        Long addressId = customer.getAddresses().stream().filter(address -> address.getType() == AddressType.DELIVERY).findFirst().orElseThrow().getId();
-        carts.add(customer.getId(), product.getVariants().get(0).getId(), 1);
-        carts.add(customer.getId(), product.getVariants().get(1).getId(), 1);
-        SaleOrder order = orders.checkout(customer.getId(), addressId, card.getId());
-        orders.dispatch(order.getId(), "BR-WHOLE");
-        orders.changeStatus(order.getId(), OrderStatus.ENTREGUE);
+                    new ProductVariantRequest(
+                        "MIN-CARD-1", "Único", "Preto", "Único", 20_000L, 2))));
+    PaymentCard first =
+        cards.create(
+            customer.getId(),
+            new PaymentCardCreateRequest(
+                "token-min-first", "4242 4242 4242 4242", "Pessoal", 12, 2030));
+    PaymentCard second =
+        cards.create(
+            customer.getId(),
+            new PaymentCardCreateRequest(
+                "token-min-second",
+                "5555 5555 5555 4444",
+                "Trabalho",
+                12,
+                2030));
+    Long addressId =
+        customer.getAddresses().stream()
+            .filter(address -> address.getType() == AddressType.DELIVERY)
+            .findFirst()
+            .orElseThrow()
+            .getId();
+    carts.add(customer.getId(), product.getVariants().getFirst().getId(), 1);
 
-        var request = returns.request(customer.getId(), order.getId(), null, "Troca da compra inteira");
-        assertEquals(ReturnStatus.EM_TROCA, request.getStatus());
-        returns.status(request.getId(), ReturnStatus.TROCA_AUTORIZADA);
-        assertTrue(notifications.findByCustomerIdOrderByCreatedAtDesc(customer.getId()).stream()
-                .anyMatch(notification -> notification.getType().equals("RETURN_AUTHORIZED")));
-        var completed = returns.status(request.getId(), ReturnStatus.TROCADO, true);
+    assertThrows(
+        com.hida.cohida.auth.exception.InvalidRequestException.class,
+        () ->
+            orders.checkout(
+                customer.getId(),
+                addressId,
+                List.of(
+                    new PaymentAllocationRequest(first.getId(), 500L),
+                    new PaymentAllocationRequest(second.getId(), 20_500L))));
+  }
 
-        assertEquals(ReturnStatus.TROCADO, completed.getStatus());
-        assertEquals(40_000L, completed.getIssuedCoupon().getRemainingCreditCents());
-        assertEquals(3, variants.findById(product.getVariants().get(0).getId()).orElseThrow().getStockQuantity());
-        assertEquals(3, variants.findById(product.getVariants().get(1).getId()).orElseThrow().getStockQuantity());
+  @Test
+  void allowsCardBelowTenReaisWhenCouponsCoverTheMaximumPossibleAmount() {
+    Customer customer = customer();
+    customers.save(customer);
+    Product product =
+        products.create(
+            new ProductUpsertRequest(
+                "Produto com cupom",
+                "Cohida",
+                "Teste",
+                null,
+                List.of(2L),
+                1,
+                true,
+                List.of(
+                    new ProductVariantRequest(
+                        "CUPOM-CARD-1",
+                        "Único",
+                        "Preto",
+                        "Único",
+                        20_000L,
+                        2))));
+    Coupon coupon =
+        coupons.create(
+            new CouponUpsertRequest(
+                "COBRE-ITEM",
+                "Cupom integral",
+                CouponDiscountType.FIXED_AMOUNT,
+                20_500L,
+                null,
+                null,
+                null,
+                LocalDateTime.now().minusMinutes(1),
+                LocalDateTime.now().plusDays(1),
+                1,
+                true));
+    PaymentCard card =
+        cards.create(
+            customer.getId(),
+            new PaymentCardCreateRequest(
+                "token-coupon-card",
+                "4242 4242 4242 4242",
+                "Pessoal",
+                12,
+                2030));
+    Long addressId =
+        customer.getAddresses().stream()
+            .filter(address -> address.getType() == AddressType.DELIVERY)
+            .findFirst()
+            .orElseThrow()
+            .getId();
+    carts.add(customer.getId(), product.getVariants().getFirst().getId(), 1);
+    carts.applyCoupon(customer.getId(), coupon.getCode());
 
-        carts.add(customer.getId(), product.getVariants().get(0).getId(), 1);
-        carts.applyCoupon(customer.getId(), completed.getIssuedCoupon().getCode());
-        SaleOrder repurchase = orders.checkout(customer.getId(), addressId, List.of());
-        assertEquals(OrderStatus.APROVADA, repurchase.getStatus());
-        assertEquals(completed.getIssuedCoupon().getCode(), repurchase.getCouponCode());
-    }
+    SaleOrder order =
+        orders.checkout(
+            customer.getId(),
+            addressId,
+            List.of(new PaymentAllocationRequest(card.getId(), 500L)));
+    assertEquals(OrderStatus.APROVADA, order.getStatus());
+    assertEquals(500L, order.getPayments().iterator().next().getAmountCents());
+  }
 
-    @Test
-    void issuesCustomerExchangeCreditForCouponValueAbovePurchase() {
-        Customer customer = customer();
-        customers.save(customer);
-        Product product = products.create(new ProductUpsertRequest("Produto cupom excedente", "Cohida", "Teste", null, List.of("Corrida"), 1, true,
-                List.of(new ProductVariantRequest("CUPOM-EXCEDENTE-1", "Único", "Preto", "Único", 20_000L, 4))));
-        coupons.create(new CouponUpsertRequest("EXCEDE27", "Cupom de teste", CouponDiscountType.FIXED_AMOUNT, 27_000L, null, null, null,
-                LocalDateTime.now().minusMinutes(1), LocalDateTime.now().plusDays(1), 5, true));
-        PaymentCard card = cards.create(customer.getId(), new PaymentCardCreateRequest("token-surplus", "4242 4242 4242 4242", "Pessoal", 12, 2030));
-        Long addressId = customer.getAddresses().stream().filter(address -> address.getType() == AddressType.DELIVERY).findFirst().orElseThrow().getId();
+  @Test
+  void rejectsDeclinedProcessorTokenWithoutLoweringStockOrRedeemingCoupon() {
+    Customer customer = customer();
+    customers.save(customer);
+    Product product =
+        products.create(
+            new ProductUpsertRequest(
+                "Produto recusado",
+                "Cohida",
+                "Teste",
+                null,
+                List.of(2L),
+                1,
+                true,
+                List.of(
+                    new ProductVariantRequest(
+                        "RECUSADO-1", "Único", "Preto", "Único", 20_000L, 4))));
+    Coupon coupon =
+        coupons.create(
+            new CouponUpsertRequest(
+                "RECUSADO5",
+                "Desconto",
+                CouponDiscountType.FIXED_AMOUNT,
+                5_000L,
+                null,
+                null,
+                null,
+                LocalDateTime.now().minusMinutes(1),
+                LocalDateTime.now().plusDays(1),
+                1,
+                true));
+    PaymentCard card =
+        cards.create(
+            customer.getId(),
+            new PaymentCardCreateRequest(
+                "declined-test-card",
+                "4242 4242 4242 4242",
+                "Pessoal",
+                12,
+                2030));
+    Long addressId =
+        customer.getAddresses().stream()
+            .filter(address -> address.getType() == AddressType.DELIVERY)
+            .findFirst()
+            .orElseThrow()
+            .getId();
 
-        carts.add(customer.getId(), product.getVariants().getFirst().getId(), 1);
-        carts.applyCoupon(customer.getId(), "EXCEDE27");
-        SaleOrder order = orders.checkout(customer.getId(), addressId, List.of());
+    carts.add(customer.getId(), product.getVariants().getFirst().getId(), 1);
+    carts.applyCoupon(customer.getId(), coupon.getCode());
+    SaleOrder order =
+        orders.checkout(customer.getId(), addressId, card.getId());
 
-        assertEquals(0L, order.getTotalCents());
-        assertTrue(order.getIssuedCoupon().isReturnCredit());
-        assertEquals(6_000L, order.getIssuedCoupon().getRemainingCreditCents());
-        assertEquals(customer.getId(), order.getIssuedCoupon().getAssignedCustomer().getId());
-    }
+    assertEquals(OrderStatus.REPROVADA, order.getStatus());
+    assertEquals(
+        4,
+        variants
+            .findById(product.getVariants().getFirst().getId())
+            .orElseThrow()
+            .getStockQuantity());
+    assertEquals(0, coupons.findById(coupon.getId()).getRedeemedCount());
+  }
 
-    private static Customer customer() {
-        Customer customer = new Customer("CU-ORDER-TEST", "Cliente Pedido", LocalDate.of(1990, 1, 1), "52998224725", "11999999999");
-        customer.attachAccount(new Account("order-test@example.com", "not-used"));
-        customer.addAddress(address(AddressType.BILLING));
-        customer.addAddress(address(AddressType.DELIVERY));
-        return customer;
-    }
+  @Test
+  void blocksReturnRequestUntilTheOrderIsDelivered() {
+    Customer customer = customer();
+    customers.save(customer);
+    Product product =
+        products.create(
+            new ProductUpsertRequest(
+                "Produto para troca",
+                "Cohida",
+                "Teste",
+                null,
+                List.of(2L),
+                1,
+                true,
+                List.of(
+                    new ProductVariantRequest(
+                        "TROCA-BLOQUEADA-1",
+                        "Único",
+                        "Preto",
+                        "Único",
+                        20_000L,
+                        2))));
+    PaymentCard card =
+        cards.create(
+            customer.getId(),
+            new PaymentCardCreateRequest(
+                "token-return-blocked",
+                "4242 4242 4242 4242",
+                "Pessoal",
+                12,
+                2030));
+    Long addressId =
+        customer.getAddresses().stream()
+            .filter(address -> address.getType() == AddressType.DELIVERY)
+            .findFirst()
+            .orElseThrow()
+            .getId();
+    carts.add(customer.getId(), product.getVariants().getFirst().getId(), 1);
+    SaleOrder order =
+        orders.checkout(customer.getId(), addressId, card.getId());
 
-    private static CustomerAddress address(AddressType type) {
-        return new CustomerAddress("Principal", type, "Rua A", "1", "Centro", "01001000", "São Paulo", "SP", "Brasil");
-    }
+    assertThrows(
+        com.hida.cohida.auth.exception.InvalidRequestException.class,
+        () ->
+            returns.request(
+                customer.getId(),
+                order.getId(),
+                order.getItems().getFirst().getId(),
+                "Ainda não foi entregue"));
+  }
+
+  @Test
+  void completesWholeOrderReturnWithCouponAndStockReentry() {
+    Customer customer = customer();
+    customers.save(customer);
+    Product product =
+        products.create(
+            new ProductUpsertRequest(
+                "Kit troca completa",
+                "Cohida",
+                "Teste",
+                null,
+                List.of(2L),
+                1,
+                true,
+                List.of(
+                    new ProductVariantRequest(
+                        "KIT-TROCA-A", "A", "Preto", "A", 20_000L, 3),
+                    new ProductVariantRequest(
+                        "KIT-TROCA-B", "B", "Azul", "B", 20_000L, 3))));
+    PaymentCard card =
+        cards.create(
+            customer.getId(),
+            new PaymentCardCreateRequest(
+                "token-whole-return",
+                "4242 4242 4242 4242",
+                "Pessoal",
+                12,
+                2030));
+    Long addressId =
+        customer.getAddresses().stream()
+            .filter(address -> address.getType() == AddressType.DELIVERY)
+            .findFirst()
+            .orElseThrow()
+            .getId();
+    carts.add(customer.getId(), product.getVariants().get(0).getId(), 1);
+    carts.add(customer.getId(), product.getVariants().get(1).getId(), 1);
+    SaleOrder order =
+        orders.checkout(customer.getId(), addressId, card.getId());
+    orders.dispatch(order.getId(), "BR-WHOLE");
+    orders.changeStatus(order.getId(), OrderStatus.ENTREGUE);
+
+    var request =
+        returns.request(
+            customer.getId(), order.getId(), null, "Troca da compra inteira");
+    assertEquals(ReturnStatus.EM_TROCA, request.getStatus());
+    returns.status(request.getId(), ReturnStatus.TROCA_AUTORIZADA);
+    assertTrue(
+        notifications
+            .findByCustomerIdOrderByCreatedAtDesc(customer.getId())
+            .stream()
+            .anyMatch(
+                notification ->
+                    notification.getType().equals("RETURN_AUTHORIZED")));
+    var completed = returns.status(request.getId(), ReturnStatus.TROCADO, true);
+
+    assertEquals(ReturnStatus.TROCADO, completed.getStatus());
+    assertEquals(
+        40_000L, completed.getIssuedCoupon().getRemainingCreditCents());
+    assertEquals(
+        3,
+        variants
+            .findById(product.getVariants().get(0).getId())
+            .orElseThrow()
+            .getStockQuantity());
+    assertEquals(
+        3,
+        variants
+            .findById(product.getVariants().get(1).getId())
+            .orElseThrow()
+            .getStockQuantity());
+
+    carts.add(customer.getId(), product.getVariants().get(0).getId(), 1);
+    carts.applyCoupon(customer.getId(), completed.getIssuedCoupon().getCode());
+    SaleOrder repurchase =
+        orders.checkout(customer.getId(), addressId, List.of());
+    assertEquals(OrderStatus.APROVADA, repurchase.getStatus());
+    assertEquals(
+        completed.getIssuedCoupon().getCode(), repurchase.getCouponCode());
+  }
+
+  @Test
+  void issuesCustomerExchangeCreditForCouponValueAbovePurchase() {
+    Customer customer = customer();
+    customers.save(customer);
+    Product product =
+        products.create(
+            new ProductUpsertRequest(
+                "Produto cupom excedente",
+                "Cohida",
+                "Teste",
+                null,
+                List.of(2L),
+                1,
+                true,
+                List.of(
+                    new ProductVariantRequest(
+                        "CUPOM-EXCEDENTE-1",
+                        "Único",
+                        "Preto",
+                        "Único",
+                        20_000L,
+                        4))));
+    coupons.create(
+        new CouponUpsertRequest(
+            "EXCEDE27",
+            "Cupom de teste",
+            CouponDiscountType.FIXED_AMOUNT,
+            27_000L,
+            null,
+            null,
+            null,
+            LocalDateTime.now().minusMinutes(1),
+            LocalDateTime.now().plusDays(1),
+            5,
+            true));
+    PaymentCard card =
+        cards.create(
+            customer.getId(),
+            new PaymentCardCreateRequest(
+                "token-surplus", "4242 4242 4242 4242", "Pessoal", 12, 2030));
+    Long addressId =
+        customer.getAddresses().stream()
+            .filter(address -> address.getType() == AddressType.DELIVERY)
+            .findFirst()
+            .orElseThrow()
+            .getId();
+
+    carts.add(customer.getId(), product.getVariants().getFirst().getId(), 1);
+    carts.applyCoupon(customer.getId(), "EXCEDE27");
+    SaleOrder order = orders.checkout(customer.getId(), addressId, List.of());
+
+    assertEquals(0L, order.getTotalCents());
+    assertTrue(order.getIssuedCoupon().isReturnCredit());
+    assertEquals(6_000L, order.getIssuedCoupon().getRemainingCreditCents());
+    assertEquals(
+        customer.getId(),
+        order.getIssuedCoupon().getAssignedCustomer().getId());
+  }
+
+  private static Customer customer() {
+    Customer customer =
+        new Customer(
+            "CU-ORDER-TEST",
+            "Cliente Pedido",
+            LocalDate.of(1990, 1, 1),
+            "52998224725",
+            "11999999999");
+    customer.attachAccount(new Account("order-test@example.com", "not-used"));
+    customer.addAddress(address(AddressType.BILLING));
+    customer.addAddress(address(AddressType.DELIVERY));
+    return customer;
+  }
+
+  private static CustomerAddress address(AddressType type) {
+    return new CustomerAddress(
+        "Principal",
+        type,
+        "Rua A",
+        "1",
+        "Centro",
+        "01001000",
+        "São Paulo",
+        "SP",
+        "Brasil");
+  }
 }

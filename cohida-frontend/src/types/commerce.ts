@@ -1,12 +1,12 @@
 export type OrderStatus =
-  | "processing"
-  | "approved"
-  | "rejected"
-  | "in_transit"
-  | "delivered"
-  | "in_exchange"
-  | "exchange_authorized"
-  | "exchanged";
+  | 'processing'
+  | 'approved'
+  | 'rejected'
+  | 'in_transit'
+  | 'delivered'
+  | 'in_exchange'
+  | 'exchange_authorized'
+  | 'exchanged';
 
 export interface CartItem {
   id: string;
@@ -27,7 +27,7 @@ export interface Cart {
 export interface Address {
   id: string;
   label: string;
-  type: "billing" | "delivery";
+  type: 'billing' | 'delivery';
   street: string;
   number: string;
   neighborhood: string;

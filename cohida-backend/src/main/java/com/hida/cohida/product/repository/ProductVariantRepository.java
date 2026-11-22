@@ -7,11 +7,12 @@ import org.springframework.data.jpa.repository.Lock;
 
 import java.util.Optional;
 
-public interface ProductVariantRepository extends JpaRepository<ProductVariant, Long> {
-    boolean existsBySku(String sku);
+public interface ProductVariantRepository
+    extends JpaRepository<ProductVariant, Long> {
+  boolean existsBySku(String sku);
 
-    boolean existsBySkuAndProductIdNot(String sku, Long productId);
+  boolean existsBySkuAndProductIdNot(String sku, Long productId);
 
-    @Lock(LockModeType.PESSIMISTIC_WRITE)
-    Optional<ProductVariant> findWithLockById(Long id);
+  @Lock(LockModeType.PESSIMISTIC_WRITE)
+  Optional<ProductVariant> findWithLockById(Long id);
 }

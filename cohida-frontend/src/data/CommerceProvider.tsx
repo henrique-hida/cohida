@@ -1,13 +1,13 @@
-import { CommerceContext } from "./commerceContext";
-import { useEffect } from "react";
+import { CommerceContext } from './commerceContext';
+import { useEffect } from 'react';
 
-import { demoCommerceRepository } from "./demoCommerceRepository";
-import { customerApi, getSessionRole } from "@/lib/customerApi";
+import { demoCommerceRepository } from './demoCommerceRepository';
+import { customerApi, getSessionRole } from '@/lib/customerApi';
 
 export function CommerceProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     void demoCommerceRepository.loadCatalog();
-    if (getSessionRole() !== "CUSTOMER") {
+    if (getSessionRole() !== 'CUSTOMER') {
       demoCommerceRepository.completeSessionHydration();
       return;
     }

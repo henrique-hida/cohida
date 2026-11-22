@@ -1,44 +1,47 @@
-import { Eye, EyeOff, KeyRound, UserRound } from "lucide-react";
-import { useState } from "react";
-import { useNavigate } from "react-router";
+import { Eye, EyeOff, KeyRound, UserRound } from 'lucide-react';
+import { useState } from 'react';
+import { useNavigate } from 'react-router';
 
-import { CustomerRegistrationForm } from "@/components/customer/CustomerRegistrationForm";
-import { PageContainer, StoreHeader } from "@/components/shared";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
-import { useCommerce } from "@/data/useCommerce";
+// prettier-ignore
+import {
+  CustomerRegistrationForm,
+} from '@/components/customer/CustomerRegistrationForm';
+import { PageContainer, StoreHeader } from '@/components/shared';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
+import { useCommerce } from '@/data/useCommerce';
 import {
   customerApi,
   login as loginApi,
   register as registerApi,
-} from "@/lib/customerApi";
+} from '@/lib/customerApi';
 
-type AuthMode = "login" | "register" | "recovery";
+type AuthMode = 'login' | 'register' | 'recovery';
 
 const authCopy: Record<
   AuthMode,
   { action: string; description: string; title: string }
 > = {
   login: {
-    action: "Entrar",
-    description: "Acesse pedidos, endereços, cartões e recomendações.",
-    title: "Que bom ter você de volta",
+    action: 'Entrar',
+    description: 'Acesse pedidos, endereços, cartões e recomendações.',
+    title: 'Que bom ter você de volta',
   },
   register: {
-    action: "Criar conta",
-    description: "Preencha seus dados para comprar e acompanhar seus pedidos.",
-    title: "Crie sua conta",
+    action: 'Criar conta',
+    description: 'Preencha seus dados para comprar e acompanhar seus pedidos.',
+    title: 'Crie sua conta',
   },
   recovery: {
-    action: "Enviar link de recuperação",
-    description: "O fluxo de recuperação será conectado ao backend.",
-    title: "Recupere seu acesso",
+    action: 'Enviar link de recuperação',
+    description: 'O fluxo de recuperação será conectado ao backend.',
+    title: 'Recupere seu acesso',
   },
 };
 
 export function AuthPage() {
-  const [mode, setMode] = useState<AuthMode>("login");
-  const [error, setError] = useState("");
+  const [mode, setMode] = useState<AuthMode>('login');
+  const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isPasswordVisible, setIsPasswordVisible] = useState(false);
   const { completeSessionHydration, startApiSession } = useCommerce();
@@ -47,34 +50,34 @@ export function AuthPage() {
 
   async function submitLogin(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (mode === "recovery") {
-      setError("A recuperação de senha estará disponível com o backend.");
+    if (mode === 'recovery') {
+      setError('A recuperação de senha estará disponível com o backend.');
       return;
     }
     const formData = new FormData(event.currentTarget);
-    setError("");
+    setError('');
     setIsSubmitting(true);
     try {
       const authentication = await loginApi(
-        String(formData.get("email") ?? ""),
-        String(formData.get("password") ?? ""),
+        String(formData.get('email') ?? ''),
+        String(formData.get('password') ?? ''),
       );
-      if (authentication.role === "ADMIN") {
+      if (authentication.role === 'ADMIN') {
         localStorage.setItem(
-          "cohida-admin-name",
-          authentication.customerName ?? "Administradora",
+          'cohida-admin-name',
+          authentication.customerName ?? 'Administradora',
         );
-        navigate("/admin/clientes");
+        navigate('/admin/clientes');
         return;
       }
       await startApiSession(await customerApi.me());
       completeSessionHydration();
-      navigate("/");
+      navigate('/');
     } catch (reason) {
       setError(
         reason instanceof Error
           ? reason.message
-          : "Não foi possível concluir a operação.",
+          : 'Não foi possível concluir a operação.',
       );
     } finally {
       setIsSubmitting(false);
@@ -82,104 +85,115 @@ export function AuthPage() {
   }
 
   return (
-    <div className="min-h-svh bg-muted/35">
+    <div className='min-h-svh bg-muted/35'>
       <StoreHeader />
-      <PageContainer className="grid place-items-center py-10">
-        <Card className="w-full max-w-3xl">
-          <CardContent className="p-5 sm:p-6">
-            <div className="flex items-center gap-3">
-              <span className="grid size-10 place-items-center rounded-xl bg-primary text-primary-foreground">
-                {mode === "recovery" ? (
-                  <KeyRound className="size-5" />
+      <PageContainer className='grid place-items-center py-10'>
+        <Card className='w-full max-w-3xl'>
+          <CardContent className='p-5 sm:p-6'>
+            <div className='flex items-center gap-3'>
+              <span
+                className={[
+                  'grid size-10 place-items-center rounded-xl',
+                  'bg-primary text-primary-foreground',
+                ].join(' ')}
+              >
+                {mode === 'recovery' ? (
+                  <KeyRound className='size-5' />
                 ) : (
-                  <UserRound className="size-5" />
+                  <UserRound className='size-5' />
                 )}
               </span>
               <div>
-                <h1 className="text-2xl font-semibold tracking-tight">
+                <h1 className='text-2xl font-semibold tracking-tight'>
                   {copy.title}
                 </h1>
-                <p className="mt-1 text-sm text-muted-foreground">
+                <p className='mt-1 text-sm text-muted-foreground'>
                   {copy.description}
                 </p>
               </div>
             </div>
-            {mode !== "recovery" ? (
-              <div className="mt-7 grid grid-cols-2 rounded-lg bg-muted p-1">
+            {mode !== 'recovery' ? (
+              <div className='mt-7 grid grid-cols-2 rounded-lg bg-muted p-1'>
                 <Button
                   className={
-                    mode === "login"
-                      ? "bg-primary text-primary-foreground hover:bg-primary/90"
-                      : "text-muted-foreground"
+                    mode === 'login'
+                      ? 'bg-primary text-primary-foreground hover:bg-primary/90'
+                      : 'text-muted-foreground'
                   }
                   onClick={() => {
-                    setMode("login");
-                    setError("");
+                    setMode('login');
+                    setError('');
                   }}
-                  variant="ghost"
+                  variant='ghost'
                 >
                   Entrar
                 </Button>
                 <Button
                   className={
-                    mode === "register"
-                      ? "bg-primary text-primary-foreground hover:bg-primary/90"
-                      : "text-muted-foreground"
+                    mode === 'register'
+                      ? 'bg-primary text-primary-foreground hover:bg-primary/90'
+                      : 'text-muted-foreground'
                   }
                   onClick={() => {
-                    setMode("register");
-                    setError("");
+                    setMode('register');
+                    setError('');
                   }}
-                  variant="ghost"
+                  variant='ghost'
                 >
                   Criar conta
                 </Button>
               </div>
             ) : null}
-            {mode === "register" ? (
+            {mode === 'register' ? (
               <CustomerRegistrationForm
                 onSubmit={async (input) => {
                   await registerApi(input);
                   await startApiSession(await customerApi.me());
                   completeSessionHydration();
-                  navigate("/");
+                  navigate('/');
                 }}
-                submitLabel="Criar conta"
+                submitLabel='Criar conta'
               />
             ) : (
-              <form className="mt-5 grid gap-3" onSubmit={submitLogin}>
-                <label className="grid gap-2 text-sm font-medium">
+              <form className='mt-5 grid gap-3' onSubmit={submitLogin}>
+                <label className='grid gap-2 text-sm font-medium'>
                   E-mail
                   <input
-                    className="h-9 rounded-md border border-input bg-background px-3 font-normal"
-                    name="email"
+                    className={[
+                      'h-9 rounded-md border border-input',
+                      'bg-background px-3 font-normal',
+                    ].join(' ')}
+                    name='email'
                     required
-                    type="email"
+                    type='email'
                   />
                 </label>
-                {mode !== "recovery" ? (
-                  <label className="grid gap-2 text-sm font-medium">
+                {mode !== 'recovery' ? (
+                  <label className='grid gap-2 text-sm font-medium'>
                     Senha
-                    <span className="relative">
+                    <span className='relative'>
                       <input
-                        className="h-9 w-full rounded-md border border-input bg-background px-3 pr-10 font-normal"
-                        name="password"
+                        className={[
+                          'h-9 w-full rounded-md border border-input',
+                          'bg-background px-3 pr-10 font-normal',
+                        ].join(' ')}
+                        name='password'
                         required
-                        type={isPasswordVisible ? "text" : "password"}
+                        type={isPasswordVisible ? 'text' : 'password'}
                       />
                       <Button
                         aria-label={
                           isPasswordVisible
-                            ? "Ocultar senha"
-                            : "Visualizar senha"
+                            ? 'Ocultar senha'
+                            : 'Visualizar senha'
                         }
-                        className="absolute top-1/2 right-0 -translate-y-1/2"
+                        className='absolute top-1/2 right-0 -translate-y-1/2'
                         onClick={() =>
                           setIsPasswordVisible((visible) => !visible)
                         }
-                        size="icon-sm"
-                        type="button"
-                        variant="ghost"
+                        size='icon-sm'
+                        type='button'
+                        variant='ghost'
                       >
                         {isPasswordVisible ? <EyeOff /> : <Eye />}
                       </Button>
@@ -187,34 +201,39 @@ export function AuthPage() {
                   </label>
                 ) : null}
                 {error ? (
-                  <div className="rounded-lg bg-destructive/10 p-3 text-sm text-destructive">
+                  <div
+                    className={[
+                      'rounded-lg bg-destructive/10 p-3 text-sm',
+                      'text-destructive',
+                    ].join(' ')}
+                  >
                     {error}
                   </div>
                 ) : null}
                 <Button
-                  className="mt-2 w-full"
+                  className='mt-2 w-full'
                   disabled={isSubmitting}
-                  size="lg"
-                  type="submit"
+                  size='lg'
+                  type='submit'
                 >
-                  {isSubmitting ? "Salvando..." : copy.action}
+                  {isSubmitting ? 'Salvando...' : copy.action}
                 </Button>
               </form>
             )}
-            {mode === "login" ? (
+            {mode === 'login' ? (
               <Button
-                className="mt-3 px-0"
-                onClick={() => setMode("recovery")}
-                variant="link"
+                className='mt-3 px-0'
+                onClick={() => setMode('recovery')}
+                variant='link'
               >
                 Esqueci minha senha
               </Button>
             ) : null}
-            {mode === "recovery" ? (
+            {mode === 'recovery' ? (
               <Button
-                className="mt-4 px-0"
-                onClick={() => setMode("login")}
-                variant="link"
+                className='mt-4 px-0'
+                onClick={() => setMode('login')}
+                variant='link'
               >
                 Voltar para entrar
               </Button>

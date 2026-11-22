@@ -1,30 +1,30 @@
-import { useEffect, useState } from "react";
-import { ChevronLeft, PackageCheck } from "lucide-react";
-import { Link, useParams } from "react-router";
+import { useEffect, useState } from 'react';
+import { ChevronLeft, PackageCheck } from 'lucide-react';
+import { Link, useParams } from 'react-router';
 
-import { AdminPageLayout } from "@/components/admin/AdminPageLayout";
-import { ConfirmDialog } from "@/components/admin/ConfirmDialog";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { AdminPageLayout } from '@/components/admin/AdminPageLayout';
+import { ConfirmDialog } from '@/components/admin/ConfirmDialog';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-} from "@/components/ui/card";
-import { formatCurrency } from "@/lib/currency";
-import { commerceStatus } from "@/lib/commerceStatus";
-import { commerceApi, type ApiOrder, type ApiReturn } from "@/lib/commerceApi";
-import { StatusMessage } from "@/components/ui/status-message";
+} from '@/components/ui/card';
+import { formatCurrency } from '@/lib/currency';
+import { commerceStatus } from '@/lib/commerceStatus';
+import { commerceApi, type ApiOrder, type ApiReturn } from '@/lib/commerceApi';
+import { StatusMessage } from '@/components/ui/status-message';
 
 export function AdminExchangeDetailPage() {
   const { exchangeId } = useParams();
   const [request, setRequest] = useState<ApiReturn | null>(null);
   const [order, setOrder] = useState<ApiOrder | null>(null);
   const [returnToStock, setReturnToStock] = useState(true);
-  const [message, setMessage] = useState("");
-  const [error, setError] = useState("");
+  const [message, setMessage] = useState('');
+  const [error, setError] = useState('');
   const [confirmingCompletion, setConfirmingCompletion] = useState(false);
   const [confirmingDenial, setConfirmingDenial] = useState(false);
 
@@ -49,32 +49,36 @@ export function AdminExchangeDetailPage() {
   }, [exchangeId]);
 
   async function update(
-    status: "TROCA_AUTORIZADA" | "TROCA_NEGADA" | "TROCADO",
+    status: 'TROCA_AUTORIZADA' | 'TROCA_NEGADA' | 'TROCADO',
   ) {
     if (!request) return;
-    setError("");
+    setError('');
     try {
       const updated = await commerceApi.updateReturnStatus(
         String(request.id),
         status,
-        status === "TROCADO" ? returnToStock : undefined,
+        status === 'TROCADO' ? returnToStock : undefined,
       );
       setRequest(updated);
       setMessage(
-        status === "TROCA_AUTORIZADA"
-          ? "Troca autorizada e cliente notificado."
-          : status === "TROCA_NEGADA"
-            ? "Troca negada e cliente notificado."
-            : "Recebimento confirmado; cupom de troca emitido para o cliente.",
+        status === 'TROCA_AUTORIZADA'
+          ? 'Troca autorizada e cliente notificado.'
+          : status === 'TROCA_NEGADA'
+            ? 'Troca negada e cliente notificado.'
+            : 'Recebimento confirmado; cupom de troca emitido para o cliente.',
       );
     } catch (cause) {
       const errorMessage =
         cause instanceof Error
           ? cause.message
-          : "Não foi possível atualizar a troca.";
+          : 'Não foi possível atualizar a troca.';
       setError(
-        errorMessage === "Já existe um registro com esses dados."
-          ? "Não foi possível atualizar o status da troca. Atualize a página e tente novamente."
+        errorMessage === 'Já existe um registro com esses dados.'
+          ? [
+              'Não foi possível atualizar o',
+              'status da troca. Atualize a página',
+              'e tente novamente.',
+            ].join(' ')
           : errorMessage,
       );
     }
@@ -83,10 +87,15 @@ export function AdminExchangeDetailPage() {
   if (error && !request)
     return (
       <AdminPageLayout
-        description="Não foi possível abrir os dados desta solicitação."
-        title="Troca"
+        description='Não foi possível abrir os dados desta solicitação.'
+        title='Troca'
       >
-        <p className="rounded-lg border border-danger-border bg-danger-bg p-4 text-danger-foreground">
+        <p
+          className={[
+            'rounded-lg border border-danger-border',
+            'bg-danger-bg p-4 text-danger-foreground',
+          ].join(' ')}
+        >
           {error}
         </p>
       </AdminPageLayout>
@@ -94,10 +103,10 @@ export function AdminExchangeDetailPage() {
   if (!request)
     return (
       <AdminPageLayout
-        description="Consulte a solicitação e atualize o recebimento dos itens."
-        title="Troca"
+        description='Consulte a solicitação e atualize o recebimento dos itens.'
+        title='Troca'
       >
-        <p className="text-muted-foreground">Carregando troca...</p>
+        <p className='text-muted-foreground'>Carregando troca...</p>
       </AdminPageLayout>
     );
   const item = request.orderItemId
@@ -112,43 +121,47 @@ export function AdminExchangeDetailPage() {
   return (
     <AdminPageLayout
       action={
-        <div className="flex flex-wrap items-center gap-2">
+        <div className='flex flex-wrap items-center gap-2'>
           <Button
-            render={<Link to="/admin/trocas" />}
-            size="sm"
-            variant="outline"
+            render={<Link to='/admin/trocas' />}
+            size='sm'
+            variant='outline'
           >
             <ChevronLeft /> Trocas
           </Button>
-          {request.status === "EM_TROCA" ? (
+          {request.status === 'EM_TROCA' ? (
             <>
               <Button
-                onClick={() => void update("TROCA_AUTORIZADA")}
-                variant="outline"
+                onClick={() => void update('TROCA_AUTORIZADA')}
+                variant='outline'
               >
                 Autorizar troca
               </Button>
               <Button
                 onClick={() => setConfirmingDenial(true)}
-                variant="destructive"
+                variant='destructive'
               >
                 Negar troca
               </Button>
             </>
           ) : null}
-          {request.status === "TROCA_AUTORIZADA" ? (
+          {request.status === 'TROCA_AUTORIZADA' ? (
             <Button
               onClick={() => setConfirmingCompletion(true)}
-              variant="outline"
+              variant='outline'
             >
               <PackageCheck /> Confirmar recebimento
             </Button>
           ) : null}
         </div>
       }
-      description={`Pedido #${request.orderId}${order ? ` · ${order.customerName}` : ""}`}
+      description={[
+        'Pedido #',
+        String(request.orderId),
+        String(order ? ` · ${order.customerName}` : ''),
+      ].join('')}
       title={
-        <span className="flex flex-wrap items-center gap-3">
+        <span className='flex flex-wrap items-center gap-3'>
           Troca #{request.id}
           <Badge variant={commerceStatus(request.status).variant}>
             {commerceStatus(request.status).label}
@@ -157,68 +170,76 @@ export function AdminExchangeDetailPage() {
       }
     >
       {message ? (
-        <div className="mt-6">
+        <div className='mt-6'>
           <StatusMessage
             key={message}
             message={message}
-            onDismiss={() => setMessage("")}
-            variant="success"
+            onDismiss={() => setMessage('')}
+            variant='success'
           />
         </div>
       ) : null}
       {error ? (
-        <div className="mt-4">
-          <StatusMessage message={error} variant="danger" />
+        <div className='mt-4'>
+          <StatusMessage message={error} variant='danger' />
         </div>
       ) : null}
       {confirmingCompletion ? (
         <ConfirmDialog
-          confirmLabel="Confirmar recebimento"
-          description="A confirmação gera o cupom ao cliente e devolve o item ao estoque se selecionado."
+          confirmLabel='Confirmar recebimento'
+          description={[
+            'A confirmação gera o cupom ao',
+            'cliente e devolve o item ao',
+            'estoque se selecionado.',
+          ].join(' ')}
           onCancel={() => setConfirmingCompletion(false)}
           onConfirm={() => {
-            void update("TROCADO");
+            void update('TROCADO');
             setConfirmingCompletion(false);
           }}
-          title="Confirmar itens recebidos?"
+          title='Confirmar itens recebidos?'
         />
       ) : null}
       {confirmingDenial ? (
         <ConfirmDialog
-          confirmLabel="Negar troca"
-          description="O cliente será notificado de que a solicitação foi negada. Essa decisão não poderá ser desfeita."
+          confirmLabel='Negar troca'
+          description={[
+            'O cliente será notificado de que a',
+            'solicitação foi negada. Essa',
+            'decisão não poderá ser desfeita.',
+          ].join(' ')}
           onCancel={() => setConfirmingDenial(false)}
           onConfirm={() => {
-            void update("TROCA_NEGADA");
+            void update('TROCA_NEGADA');
             setConfirmingDenial(false);
           }}
-          title="Negar esta solicitação?"
+          title='Negar esta solicitação?'
         />
       ) : null}
-      <div className="mt-8 grid gap-6 xl:grid-cols-[1.4fr_1fr]">
+      <div className='mt-8 grid gap-6 xl:grid-cols-[1.4fr_1fr]'>
         <Card>
           <CardHeader>
             <CardTitle>Solicitação</CardTitle>
             <CardDescription>Dados enviados pelo cliente.</CardDescription>
           </CardHeader>
-          <CardContent className="space-y-5 text-sm">
+          <CardContent className='space-y-5 text-sm'>
             <div>
-              <p className="text-xs text-muted-foreground">Escopo</p>
-              <p className="mt-1 font-medium">
+              <p className='text-xs text-muted-foreground'>Escopo</p>
+              <p className='mt-1 font-medium'>
                 {request.orderItemId
-                  ? (item?.productName ?? "Item do pedido")
-                  : "Compra inteira"}
+                  ? (item?.productName ?? 'Item do pedido')
+                  : 'Compra inteira'}
               </p>
             </div>
             <div>
-              <p className="text-xs text-muted-foreground">Valor elegível</p>
-              <p className="mt-1 text-lg font-semibold">
+              <p className='text-xs text-muted-foreground'>Valor elegível</p>
+              <p className='mt-1 text-lg font-semibold'>
                 {formatCurrency(valueCents)}
               </p>
             </div>
             <div>
-              <p className="text-xs text-muted-foreground">Motivo</p>
-              <p className="mt-1">{request.reason}</p>
+              <p className='text-xs text-muted-foreground'>Motivo</p>
+              <p className='mt-1'>{request.reason}</p>
             </div>
           </CardContent>
         </Card>
@@ -230,26 +251,31 @@ export function AdminExchangeDetailPage() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <label className="flex items-center gap-3 rounded-lg border border-input p-3 text-sm">
+            <label
+              className={[
+                'flex items-center gap-3 rounded-lg border',
+                'border-input p-3 text-sm',
+              ].join(' ')}
+            >
               <input
                 checked={returnToStock}
-                className="size-4 accent-primary"
-                disabled={request.status !== "TROCA_AUTORIZADA"}
+                className='size-4 accent-primary'
+                disabled={request.status !== 'TROCA_AUTORIZADA'}
                 onChange={(event) => setReturnToStock(event.target.checked)}
-                type="checkbox"
+                type='checkbox'
               />
               <span>
-                <span className="block font-medium">Retornar ao estoque</span>
-                <span className="text-muted-foreground">
+                <span className='block font-medium'>Retornar ao estoque</span>
+                <span className='text-muted-foreground'>
                   A reentrada é registrada ao confirmar o recebimento.
                 </span>
               </span>
             </label>
             {request.couponCode ? (
-              <div className="mt-4">
+              <div className='mt-4'>
                 <StatusMessage
                   message={`Cupom emitido: ${request.couponCode}`}
-                  variant="success"
+                  variant='success'
                 />
               </div>
             ) : null}

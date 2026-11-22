@@ -67,3 +67,36 @@ npx start-server-and-test 'vite --host 127.0.0.1 --port 5174 --strictPort' http:
 
 The named dependency volumes are preserved by `down`. To deliberately remove
 them and force clean dependency installation, run `docker compose down -v`.
+
+## Assistente de recomendação
+
+O chatbot usa Spring AI para se comunicar com o OpenRouter e está disponível
+para clientes autenticados. O cliente informa suas
+preferências no próprio chat; o backend as combina com os itens de pedidos
+aprovados, em transporte ou entregues e com o catálogo ativo disponível.
+As perguntas, respostas e avaliações são registradas no banco. O histórico
+da conversa exibido fica disponível durante a sessão da página.
+
+Para usar o OpenRouter, defina no `.env` da raiz:
+
+```dotenv
+OPENROUTER_API_KEY=sua_chave
+OPENROUTER_MODEL=openrouter/free
+```
+
+O modelo pode ser alterado para outro identificador disponível na conta. A chave
+fica apenas no backend. Após alterar o `.env`, recrie o backend para atualizar
+as variáveis do contêiner:
+
+```bash
+docker compose up -d --build backend
+```
+
+O modelo recebe preferências, nomes dos itens comprados, dados do catálogo e
+mensagens da conversa, mas não recebe dados de pagamento ou endereço. Como o
+modelo e seu provedor podem processar esses dados, use dados de demonstração
+para testes e consulte as políticas do provedor escolhido. A disponibilidade e
+os limites dependem do modelo e da conta OpenRouter.
+
+Esta versão usa apenas contexto: não executa treinamento ou ajuste fino. O
+item de treinamento do RNF0044 e da atividade permanece pendente de decisão.

@@ -16,48 +16,49 @@ import java.util.List;
 @RequestMapping("/api/customers")
 @PreAuthorize("hasRole('ADMIN')")
 public class CustomerController {
-    private final CustomerService customerService;
-    private final AuthService authService;
+  private final CustomerService customerService;
+  private final AuthService authService;
 
-    public CustomerController(
-            CustomerService customerService,
-            AuthService authService
-    ) {
-        this.customerService = customerService;
-        this.authService = authService;
-    }
+  public CustomerController(
+      CustomerService customerService, AuthService authService) {
+    this.customerService = customerService;
+    this.authService = authService;
+  }
 
-    @GetMapping
-    public CustomerPageResponse findAll(@RequestParam(defaultValue = "") String search,
-                                        @RequestParam(defaultValue = "0") int page,
-                                        @RequestParam(defaultValue = "10") int size,
-                                        @RequestParam(defaultValue = "ACTIVE") String status,
-                                        @RequestParam(defaultValue = "ASC") String sort) {
-        var customers = customerService.findPage(search, status, sort, page, size);
-        List<CustomerResponse> content = customers.stream()
-                .map(CustomerResponse::from).toList();
-        return new CustomerPageResponse(content, page, size, customers.getTotalElements());
-    }
+  @GetMapping
+  public CustomerPageResponse findAll(
+      @RequestParam(defaultValue = "") String search,
+      @RequestParam(defaultValue = "0") int page,
+      @RequestParam(defaultValue = "10") int size,
+      @RequestParam(defaultValue = "ACTIVE") String status,
+      @RequestParam(defaultValue = "ASC") String sort) {
+    var customers = customerService.findPage(search, status, sort, page, size);
+    List<CustomerResponse> content =
+        customers.stream().map(CustomerResponse::from).toList();
+    return new CustomerPageResponse(
+        content, page, size, customers.getTotalElements());
+  }
 
-    @PostMapping
-    @ResponseStatus(HttpStatus.CREATED)
-    public CustomerResponse create(@RequestBody RegisterRequest request) {
-        return CustomerResponse.from(authService.createCustomer(request));
-    }
+  @PostMapping
+  @ResponseStatus(HttpStatus.CREATED)
+  public CustomerResponse create(@RequestBody RegisterRequest request) {
+    return CustomerResponse.from(authService.createCustomer(request));
+  }
 
-    @GetMapping("/{id}")
-    public CustomerResponse findById(@PathVariable Long id) {
-        return CustomerResponse.from(customerService.findById(id));
-    }
+  @GetMapping("/{id}")
+  public CustomerResponse findById(@PathVariable Long id) {
+    return CustomerResponse.from(customerService.findById(id));
+  }
 
-    @PutMapping("/{id}")
-    public CustomerResponse update(@PathVariable Long id, @RequestBody CustomerUpdateRequest request) {
-        return CustomerResponse.from(customerService.update(id, request));
-    }
+  @PutMapping("/{id}")
+  public CustomerResponse update(
+      @PathVariable Long id, @RequestBody CustomerUpdateRequest request) {
+    return CustomerResponse.from(customerService.update(id, request));
+  }
 
-    @PatchMapping("/{id}/deactivate")
-    @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void deactivate(@PathVariable Long id) {
-        customerService.deactivate(id);
-    }
+  @PatchMapping("/{id}/deactivate")
+  @ResponseStatus(HttpStatus.NO_CONTENT)
+  public void deactivate(@PathVariable Long id) {
+    customerService.deactivate(id);
+  }
 }

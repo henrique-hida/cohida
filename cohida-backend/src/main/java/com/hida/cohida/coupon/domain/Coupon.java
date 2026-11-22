@@ -11,138 +11,184 @@ import java.time.LocalDateTime;
 @Entity
 @Table(name = "coupons")
 public class Coupon extends DomainEntity {
-    @Getter
-    @Column(nullable = false, unique = true, length = 50)
-    private String code;
+  @Getter
+  @Column(nullable = false, unique = true, length = 50)
+  private String code;
 
-    @Getter
-    @Column(nullable = false, length = 500)
-    private String description;
+  @Getter
+  @Column(nullable = false, length = 500)
+  private String description;
 
-    @Getter
-    @Enumerated(EnumType.STRING)
-    @Column(name = "discount_type", nullable = false, length = 20)
-    private CouponDiscountType discountType;
+  @Getter
+  @Enumerated(EnumType.STRING)
+  @Column(name = "discount_type", nullable = false, length = 20)
+  private CouponDiscountType discountType;
 
-    @Getter
-    @Column(name = "discount_cents")
-    private Long discountCents;
+  @Getter
+  @Column(name = "discount_cents")
+  private Long discountCents;
 
-    @Getter
-    @Column(name = "discount_percentage", precision = 5, scale = 2)
-    private BigDecimal discountPercentage;
+  @Getter
+  @Column(name = "discount_percentage", precision = 5, scale = 2)
+  private BigDecimal discountPercentage;
 
-    @Getter
-    @Column(name = "maximum_discount_cents")
-    private Long maximumDiscountCents;
+  @Getter
+  @Column(name = "maximum_discount_cents")
+  private Long maximumDiscountCents;
 
-    @Getter
-    @Column(name = "minimum_order_value_cents")
-    private Long minimumOrderValueCents;
+  @Getter
+  @Column(name = "minimum_order_value_cents")
+  private Long minimumOrderValueCents;
 
-    @Getter
-    @Column(name = "valid_from", nullable = false)
-    private LocalDateTime validFrom;
+  @Getter
+  @Column(name = "valid_from", nullable = false)
+  private LocalDateTime validFrom;
 
-    @Getter
-    @Column(name = "expires_at", nullable = false)
-    private LocalDateTime expiresAt;
+  @Getter
+  @Column(name = "expires_at", nullable = false)
+  private LocalDateTime expiresAt;
 
-    @Getter
-    @Column(name = "maximum_uses")
-    private Integer maximumUses;
+  @Getter
+  @Column(name = "maximum_uses")
+  private Integer maximumUses;
 
-    @Getter
-    @Column(name = "redeemed_count", nullable = false)
-    private int redeemedCount;
+  @Getter
+  @Column(name = "redeemed_count", nullable = false)
+  private int redeemedCount;
 
-    @Getter
-    @Column(nullable = false)
-    private boolean active;
+  @Getter
+  @Column(nullable = false)
+  private boolean active;
 
-    @Getter
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 12)
-    private CouponOrigin origin = CouponOrigin.ADMIN;
-    @Getter
-    @Column(name = "remaining_credit_cents")
-    private Long remainingCreditCents;
-    @Getter
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "assigned_customer_id")
-    private Customer assignedCustomer;
+  @Getter
+  @Enumerated(EnumType.STRING)
+  @Column(nullable = false, length = 12)
+  private CouponOrigin origin = CouponOrigin.ADMIN;
 
-    protected Coupon() {
-    }
+  @Getter
+  @Column(name = "remaining_credit_cents")
+  private Long remainingCreditCents;
 
-    public Coupon(String code, String description, CouponDiscountType discountType, Long discountCents,
-                  BigDecimal discountPercentage, Long maximumDiscountCents, Long minimumOrderValueCents,
-                  LocalDateTime validFrom, LocalDateTime expiresAt, Integer maximumUses, boolean active) {
-        update(code, description, discountType, discountCents, discountPercentage, maximumDiscountCents,
-                minimumOrderValueCents, validFrom, expiresAt, maximumUses, active);
-    }
+  @Getter
+  @ManyToOne(fetch = FetchType.LAZY)
+  @JoinColumn(name = "assigned_customer_id")
+  private Customer assignedCustomer;
 
-    public void update(String code, String description, CouponDiscountType discountType, Long discountCents,
-                       BigDecimal discountPercentage, Long maximumDiscountCents, Long minimumOrderValueCents,
-                       LocalDateTime validFrom, LocalDateTime expiresAt, Integer maximumUses, boolean active) {
-        this.code = code;
-        this.description = description;
-        this.discountType = discountType;
-        this.discountCents = discountCents;
-        this.discountPercentage = discountPercentage;
-        this.maximumDiscountCents = maximumDiscountCents;
-        this.minimumOrderValueCents = minimumOrderValueCents;
-        this.validFrom = validFrom;
-        this.expiresAt = expiresAt;
-        this.maximumUses = maximumUses;
-        this.active = active;
-    }
+  protected Coupon() {}
 
-    public boolean isCurrentlyValid(LocalDateTime now) {
-        return active && !now.isBefore(validFrom) && now.isBefore(expiresAt)
-                && (maximumUses == null || redeemedCount < maximumUses)
-                && (origin != CouponOrigin.RETURN || remainingCreditCents != null && remainingCreditCents > 0);
-    }
+  public Coupon(
+      String code,
+      String description,
+      CouponDiscountType discountType,
+      Long discountCents,
+      BigDecimal discountPercentage,
+      Long maximumDiscountCents,
+      Long minimumOrderValueCents,
+      LocalDateTime validFrom,
+      LocalDateTime expiresAt,
+      Integer maximumUses,
+      boolean active) {
+    update(
+        code,
+        description,
+        discountType,
+        discountCents,
+        discountPercentage,
+        maximumDiscountCents,
+        minimumOrderValueCents,
+        validFrom,
+        expiresAt,
+        maximumUses,
+        active);
+  }
 
-    public void deactivate() {
-        active = false;
-    }
+  public void update(
+      String code,
+      String description,
+      CouponDiscountType discountType,
+      Long discountCents,
+      BigDecimal discountPercentage,
+      Long maximumDiscountCents,
+      Long minimumOrderValueCents,
+      LocalDateTime validFrom,
+      LocalDateTime expiresAt,
+      Integer maximumUses,
+      boolean active) {
+    this.code = code;
+    this.description = description;
+    this.discountType = discountType;
+    this.discountCents = discountCents;
+    this.discountPercentage = discountPercentage;
+    this.maximumDiscountCents = maximumDiscountCents;
+    this.minimumOrderValueCents = minimumOrderValueCents;
+    this.validFrom = validFrom;
+    this.expiresAt = expiresAt;
+    this.maximumUses = maximumUses;
+    this.active = active;
+  }
 
-    public void activate() {
-        active = true;
-    }
+  public boolean isCurrentlyValid(LocalDateTime now) {
+    return active
+        && !now.isBefore(validFrom)
+        && now.isBefore(expiresAt)
+        && (maximumUses == null || redeemedCount < maximumUses)
+        && (origin != CouponOrigin.RETURN
+            || remainingCreditCents != null && remainingCreditCents > 0);
+  }
 
-    public void registerRedemption() {
-        redeemedCount++;
-    }
+  public void deactivate() {
+    active = false;
+  }
 
-    public void revertRedemption() {
-        if (redeemedCount > 0) redeemedCount--;
-    }
+  public void activate() {
+    active = true;
+  }
 
-    public boolean isAvailableTo(Long customerId) {
-        return assignedCustomer == null || assignedCustomer.getId().equals(customerId);
-    }
+  public void registerRedemption() {
+    redeemedCount++;
+  }
 
-    public boolean isReturnCredit() {
-        return origin == CouponOrigin.RETURN;
-    }
+  public void revertRedemption() {
+    if (redeemedCount > 0) redeemedCount--;
+  }
 
-    public void consumeCredit(long value) {
-        remainingCreditCents = Math.max(0, remainingCreditCents - value);
-        redeemedCount++;
-    }
+  public boolean isAvailableTo(Long customerId) {
+    return assignedCustomer == null
+        || assignedCustomer.getId().equals(customerId);
+  }
 
-    public void restoreCredit(long value) {
-        remainingCreditCents += value;
-        if (redeemedCount > 0) redeemedCount--;
-    }
+  public boolean isReturnCredit() {
+    return origin == CouponOrigin.RETURN;
+  }
 
-    public static Coupon returnCredit(String code, Customer customer, long credit) {
-        Coupon coupon = new Coupon(code, "Crédito de devolução", CouponDiscountType.FIXED_AMOUNT, credit, null, null, null, LocalDateTime.now(), LocalDateTime.now().plusYears(1), null, true);
-        coupon.origin = CouponOrigin.RETURN;
-        coupon.remainingCreditCents = credit;
-        coupon.assignedCustomer = customer;
-        return coupon;
-    }
+  public void consumeCredit(long value) {
+    remainingCreditCents = Math.max(0, remainingCreditCents - value);
+    redeemedCount++;
+  }
+
+  public void restoreCredit(long value) {
+    remainingCreditCents += value;
+    if (redeemedCount > 0) redeemedCount--;
+  }
+
+  public static Coupon returnCredit(
+      String code, Customer customer, long credit) {
+    Coupon coupon =
+        new Coupon(
+            code,
+            "Crédito de devolução",
+            CouponDiscountType.FIXED_AMOUNT,
+            credit,
+            null,
+            null,
+            null,
+            LocalDateTime.now(),
+            LocalDateTime.now().plusYears(1),
+            null,
+            true);
+    coupon.origin = CouponOrigin.RETURN;
+    coupon.remainingCreditCents = credit;
+    coupon.assignedCustomer = customer;
+    return coupon;
+  }
 }

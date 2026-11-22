@@ -8,31 +8,31 @@ import {
   Search,
   UserRound,
   X,
-} from "lucide-react";
-import { useEffect, useState } from "react";
-import { Link, useLocation, useNavigate } from "react-router";
+} from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { Link, useLocation, useNavigate } from 'react-router';
 
-import { AppLogo } from "@/components/shared/AppLogo";
-import { AccountMenu } from "@/components/shared/AccountMenu";
-import { FilterSelect } from "@/components/shared/FilterSelect";
-import { Button } from "@/components/ui/button";
+import { AppLogo } from '@/components/shared/AppLogo';
+import { AccountMenu } from '@/components/shared/AccountMenu';
+import { FilterSelect } from '@/components/shared/FilterSelect';
+import { Button } from '@/components/ui/button';
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-} from "@/components/ui/popover";
-import { useCommerce } from "@/data/useCommerce";
+} from '@/components/ui/popover';
+import { useCommerce } from '@/data/useCommerce';
 import {
   apiRequest,
   getSavedAccounts,
   getSessionRole,
   hasAdminSession,
   switchAccount,
-} from "@/lib/customerApi";
-import { logout as logoutApi } from "@/lib/customerApi";
-import { useCategories } from "@/data/useCategories";
+} from '@/lib/customerApi';
+import { logout as logoutApi } from '@/lib/customerApi';
+import { useCategories } from '@/data/useCategories';
 
-import { PageContainer } from "./PageContainer";
+import { PageContainer } from './PageContainer';
 
 interface StoreHeaderProps {
   cartItemCount?: number;
@@ -50,10 +50,10 @@ export function StoreHeader({ cartItemCount = 0 }: StoreHeaderProps) {
   const { search } = useLocation();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState(
-    () => new URLSearchParams(search).get("busca") ?? "",
+    () => new URLSearchParams(search).get('busca') ?? '',
   );
   const [categoryId, setCategoryId] = useState(
-    () => new URLSearchParams(search).get("categoria") ?? "",
+    () => new URLSearchParams(search).get('categoria') ?? '',
   );
   const [notifications, setNotifications] = useState<CustomerNotification[]>(
     [],
@@ -62,7 +62,7 @@ export function StoreHeader({ cartItemCount = 0 }: StoreHeaderProps) {
   const categories = useCategories();
   const navigate = useNavigate();
   const adminName = hasAdminSession()
-    ? localStorage.getItem("cohida-admin-name")
+    ? localStorage.getItem('cohida-admin-name')
     : null;
   const currentCartItemCount =
     cartItemCount ||
@@ -80,7 +80,7 @@ export function StoreHeader({ cartItemCount = 0 }: StoreHeaderProps) {
     .map((name) => name[0])
     .filter(Boolean)
     .slice(0, 2)
-    .join("")
+    .join('')
     .toUpperCase();
 
   function handleLogout() {
@@ -93,26 +93,38 @@ export function StoreHeader({ cartItemCount = 0 }: StoreHeaderProps) {
     if (!account) return;
 
     switchAccount(account);
-    window.location.assign(account.role === "ADMIN" ? "/admin" : "/");
+    window.location.assign(account.role === 'ADMIN' ? '/admin' : '/');
   }
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
       const searchParams = new URLSearchParams(search);
-      setSearchTerm(searchParams.get("busca") ?? "");
-      setCategoryId(searchParams.get("categoria") ?? "");
+      setSearchTerm(searchParams.get('busca') ?? '');
+      setCategoryId(searchParams.get('categoria') ?? '');
     }, 0);
     return () => window.clearTimeout(timer);
   }, [search]);
 
   useEffect(() => {
-    if (getSessionRole() !== "CUSTOMER") {
+    if (getSessionRole() !== 'CUSTOMER') {
       const timer = window.setTimeout(() => setNotifications([]), 0);
       return () => window.clearTimeout(timer);
     }
-    void apiRequest<CustomerNotification[]>("/customers/me/notifications")
-      .then(setNotifications)
-      .catch(() => setNotifications([]));
+    const refreshNotifications = () => {
+      void apiRequest<CustomerNotification[]>('/customers/me/notifications')
+        .then(setNotifications)
+        .catch(() => setNotifications([]));
+    };
+    refreshNotifications();
+    window.addEventListener(
+      'cohida:notifications-refresh',
+      refreshNotifications,
+    );
+    return () =>
+      window.removeEventListener(
+        'cohida:notifications-refresh',
+        refreshNotifications,
+      );
   }, [state.sessionCustomerId]);
 
   useEffect(() => {
@@ -121,18 +133,18 @@ export function StoreHeader({ cartItemCount = 0 }: StoreHeaderProps) {
     if (
       !query &&
       !categoryId &&
-      !currentParams.has("busca") &&
-      !currentParams.has("categoria")
+      !currentParams.has('busca') &&
+      !currentParams.has('categoria')
     ) {
       return;
     }
 
     const timeoutId = window.setTimeout(() => {
       const params = new URLSearchParams();
-      if (query) params.set("busca", query);
-      if (categoryId) params.set("categoria", categoryId);
+      if (query) params.set('busca', query);
+      if (categoryId) params.set('categoria', categoryId);
       const queryString = params.toString();
-      navigate(`/produtos${queryString ? `?${queryString}` : ""}`);
+      navigate(`/produtos${queryString ? `?${queryString}` : ''}`);
       setIsMenuOpen(false);
     }, 400);
 
@@ -141,78 +153,106 @@ export function StoreHeader({ cartItemCount = 0 }: StoreHeaderProps) {
 
   const searchForm = (
     <div
-      className="flex w-full min-w-0 items-center gap-2 md:w-[26rem] lg:w-[34rem]"
-      role="search"
+      className={[
+        'flex w-full min-w-0 items-center gap-2',
+        'md:w-[26rem] lg:w-[34rem]',
+      ].join(' ')}
+      role='search'
     >
-      <label className="sr-only" htmlFor="store-search">
+      <label className='sr-only' htmlFor='store-search'>
         Buscar produtos
       </label>
-      <div className="relative min-w-0 flex-1">
-        <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
+      <div className='relative min-w-0 flex-1'>
+        <Search
+          className={[
+            'pointer-events-none absolute top-1/2',
+            'left-3 size-4 -translate-y-1/2',
+            'text-muted-foreground',
+          ].join(' ')}
+        />
         <input
-          className="h-10 w-full rounded-lg border border-input bg-background py-2 pr-3 pl-9 text-sm outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
-          id="store-search"
+          className={[
+            'h-10 w-full rounded-lg border border-input',
+            'bg-background py-2 pr-3 pl-9 text-sm',
+            'outline-none focus-visible:ring-3',
+            'focus-visible:ring-ring/50',
+          ].join(' ')}
+          id='store-search'
           onChange={(event) => setSearchTerm(event.target.value)}
-          placeholder="Buscar produtos"
+          placeholder='Buscar produtos'
           value={searchTerm}
         />
       </div>
       <FilterSelect
-        ariaLabel="Filtrar produtos por categoria"
-        className="min-w-34 shrink-0"
+        ariaLabel='Filtrar produtos por categoria'
+        className='min-w-34 shrink-0'
         onValueChange={setCategoryId}
         options={categories.map((category) => ({
           label: category.name,
-          value: category.id,
+          value: category.slug,
         }))}
-        placeholder="Categoria"
+        placeholder='Categoria'
         value={categoryId}
       />
     </div>
   );
 
   return (
-    <header className="sticky top-0 z-30 border-b border-border bg-background/90 backdrop-blur">
-      <PageContainer className="relative grid h-18 grid-cols-[1fr_auto_1fr] items-center gap-3">
+    <header
+      className={[
+        'sticky top-0 z-30 border-b border-border',
+        'bg-background/90 backdrop-blur',
+      ].join(' ')}
+    >
+      <PageContainer
+        className={[
+          'relative grid h-18',
+          'grid-cols-[1fr_auto_1fr] items-center',
+          'gap-3',
+        ].join(' ')}
+      >
         <Link
-          aria-label="coHida — início"
-          className="shrink-0 justify-self-start"
-          to="/"
+          aria-label='coHida — início'
+          className='shrink-0 justify-self-start'
+          to='/'
         >
-          <AppLogo variant="default" />
+          <AppLogo variant='default' />
         </Link>
-        <div className="hidden min-w-0 justify-self-center md:block">
+        <div className='hidden min-w-0 justify-self-center md:block'>
           {searchForm}
         </div>
-        <div className="flex items-center gap-2 justify-self-end">
+        <div className='flex items-center gap-2 justify-self-end'>
           <Popover>
             <PopoverTrigger
               render={
                 <Button
-                  aria-label="Notificações"
-                  size="icon"
-                  variant="outline"
+                  aria-label='Notificações'
+                  size='icon'
+                  variant='outline'
                 />
               }
             >
               <Bell />
             </PopoverTrigger>
-            <PopoverContent align="end" className="w-72 p-4">
-              <p className="font-medium">Notificações</p>
+            <PopoverContent align='end' className='w-72 p-4'>
+              <p className='font-medium'>Notificações</p>
               {notifications.length ? (
-                <div className="mt-3 grid gap-2">
+                <div className='mt-3 grid gap-2'>
                   {notifications.map((notification) => (
                     <Link
-                      className="rounded-lg bg-muted p-3 text-sm hover:bg-muted/70"
+                      className={[
+                        'rounded-lg bg-muted p-3 text-sm',
+                        'hover:bg-muted/70',
+                      ].join(' ')}
                       key={notification.id}
-                      to={notification.targetPath ?? "/pedidos"}
+                      to={notification.targetPath ?? '/pedidos'}
                     >
                       {notification.message}
                     </Link>
                   ))}
                 </div>
               ) : (
-                <p className="mt-1 text-sm text-muted-foreground">
+                <p className='mt-1 text-sm text-muted-foreground'>
                   Você não tem novas notificações.
                 </p>
               )}
@@ -220,14 +260,20 @@ export function StoreHeader({ cartItemCount = 0 }: StoreHeaderProps) {
           </Popover>
           <Button
             aria-label={`Carrinho com ${currentCartItemCount} itens`}
-            className="relative"
-            render={<Link to="/carrinho" />}
-            size="icon"
-            variant="outline"
+            className='relative'
+            render={<Link to='/carrinho' />}
+            size='icon'
+            variant='outline'
           >
             <ShoppingCart />
             {currentCartItemCount ? (
-              <span className="absolute -right-2 -top-2 grid size-5 place-items-center rounded-full bg-foreground text-xs text-background">
+              <span
+                className={[
+                  'absolute -right-2 -top-2 grid size-5',
+                  'place-items-center rounded-full',
+                  'bg-foreground text-xs text-background',
+                ].join(' ')}
+              >
                 {currentCartItemCount}
               </span>
             ) : null}
@@ -238,16 +284,16 @@ export function StoreHeader({ cartItemCount = 0 }: StoreHeaderProps) {
             showAddAccount={signedIn}
             ariaLabel={
               signedInAsAdmin
-                ? "Menu da administradora"
+                ? 'Menu da administradora'
                 : signedIn
-                  ? "Menu da conta"
-                  : "Entrar ou criar conta"
+                  ? 'Menu da conta'
+                  : 'Entrar ou criar conta'
             }
             onSwitchAccount={handleAccountSwitch}
-            triggerClassName="font-semibold"
+            triggerClassName='font-semibold'
             trigger={
               accountInitials ? (
-                <span className="text-xs" title={accountName ?? undefined}>
+                <span className='text-xs' title={accountName ?? undefined}>
                   {accountInitials}
                 </span>
               ) : (
@@ -258,18 +304,18 @@ export function StoreHeader({ cartItemCount = 0 }: StoreHeaderProps) {
             {signedInAsAdmin ? (
               <>
                 <Button
-                  className="w-full justify-start"
-                  render={<Link to="/admin" />}
-                  variant="ghost"
+                  className='w-full justify-start'
+                  render={<Link to='/admin' />}
+                  variant='ghost'
                 >
                   <LayoutDashboard />
                   Ir para admin
                 </Button>
                 <Button
-                  className="w-full justify-start"
+                  className='w-full justify-start'
                   onClick={handleLogout}
-                  render={<Link to="/" />}
-                  variant="ghost"
+                  render={<Link to='/' />}
+                  variant='ghost'
                 >
                   <LogOut />
                   Sair
@@ -278,18 +324,18 @@ export function StoreHeader({ cartItemCount = 0 }: StoreHeaderProps) {
             ) : signedIn ? (
               <>
                 <Button
-                  className="w-full justify-start"
-                  render={<Link to="/conta" />}
-                  variant="ghost"
+                  className='w-full justify-start'
+                  render={<Link to='/conta' />}
+                  variant='ghost'
                 >
                   <UserRound />
                   Minha conta
                 </Button>
                 <Button
-                  className="w-full justify-start"
+                  className='w-full justify-start'
                   onClick={handleLogout}
-                  render={<Link to="/" />}
-                  variant="ghost"
+                  render={<Link to='/' />}
+                  variant='ghost'
                 >
                   <LogOut />
                   Sair
@@ -297,9 +343,9 @@ export function StoreHeader({ cartItemCount = 0 }: StoreHeaderProps) {
               </>
             ) : (
               <Button
-                className="w-full justify-start"
-                render={<Link to="/entrar" />}
-                variant="ghost"
+                className='w-full justify-start'
+                render={<Link to='/entrar' />}
+                variant='ghost'
               >
                 <LogIn />
                 Entrar / cadastrar-se
@@ -307,17 +353,23 @@ export function StoreHeader({ cartItemCount = 0 }: StoreHeaderProps) {
             )}
           </AccountMenu>
           <Button
-            aria-label={isMenuOpen ? "Fechar menu" : "Abrir menu"}
-            className="md:hidden"
+            aria-label={isMenuOpen ? 'Fechar menu' : 'Abrir menu'}
+            className='md:hidden'
             onClick={() => setIsMenuOpen((open) => !open)}
-            size="icon"
-            variant="outline"
+            size='icon'
+            variant='outline'
           >
             {isMenuOpen ? <X /> : <Menu />}
           </Button>
         </div>
         {isMenuOpen ? (
-          <div className="absolute top-full right-0 left-0 border-b border-border bg-background p-3 shadow-lg md:hidden">
+          <div
+            className={[
+              'absolute top-full right-0 left-0 border-b',
+              'border-border bg-background p-3 shadow-lg',
+              'md:hidden',
+            ].join(' ')}
+          >
             {searchForm}
           </div>
         ) : null}

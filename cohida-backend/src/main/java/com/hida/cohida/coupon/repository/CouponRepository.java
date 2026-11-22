@@ -11,24 +11,26 @@ import java.util.List;
 import java.util.Optional;
 
 public interface CouponRepository extends JpaRepository<Coupon, Long> {
-    List<Coupon> findAllByOrderByCreatedAtDesc();
+  List<Coupon> findAllByOrderByCreatedAtDesc();
 
-    @Query("""
-            select coupon from Coupon coupon
-            where coupon.active = true
-              and (coupon.assignedCustomer is null or coupon.assignedCustomer.id = :customerId)
-            order by coupon.createdAt desc
-            """)
-    List<Coupon> findAvailableToCustomer(@Param("customerId") Long customerId);
+  @Query(
+      """
+      select coupon from Coupon coupon
+      where coupon.active = true
+        and (coupon.assignedCustomer is null or coupon.assignedCustomer.id = :\
+      customerId)
+      order by coupon.createdAt desc
+      """)
+  List<Coupon> findAvailableToCustomer(@Param("customerId") Long customerId);
 
-    Optional<Coupon> findByCode(String code);
+  Optional<Coupon> findByCode(String code);
 
-    boolean existsByCode(String code);
+  boolean existsByCode(String code);
 
-    boolean existsByCodeAndIdNot(String code, Long id);
+  boolean existsByCodeAndIdNot(String code, Long id);
 
-    List<Coupon> findByCodeStartingWith(String code);
+  List<Coupon> findByCodeStartingWith(String code);
 
-    @Lock(LockModeType.PESSIMISTIC_WRITE)
-    Optional<Coupon> findWithLockById(Long id);
+  @Lock(LockModeType.PESSIMISTIC_WRITE)
+  Optional<Coupon> findWithLockById(Long id);
 }

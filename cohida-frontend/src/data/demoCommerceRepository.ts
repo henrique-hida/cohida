@@ -1,10 +1,13 @@
-import type { CartItem, Order, Product } from "@/types";
-import type { CustomerResponse as ApiCustomerResponse } from "@/lib/customerApi";
+import type { CartItem, Order, Product } from '@/types';
+// prettier-ignore
+import type {
+  CustomerResponse as ApiCustomerResponse,
+} from '@/lib/customerApi';
 import {
   customerApi,
   logout as clearApiSession,
   updateCurrentAccountName,
-} from "@/lib/customerApi";
+} from '@/lib/customerApi';
 import {
   commerceApi,
   type ApiCart,
@@ -16,8 +19,8 @@ import {
   type ApiExpiredCartItem,
   resolveProductImageUrl,
   toStoredProductImageUrl,
-} from "@/lib/commerceApi";
-import { tokenizeCardForProcessor } from "@/lib/paymentTokenization";
+} from '@/lib/commerceApi';
+import { tokenizeCardForProcessor } from '@/lib/paymentTokenization';
 
 export interface DemoAddress {
   city: string;
@@ -29,7 +32,7 @@ export interface DemoAddress {
   postalCode: string;
   state: string;
   street: string;
-  type: "billing" | "delivery";
+  type: 'billing' | 'delivery';
 }
 export interface DemoCard {
   brand: string;
@@ -52,7 +55,7 @@ export interface DemoCoupon {
   code: string;
   createdAt: string;
   id: string;
-  kind: "exchange" | "promotional";
+  kind: 'exchange' | 'promotional';
   valueCents: number;
 }
 export interface DemoExchange {
@@ -62,7 +65,7 @@ export interface DemoExchange {
   productName?: string;
   reason: string;
   status:
-    "requested" | "authorized" | "sent" | "received" | "completed" | "denied";
+    'requested' | 'authorized' | 'sent' | 'received' | 'completed' | 'denied';
   dispatch?: {
     carrier: string;
     notes?: string;
@@ -134,16 +137,22 @@ function mapProduct(product: ApiProduct): Product {
     brand: product.brand,
     description: product.description,
     priceCents: variantPrices.length ? Math.min(...variantPrices) : 0,
-    rating: 0,
-    reviewCount: 0,
-    status: product.active ? "active" : "inactive",
-    categoryIds: product.categories,
+    rating: product.rating,
+    reviewCount: product.reviewCount,
+    status: product.active ? 'active' : 'inactive',
+    categoryIds: product.categoryIds.map(String),
     images: imageUrl
-      ? [{ alt: product.name, id: `${product.id}-main`, src: imageUrl }]
+      ? [
+          {
+            alt: product.name,
+            id: `${product.id}-main`,
+            src: imageUrl,
+          },
+        ]
       : [],
     attributes: {
       marca: product.brand,
-      categorias: product.categories.join(", "),
+      categorias: product.categoryIds.join(', '),
       estoque: `${product.variants.reduce(
         (total, variant) => total + variant.stockQuantity,
         0,
@@ -163,20 +172,20 @@ function mapProduct(product: ApiProduct): Product {
 }
 
 function mapOrder(order: ApiOrder): Order {
-  const statuses: Record<string, Order["status"]> = {
-    EM_ABERTO: "processing",
-    EM_PROCESSAMENTO: "processing",
-    APROVADA: "approved",
-    REPROVADA: "rejected",
-    PAGAMENTO_REALIZADO: "approved",
-    EM_TRANSITO: "in_transit",
-    ENTREGUE: "delivered",
-    CANCELADO: "rejected",
+  const statuses: Record<string, Order['status']> = {
+    EM_ABERTO: 'processing',
+    EM_PROCESSAMENTO: 'processing',
+    APROVADA: 'approved',
+    REPROVADA: 'rejected',
+    PAGAMENTO_REALIZADO: 'approved',
+    EM_TRANSITO: 'in_transit',
+    ENTREGUE: 'delivered',
+    CANCELADO: 'rejected',
   };
   return {
     id: String(order.id),
     customerId: String(order.customerId),
-    status: statuses[order.status] ?? "processing",
+    status: statuses[order.status] ?? 'processing',
     items: order.items.map((item) => ({
       id: String(item.id ?? `${order.id}-${item.variantId}`),
       productId: item.productName,
@@ -229,9 +238,9 @@ function mapCoupon(coupon: ApiCoupon): DemoCoupon {
     code: coupon.code,
     active: coupon.active,
     createdAt: coupon.createdAt,
-    kind: coupon.origin === "RETURN" ? "exchange" : "promotional",
+    kind: coupon.origin === 'RETURN' ? 'exchange' : 'promotional',
     valueCents:
-      coupon.origin === "RETURN"
+      coupon.origin === 'RETURN'
         ? (coupon.remainingCreditCents ?? coupon.discountCents ?? 0)
         : (coupon.discountCents ??
           Math.round((coupon.discountPercentage ?? 0) * 100)),
@@ -239,20 +248,24 @@ function mapCoupon(coupon: ApiCoupon): DemoCoupon {
 }
 
 function mapReturn(item: ApiReturn): DemoExchange {
-  const statuses: Record<string, DemoExchange["status"]> = {
-    EM_TROCA: "requested",
-    TROCA_AUTORIZADA: "authorized",
-    TROCA_NEGADA: "denied",
-    TROCADO: "completed",
+  const statuses: Record<string, DemoExchange['status']> = {
+    EM_TROCA: 'requested',
+    TROCA_AUTORIZADA: 'authorized',
+    TROCA_NEGADA: 'denied',
+    TROCADO: 'completed',
   };
   return {
     id: String(item.id),
     orderId: String(item.orderId),
-    orderItemId: item.orderItemId === null ? "" : String(item.orderItemId),
+    orderItemId: item.orderItemId === null ? '' : String(item.orderItemId),
     reason: item.reason,
-    status: statuses[item.status] ?? "requested",
+    status: statuses[item.status] ?? 'requested',
     dispatch: item.trackingCode
-      ? { carrier: "", postedAt: "", trackingCode: item.trackingCode }
+      ? {
+          carrier: '',
+          postedAt: '',
+          trackingCode: item.trackingCode,
+        }
       : undefined,
   };
 }
@@ -321,13 +334,13 @@ export const demoCommerceRepository = {
         cpf: customer.cpf,
         phone: customer.phone,
         birthDate: customer.birthDate,
-        passwordHash: "",
+        passwordHash: '',
       },
       sessionCustomerId: String(customer.id),
       addresses: customer.addresses.map((address) => ({
         ...address,
         id: String(address.id),
-        type: address.type === "BILLING" ? "billing" : "delivery",
+        type: address.type === 'BILLING' ? 'billing' : 'delivery',
       })),
     });
     await refreshCustomerData();
@@ -342,23 +355,25 @@ export const demoCommerceRepository = {
     await refreshProducts(true);
   },
   async loadCustomerCoupons() {
-    patch({ coupons: (await commerceApi.customerCoupons()).map(mapCoupon) });
+    patch({
+      coupons: (await commerceApi.customerCoupons()).map(mapCoupon),
+    });
   },
   logout() {
     clearApiSession();
     save({ ...emptyState(), products: state.products });
   },
   async updateCustomer(
-    values: Pick<DemoCustomer, "birthDate" | "email" | "name" | "phone">,
+    values: Pick<DemoCustomer, 'birthDate' | 'email' | 'name' | 'phone'>,
   ) {
     await demoCommerceRepository.startApiSession(
       await customerApi.updateProfile(values),
     );
   },
-  async addAddress(address: Omit<DemoAddress, "id">) {
+  async addAddress(address: Omit<DemoAddress, 'id'>) {
     const saved = await customerApi.addAddress({
       ...address,
-      type: address.type === "billing" ? "BILLING" : "DELIVERY",
+      type: address.type === 'billing' ? 'BILLING' : 'DELIVERY',
     });
     const created = { ...address, id: String(saved.id) };
     patch({ addresses: [...state.addresses, created] });
@@ -370,10 +385,10 @@ export const demoCommerceRepository = {
       addresses: state.addresses.filter((address) => address.id !== id),
     });
   },
-  async updateAddress(id: string, address: Omit<DemoAddress, "id">) {
+  async updateAddress(id: string, address: Omit<DemoAddress, 'id'>) {
     const saved = await customerApi.updateAddress(id, {
       ...address,
-      type: address.type === "billing" ? "BILLING" : "DELIVERY",
+      type: address.type === 'billing' ? 'BILLING' : 'DELIVERY',
     });
     patch({
       addresses: state.addresses.map((item) =>
@@ -381,7 +396,7 @@ export const demoCommerceRepository = {
       ),
     });
   },
-  async addCard(card: Omit<DemoCard, "id" | "lastDigits">, cardNumber: string) {
+  async addCard(card: Omit<DemoCard, 'id' | 'lastDigits'>, cardNumber: string) {
     const created = await commerceApi.createCard({
       cardNumber,
       label: card.label,
@@ -392,7 +407,7 @@ export const demoCommerceRepository = {
     await refreshCustomerData();
     return created;
   },
-  async updateCard(id: string, values: Pick<DemoCard, "brand" | "label">) {
+  async updateCard(id: string, values: Pick<DemoCard, 'brand' | 'label'>) {
     await commerceApi.updateCard(id, values.label);
     await refreshCustomerData();
   },
@@ -406,14 +421,20 @@ export const demoCommerceRepository = {
   },
   async createCoupon(input: ApiCouponUpsertRequest) {
     await commerceApi.createCoupon(input);
-    patch({ coupons: (await commerceApi.coupons()).map(mapCoupon) });
+    patch({
+      coupons: (await commerceApi.coupons()).map(mapCoupon),
+    });
   },
   async toggleCoupon(id: string) {
     await commerceApi.deactivateCoupon(id);
-    patch({ coupons: (await commerceApi.coupons()).map(mapCoupon) });
+    patch({
+      coupons: (await commerceApi.coupons()).map(mapCoupon),
+    });
   },
   async loadCoupons() {
-    patch({ coupons: (await commerceApi.coupons()).map(mapCoupon) });
+    patch({
+      coupons: (await commerceApi.coupons()).map(mapCoupon),
+    });
   },
   async addCartItem(item: CartItem) {
     patch(
@@ -449,22 +470,27 @@ export const demoCommerceRepository = {
   },
   async createOrder(input: {
     deliveryAddressId: string;
-    payments: Array<{ paymentCardId: string; amountCents: number }>;
+    payments: Array<{
+      paymentCardId: string;
+      amountCents: number;
+    }>;
   }) {
     const order = await commerceApi.checkout(
       input.deliveryAddressId,
       input.payments,
     );
     await refreshCustomerData();
+    window.dispatchEvent(new Event('cohida:notifications-refresh'));
     return mapOrder(order);
   },
   async cancelOrder(id: string) {
-    await commerceApi.cancelOrder(id, "Cancelado pelo cliente");
+    await commerceApi.cancelOrder(id, 'Cancelado pelo cliente');
     await refreshCustomerData();
   },
   async confirmReceipt(id: string) {
     await commerceApi.confirmReceipt(id);
     await refreshCustomerData();
+    window.dispatchEvent(new Event('cohida:notifications-refresh'));
   },
   async requestExchange(input: {
     orderId: string;
@@ -480,7 +506,7 @@ export const demoCommerceRepository = {
   },
   async dispatchExchange(
     id: string,
-    dispatch: NonNullable<DemoExchange["dispatch"]>,
+    dispatch: NonNullable<DemoExchange['dispatch']>,
   ) {
     await commerceApi.dispatchReturn(id, dispatch.trackingCode);
     await refreshCustomerData();
@@ -491,9 +517,9 @@ export const demoCommerceRepository = {
       brand: product.brand,
       description: product.description,
       imageUrl: toStoredProductImageUrl(product.images[0]?.src),
-      categories: product.categoryIds,
+      categoryIds: product.categoryIds.map(Number),
       minimumStock: Number(product.attributes.minimumStock ?? 0),
-      active: product.status === "active",
+      active: product.status === 'active',
       variants: product.variants.map((variant) => ({
         sku: variant.sku,
         label: variant.label,
@@ -507,8 +533,8 @@ export const demoCommerceRepository = {
     else await commerceApi.updateProduct(product.id, body);
     await refreshProducts(true);
   },
-  async setProductStatus(id: string, status: Product["status"]) {
-    if (status === "inactive") await commerceApi.deactivateProduct(id);
+  async setProductStatus(id: string, status: Product['status']) {
+    if (status === 'inactive') await commerceApi.deactivateProduct(id);
     await refreshProducts(true);
   },
   async updateAdminOrderStatus(id: string, status: string) {

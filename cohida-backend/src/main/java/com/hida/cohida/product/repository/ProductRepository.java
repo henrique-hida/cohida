@@ -8,19 +8,19 @@ import java.util.List;
 import java.util.Optional;
 
 public interface ProductRepository extends JpaRepository<Product, Long> {
-    @EntityGraph(attributePaths = {"variants", "categories"})
-    List<Product> findByActiveTrueOrderByNameAsc();
+  @EntityGraph(attributePaths = {"variants", "categories"})
+  List<Product> findByActiveTrueOrderByNameAsc();
 
-    @EntityGraph(attributePaths = {"variants", "categories"})
-    Optional<Product> findBySlugAndActiveTrue(String slug);
+  @EntityGraph(attributePaths = {"variants", "categories"})
+  Optional<Product> findBySlugAndActiveTrue(String slug);
 
-    @EntityGraph(attributePaths = {"variants", "categories"})
-    Optional<Product> findById(Long id);
+  @EntityGraph(attributePaths = {"variants", "categories"})
+  Optional<Product> findById(Long id);
 
-    @EntityGraph(attributePaths = {"variants", "categories"})
-    List<Product> findAllByOrderByNameAsc();
+  @EntityGraph(attributePaths = {"variants", "categories"})
+  List<Product> findAllByOrderByNameAsc();
 
-    boolean existsBySlug(String slug);
+  boolean existsBySlug(String slug);
 
-    List<Product> findByNameStartingWith(String name);
+  List<Product> findByNameStartingWith(String name);
 }

@@ -11,51 +11,56 @@ import org.springframework.data.repository.query.Param;
 import java.util.Optional;
 
 public interface CustomerRepository extends JpaRepository<Customer, Long> {
-    @EntityGraph(attributePaths = {"addresses", "account"})
-    @Query("""
-            select customer from Customer customer
-            where customer.id = :id
-            """)
-    Optional<Customer> findWithDetailsById(@Param("id") Long id);
+  @EntityGraph(attributePaths = {"addresses", "account"})
+  @Query(
+      """
+      select customer from Customer customer
+      where customer.id = :id
+      """)
+  Optional<Customer> findWithDetailsById(@Param("id") Long id);
 
-    @EntityGraph(attributePaths = {"addresses", "account"})
-    @Query(
-            value = """
-                    select customer from Customer customer
-                    join customer.account account
-                    where (:status = 'ALL'
-                        or (:status = 'ACTIVE' and customer.deletedAt is null)
-                        or (:status = 'INACTIVE' and customer.deletedAt is not null))
-                    and (
-                        lower(customer.name) like lower(concat('%', :search, '%'))
-                        or lower(customer.code) like lower(concat('%', :search, '%'))
-                        or customer.cpf like concat('%', :search, '%')
-                        or customer.phone like concat('%', :search, '%')
-                        or lower(account.email) like lower(concat('%', :search, '%'))
-                    )
-                    """,
-            countQuery = """
-                    select count(customer) from Customer customer
-                    join customer.account account
-                    where (:status = 'ALL'
-                        or (:status = 'ACTIVE' and customer.deletedAt is null)
-                        or (:status = 'INACTIVE' and customer.deletedAt is not null))
-                    and (
-                        lower(customer.name) like lower(concat('%', :search, '%'))
-                        or lower(customer.code) like lower(concat('%', :search, '%'))
-                        or customer.cpf like concat('%', :search, '%')
-                        or customer.phone like concat('%', :search, '%')
-                        or lower(account.email) like lower(concat('%', :search, '%'))
-                    )
-                    """
-    )
-    Page<Customer> findPage(@Param("search") String search, @Param("status") String status, Pageable pageable);
+  @EntityGraph(attributePaths = {"addresses", "account"})
+  @Query(
+      value =
+          """
+          select customer from Customer customer
+          join customer.account account
+          where (:status = 'ALL'
+              or (:status = 'ACTIVE' and customer.deletedAt is null)
+              or (:status = 'INACTIVE' and customer.deletedAt is not null))
+          and (
+              lower(customer.name) like lower(concat('%', :search, '%'))
+              or lower(customer.code) like lower(concat('%', :search, '%'))
+              or customer.cpf like concat('%', :search, '%')
+              or customer.phone like concat('%', :search, '%')
+              or lower(account.email) like lower(concat('%', :search, '%'))
+          )
+          """,
+      countQuery =
+          """
+          select count(customer) from Customer customer
+          join customer.account account
+          where (:status = 'ALL'
+              or (:status = 'ACTIVE' and customer.deletedAt is null)
+              or (:status = 'INACTIVE' and customer.deletedAt is not null))
+          and (
+              lower(customer.name) like lower(concat('%', :search, '%'))
+              or lower(customer.code) like lower(concat('%', :search, '%'))
+              or customer.cpf like concat('%', :search, '%')
+              or customer.phone like concat('%', :search, '%')
+              or lower(account.email) like lower(concat('%', :search, '%'))
+          )
+          """)
+  Page<Customer> findPage(
+      @Param("search") String search,
+      @Param("status") String status,
+      Pageable pageable);
 
-    boolean existsByCode(String code);
+  boolean existsByCode(String code);
 
-    boolean existsByCodeAndIdNot(String code, Long id);
+  boolean existsByCodeAndIdNot(String code, Long id);
 
-    boolean existsByCpf(String cpf);
+  boolean existsByCpf(String cpf);
 
-    boolean existsByCpfAndIdNot(String cpf, Long id);
+  boolean existsByCpfAndIdNot(String cpf, Long id);
 }

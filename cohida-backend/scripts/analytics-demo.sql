@@ -11,17 +11,22 @@ END $$;
 INSERT INTO cohida.categories (created_at, updated_at, slug, name, description)
 VALUES (now(), now(), 'analytics-demo-a', 'Análise teste A', 'Categoria isolada para teste de análise.'),
        (now(), now(), 'analytics-demo-b', 'Análise teste B', 'Categoria isolada para teste de análise.')
-ON CONFLICT (slug) DO NOTHING;
+ON CONFLICT (slug) DO UPDATE
+SET name = EXCLUDED.name,
+    description = EXCLUDED.description,
+    deleted_at = NULL,
+    updated_at = now();
 
 INSERT INTO cohida.products (created_at, updated_at, code, slug, name, brand, description, minimum_stock, active)
 VALUES (now(), now(), 'ANALYTICS-DEMO-A', 'analytics-demo-a', 'Análise teste: duas categorias', 'Demo', 'Produto de teste para análise.', 0, true),
        (now(), now(), 'ANALYTICS-DEMO-B', 'analytics-demo-b', 'Análise teste: categoria B', 'Demo', 'Produto de teste para análise.', 0, true)
 ON CONFLICT (code) DO NOTHING;
 
-INSERT INTO cohida.product_categories (product_id, category)
-SELECT p.id, c.category FROM cohida.products p
+INSERT INTO cohida.product_categories (product_id, category_id)
+SELECT p.id, c.id FROM cohida.products p
 JOIN (VALUES ('ANALYTICS-DEMO-A', 'analytics-demo-a'), ('ANALYTICS-DEMO-A', 'analytics-demo-b'),
-             ('ANALYTICS-DEMO-B', 'analytics-demo-b')) c(code, category) ON p.code = c.code
+             ('ANALYTICS-DEMO-B', 'analytics-demo-b')) sample(code, slug) ON p.code = sample.code
+JOIN cohida.categories c ON c.slug = sample.slug
 ON CONFLICT DO NOTHING;
 
 INSERT INTO cohida.product_variants (created_at, updated_at, product_id, sku, label, price_cents, stock_quantity)
@@ -45,6 +50,24 @@ SELECT make_timestamp(extract(year from current_date)::int, s.month_number, 15, 
 FROM samples s CROSS JOIN cohida.accounts a
 WHERE a.email = 'ana.demo@cohida.test'
   AND NOT EXISTS (SELECT 1 FROM cohida.orders o WHERE o.coupon_code = s.marker || '-' || extract(year from current_date)::int);
+
+WITH samples(marker, month_number, status, subtotal, discount, shipping) AS (
+    VALUES ('ANALYTICS-DEMO-JAN', 1, 'ENTREGUE', 30000, 3000, 5000),
+           ('ANALYTICS-DEMO-FEB', 2, 'ENTREGUE', 10000, 0, 1000),
+           ('ANALYTICS-DEMO-MAR', 3, 'EM_TRANSITO', 20000, 0, 1000),
+           ('ANALYTICS-DEMO-APR', 4, 'ENTREGUE', 30001, 1, 0)
+)
+UPDATE cohida.orders o
+SET created_at = make_timestamp(extract(year from current_date)::int, s.month_number, 15, 12, 0, 0),
+    updated_at = now(),
+    status = s.status,
+    subtotal_cents = s.subtotal,
+    discount_cents = s.discount,
+    shipping_cents = s.shipping,
+    total_cents = s.subtotal - s.discount + s.shipping,
+    coupon_value_cents = s.discount
+FROM samples s
+WHERE o.coupon_code = s.marker || '-' || extract(year from current_date)::int;
 
 WITH samples(marker, sku, price) AS (
     VALUES ('ANALYTICS-DEMO-JAN', 'ANALYTICS-DEMO-A-SKU', 10000), ('ANALYTICS-DEMO-JAN', 'ANALYTICS-DEMO-B-SKU', 20000),

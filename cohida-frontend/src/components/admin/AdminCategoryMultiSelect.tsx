@@ -1,13 +1,13 @@
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-} from "@/components/ui/popover";
-import type { Category } from "@/types";
-import { Check, ChevronDown, X } from "lucide-react";
+} from '@/components/ui/popover';
+import type { Category } from '@/types';
+import { Check, ChevronDown, X } from 'lucide-react';
 
 interface AdminCategoryMultiSelectProps {
   ariaLabel?: string;
@@ -19,10 +19,10 @@ interface AdminCategoryMultiSelectProps {
 }
 
 export function AdminCategoryMultiSelect({
-  ariaLabel = "Filtrar análises por categoria",
+  ariaLabel = 'Filtrar análises por categoria',
   categories,
   onValueChange,
-  placeholder = "Categoria",
+  placeholder = 'Categoria',
   showSelectedBadges = false,
   values,
 }: AdminCategoryMultiSelectProps) {
@@ -46,51 +46,55 @@ export function AdminCategoryMultiSelect({
   }
 
   return (
-    <div className="grid min-w-0 gap-2">
-      <div className="flex min-w-0 items-center gap-1">
+    <div className='grid min-w-0 gap-2'>
+      <div className='flex min-w-0 items-center gap-1'>
         <Popover>
           <PopoverTrigger
             render={
               <Button
                 aria-label={ariaLabel}
-                className="h-10 min-w-40 justify-between gap-3 font-normal"
-                variant="outline"
+                className='h-10 min-w-40 justify-between gap-3 font-normal'
+                variant='outline'
               />
             }
           >
             <span
               className={
                 selectedNames.length
-                  ? "truncate"
-                  : "truncate text-muted-foreground"
+                  ? 'truncate'
+                  : 'truncate text-muted-foreground'
               }
             >
               {label}
             </span>
-            <ChevronDown aria-hidden="true" className="text-muted-foreground" />
+            <ChevronDown aria-hidden='true' className='text-muted-foreground' />
           </PopoverTrigger>
-          <PopoverContent align="start" className="w-72 p-1">
+          <PopoverContent align='start' className='w-72 p-1'>
             {categories.length ? (
-              <div className="max-h-64 overflow-y-auto">
+              <div className='max-h-64 overflow-y-auto'>
                 {categories.map((category) => (
                   <label
-                    className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-2 text-sm hover:bg-accent"
+                    className={[
+                      'flex cursor-pointer items-center gap-2',
+                      'rounded-md px-2 py-2 text-sm',
+                      'hover:bg-accent',
+                    ].join(' ')}
                     key={category.id}
                   >
                     <Checkbox
                       checked={values.includes(category.id)}
                       onCheckedChange={() => toggleCategory(category.id)}
                     >
-                      <Check aria-hidden="true" className="size-3" />
+                      <Check aria-hidden='true' className='size-3' />
                     </Checkbox>
-                    <span className="min-w-0 flex-1 truncate">
+                    <span className='min-w-0 flex-1 truncate'>
                       {category.name}
                     </span>
                   </label>
                 ))}
               </div>
             ) : (
-              <p className="px-2 py-3 text-sm text-muted-foreground">
+              <p className='px-2 py-3 text-sm text-muted-foreground'>
                 Nenhuma categoria disponível.
               </p>
             )}
@@ -98,32 +102,38 @@ export function AdminCategoryMultiSelect({
         </Popover>
         {values.length && !showSelectedBadges ? (
           <Button
-            aria-label="Limpar filtro de categorias"
+            aria-label='Limpar filtro de categorias'
             onClick={() => onValueChange([])}
-            size="icon-sm"
-            title="Limpar filtro de categorias"
-            variant="ghost"
+            size='icon-sm'
+            title='Limpar filtro de categorias'
+            variant='ghost'
           >
-            <X aria-hidden="true" className="text-muted-foreground" />
+            <X aria-hidden='true' className='text-muted-foreground' />
           </Button>
         ) : null}
       </div>
       {showSelectedBadges && selectedCategories.length ? (
-        <div className="flex flex-wrap gap-1.5">
+        <div className='flex flex-wrap gap-1.5'>
           {selectedCategories.map((category) => (
             <Badge
-              className="h-7 gap-1.5 pr-1"
+              className='h-7 gap-1.5 pr-1'
               key={category.id}
-              variant="secondary"
+              variant='secondary'
             >
               {category.name}
               <button
                 aria-label={`Remover categoria ${category.name}`}
-                className="grid size-4 place-items-center rounded-full hover:bg-foreground/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                className={[
+                  'grid size-4 place-items-center',
+                  'rounded-full hover:bg-foreground/10',
+                  'focus-visible:outline-none',
+                  'focus-visible:ring-2',
+                  'focus-visible:ring-ring',
+                ].join(' ')}
                 onClick={() => toggleCategory(category.id)}
-                type="button"
+                type='button'
               >
-                <X aria-hidden="true" className="size-3" />
+                <X aria-hidden='true' className='size-3' />
               </button>
             </Badge>
           ))}

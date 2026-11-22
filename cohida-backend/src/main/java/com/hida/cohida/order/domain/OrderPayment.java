@@ -13,31 +13,34 @@ import lombok.Getter;
 @Entity
 @Table(name = "order_payments")
 public class OrderPayment extends DomainEntity {
-    @Getter
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "order_id", nullable = false)
-    private SaleOrder order;
+  @Getter
+  @ManyToOne(fetch = FetchType.LAZY, optional = false)
+  @JoinColumn(name = "order_id", nullable = false)
+  private SaleOrder order;
 
-    @Getter
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "payment_card_id", nullable = false)
-    private PaymentCard paymentCard;
+  @Getter
+  @ManyToOne(fetch = FetchType.LAZY, optional = false)
+  @JoinColumn(name = "payment_card_id", nullable = false)
+  private PaymentCard paymentCard;
 
-    @Getter
-    @Column(name = "amount_cents", nullable = false)
-    private long amountCents;
+  @Getter
+  @Column(name = "amount_cents", nullable = false)
+  private long amountCents;
 
-    @Getter
-    @Column(name = "payment_position", nullable = false)
-    private int paymentPosition;
+  @Getter
+  @Column(name = "payment_position", nullable = false)
+  private int paymentPosition;
 
-    protected OrderPayment() {
-    }
+  protected OrderPayment() {}
 
-    OrderPayment(SaleOrder order, PaymentCard paymentCard, long amountCents, int paymentPosition) {
-        this.order = order;
-        this.paymentCard = paymentCard;
-        this.amountCents = amountCents;
-        this.paymentPosition = paymentPosition;
-    }
+  OrderPayment(
+      SaleOrder order,
+      PaymentCard paymentCard,
+      long amountCents,
+      int paymentPosition) {
+    this.order = order;
+    this.paymentCard = paymentCard;
+    this.amountCents = amountCents;
+    this.paymentPosition = paymentPosition;
+  }
 }

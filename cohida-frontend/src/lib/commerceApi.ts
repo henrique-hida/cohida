@@ -1,17 +1,17 @@
-import { apiRequest } from "./customerApi";
+import { apiRequest } from './customerApi';
 
 const apiBaseUrl =
-  import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8080/api";
+  import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8080/api';
 
 function apiOrigin() {
   const origin =
-    typeof window === "undefined" ? "http://localhost" : window.location.origin;
+    typeof window === 'undefined' ? 'http://localhost' : window.location.origin;
   return new URL(apiBaseUrl, origin).origin;
 }
 
 export function resolveProductImageUrl(imageUrl: string | null | undefined) {
   if (!imageUrl) return undefined;
-  if (imageUrl.startsWith("/api/products/images/")) {
+  if (imageUrl.startsWith('/api/products/images/')) {
     return new URL(imageUrl, apiOrigin()).toString();
   }
   return imageUrl;
@@ -22,12 +22,12 @@ export function toStoredProductImageUrl(imageUrl: string | null | undefined) {
   try {
     const parsed = new URL(
       imageUrl,
-      typeof window === "undefined"
-        ? "http://localhost"
+      typeof window === 'undefined'
+        ? 'http://localhost'
         : window.location.origin,
     );
     return parsed.origin === apiOrigin() &&
-      parsed.pathname.startsWith("/api/products/images/")
+      parsed.pathname.startsWith('/api/products/images/')
       ? parsed.pathname
       : imageUrl;
   } catch {
@@ -55,13 +55,30 @@ export interface ApiProduct {
   imageUrl: string | null;
   minimumStock: number;
   active: boolean;
-  categories: string[];
+  rating: number;
+  reviewCount: number;
+  categoryIds: number[];
   variants: ApiVariant[];
   createdAt: string;
 }
 
 export interface ApiProductImageUpload {
   imageUrl: string;
+}
+
+export interface ApiProductReview {
+  id: number;
+  reviewer: string;
+  verifiedPurchase: boolean;
+  rating: number;
+  description: string;
+  createdAt: string;
+}
+
+export interface ApiReviewEligibility {
+  eligible: boolean;
+  alreadyReviewed: boolean;
+  orderId: number | null;
 }
 
 export interface ApiCategory {
@@ -88,7 +105,7 @@ export interface ApiCart {
   id: number;
   items: ApiCartItem[];
   couponCode: string | null;
-  /** Backward-compatible while clients transition from couponCode to coupons. */
+  /** Compatibility during the transition from couponCode to coupons. */
   couponCodes?: string[];
   subtotalCents: number;
   discountCents: number;
@@ -162,7 +179,7 @@ export interface ApiCoupon {
   id: number;
   code: string;
   description: string | null;
-  discountType: "FIXED" | "PERCENTAGE";
+  discountType: 'FIXED' | 'PERCENTAGE';
   discountCents: number | null;
   discountPercentage: number | null;
   maximumDiscountCents: number | null;
@@ -173,7 +190,7 @@ export interface ApiCoupon {
   redeemedCount: number;
   active: boolean;
   currentlyValid: boolean;
-  origin?: "ADMIN" | "RETURN";
+  origin?: 'ADMIN' | 'RETURN';
   remainingCreditCents?: number | null;
   createdAt: string;
 }
@@ -181,7 +198,7 @@ export interface ApiCoupon {
 export interface ApiCouponUpsertRequest {
   code: string;
   description: string;
-  discountType: "FIXED_AMOUNT" | "PERCENTAGE";
+  discountType: 'FIXED_AMOUNT' | 'PERCENTAGE';
   discountCents: number | null;
   discountPercentage: number | null;
   maximumDiscountCents: number | null;
@@ -212,7 +229,7 @@ export interface ApiAnalyticsOverview {
 
 export interface ApiSalesPoint {
   period: string;
-  category: string | null;
+  categoryId: number | null;
   revenueCents: number;
   orders: number;
 }
@@ -225,112 +242,154 @@ export interface ApiTopProduct {
 }
 
 export const commerceApi = {
-  categories: () => apiRequest<ApiCategory[]>("/categories"),
-  adminCategories: () => apiRequest<ApiCategory[]>("/admin/categories"),
+  categories: () => apiRequest<ApiCategory[]>('/categories'),
+  adminCategories: () => apiRequest<ApiCategory[]>('/admin/categories'),
   createCategory: (body: { name: string; description: string }) =>
-    apiRequest<ApiCategory>("/admin/categories", {
+    apiRequest<ApiCategory>('/admin/categories', {
       body: JSON.stringify(body),
-      method: "POST",
+      method: 'POST',
     }),
   updateCategory: (id: number, body: { name: string; description: string }) =>
     apiRequest<ApiCategory>(`/admin/categories/${id}`, {
       body: JSON.stringify(body),
-      method: "PUT",
+      method: 'PUT',
     }),
   deleteCategory: (id: number) =>
-    apiRequest<void>(`/admin/categories/${id}`, { method: "DELETE" }),
-  products: (search?: string, category?: string) => {
+    apiRequest<void>(`/admin/categories/${id}`, {
+      method: 'DELETE',
+    }),
+  products: (search?: string, categoryId?: string) => {
     const query = new URLSearchParams();
-    if (search) query.set("search", search);
-    if (category) query.set("category", category);
+    if (search) query.set('search', search);
+    if (categoryId) query.set('categoryId', categoryId);
     return apiRequest<ApiProduct[]>(
-      `/products${query.size ? `?${query}` : ""}`,
+      `/products${query.size ? `?${query}` : ''}`,
     );
   },
-  adminProducts: () => apiRequest<ApiProduct[]>("/admin/products"),
+  productReviews: (slug: string) =>
+    apiRequest<ApiProductReview[]>(
+      `/products/${encodeURIComponent(slug)}/reviews`,
+    ),
+  reviewEligibility: (productId: string, orderId?: string) => {
+    const query = orderId ? `?orderId=${encodeURIComponent(orderId)}` : '';
+    return apiRequest<ApiReviewEligibility>(
+      `/customers/me/products/${productId}/review-eligibility${query}`,
+    );
+  },
+  createProductReview: (
+    productId: string,
+    body: {
+      orderId: number;
+      rating: number;
+      description: string;
+    },
+  ) =>
+    apiRequest<ApiProductReview>(
+      `/customers/me/products/${productId}/reviews`,
+      {
+        body: JSON.stringify(body),
+        method: 'POST',
+      },
+    ),
+  adminProducts: () => apiRequest<ApiProduct[]>('/admin/products'),
   uploadProductImage: (file: File) => {
     const body = new FormData();
-    body.append("file", file);
-    return apiRequest<ApiProductImageUpload>("/products/images", {
+    body.append('file', file);
+    return apiRequest<ApiProductImageUpload>('/products/images', {
       body,
-      method: "POST",
+      method: 'POST',
     });
   },
   createProduct: (body: unknown) =>
-    apiRequest<ApiProduct>("/admin/products", {
+    apiRequest<ApiProduct>('/admin/products', {
       body: JSON.stringify(body),
-      method: "POST",
+      method: 'POST',
     }),
   updateProduct: (id: string, body: unknown) =>
     apiRequest<ApiProduct>(`/admin/products/${id}`, {
       body: JSON.stringify(body),
-      method: "PUT",
+      method: 'PUT',
     }),
   deactivateProduct: (id: string) =>
-    apiRequest<void>(`/admin/products/${id}`, { method: "DELETE" }),
+    apiRequest<void>(`/admin/products/${id}`, {
+      method: 'DELETE',
+    }),
   updateStock: (productId: string, variantId: string, stockQuantity: number) =>
     apiRequest<ApiVariant>(
       `/admin/products/${productId}/variants/${variantId}/stock`,
-      { body: JSON.stringify({ stockQuantity }), method: "PATCH" },
+      {
+        body: JSON.stringify({ stockQuantity }),
+        method: 'PATCH',
+      },
     ),
-  cart: () => apiRequest<ApiCart>("/customers/me/cart"),
+  cart: () => apiRequest<ApiCart>('/customers/me/cart'),
   expiredCartItems: () =>
-    apiRequest<ApiExpiredCartItem[]>("/customers/me/cart/expired-items"),
+    apiRequest<ApiExpiredCartItem[]>('/customers/me/cart/expired-items'),
   acknowledgeExpiredCartItem: (id: string) =>
     apiRequest<void>(`/customers/me/cart/expired-items/${id}/acknowledge`, {
-      method: "POST",
+      method: 'POST',
     }),
   addCartItem: (variantId: string, quantity: number) =>
-    apiRequest<ApiCart>("/customers/me/cart/items", {
-      body: JSON.stringify({ variantId: Number(variantId), quantity }),
-      method: "POST",
+    apiRequest<ApiCart>('/customers/me/cart/items', {
+      body: JSON.stringify({
+        variantId: Number(variantId),
+        quantity,
+      }),
+      method: 'POST',
     }),
   updateCartItem: (itemId: string, quantity: number) =>
     apiRequest<ApiCart>(`/customers/me/cart/items/${itemId}`, {
       body: JSON.stringify({ quantity }),
-      method: "PATCH",
+      method: 'PATCH',
     }),
   removeCartItem: (itemId: string) =>
     apiRequest<void>(`/customers/me/cart/items/${itemId}`, {
-      method: "DELETE",
+      method: 'DELETE',
     }),
   applyCoupon: (code: string) =>
-    apiRequest<ApiCart>("/customers/me/cart/coupon", {
+    apiRequest<ApiCart>('/customers/me/cart/coupon', {
       body: JSON.stringify({ code }),
-      method: "POST",
+      method: 'POST',
     }),
   removeCoupon: () =>
-    apiRequest<ApiCart>("/customers/me/cart/coupon", { method: "DELETE" }),
+    apiRequest<ApiCart>('/customers/me/cart/coupon', {
+      method: 'DELETE',
+    }),
   removeCouponByCode: (code: string) =>
     apiRequest<ApiCart>(
       `/customers/me/cart/coupon/${encodeURIComponent(code)}`,
       {
-        method: "DELETE",
+        method: 'DELETE',
       },
     ),
-  cards: () => apiRequest<ApiCard[]>("/customers/me/cards"),
+  cards: () => apiRequest<ApiCard[]>('/customers/me/cards'),
   createCard: (body: unknown) =>
-    apiRequest<ApiCard>("/customers/me/cards", {
+    apiRequest<ApiCard>('/customers/me/cards', {
       body: JSON.stringify(body),
-      method: "POST",
+      method: 'POST',
     }),
   updateCard: (id: string, label: string) =>
     apiRequest<ApiCard>(`/customers/me/cards/${id}`, {
       body: JSON.stringify({ label }),
-      method: "PUT",
+      method: 'PUT',
     }),
   preferCard: (id: string) =>
     apiRequest<ApiCard>(`/customers/me/cards/${id}/preferred`, {
-      method: "PATCH",
+      method: 'PATCH',
     }),
   removeCard: (id: string) =>
-    apiRequest<void>(`/customers/me/cards/${id}`, { method: "DELETE" }),
-  orders: () => apiRequest<ApiOrder[]>("/customers/me/orders"),
+    apiRequest<void>(`/customers/me/cards/${id}`, {
+      method: 'DELETE',
+    }),
+  orders: () => apiRequest<ApiOrder[]>('/customers/me/orders'),
   checkout: (
     deliveryAddressId: string,
-    payments: Array<{ paymentCardId: string; amountCents: number }>,
+    payments: Array<{
+      paymentCardId: string;
+      amountCents: number;
+    }>,
   ) =>
-    apiRequest<ApiOrder>("/customers/me/checkout", {
+    apiRequest<ApiOrder>('/customers/me/checkout', {
       body: JSON.stringify({
         deliveryAddressId: Number(deliveryAddressId),
         payments: payments.map((payment) => ({
@@ -338,18 +397,18 @@ export const commerceApi = {
           amountCents: payment.amountCents,
         })),
       }),
-      method: "POST",
+      method: 'POST',
     }),
   cancelOrder: (id: string, reason: string) =>
     apiRequest<ApiOrder>(`/customers/me/orders/${id}/cancel`, {
       body: JSON.stringify({ reason }),
-      method: "POST",
+      method: 'POST',
     }),
   confirmReceipt: (id: string) =>
     apiRequest<ApiOrder>(`/customers/me/orders/${id}/confirm-receipt`, {
-      method: "POST",
+      method: 'POST',
     }),
-  returns: () => apiRequest<ApiReturn[]>("/customers/me/orders/returns"),
+  returns: () => apiRequest<ApiReturn[]>('/customers/me/orders/returns'),
   requestReturn: (
     orderId: string,
     orderItemId: string | null,
@@ -360,69 +419,71 @@ export const commerceApi = {
         orderItemId: orderItemId === null ? null : Number(orderItemId),
         reason,
       }),
-      method: "POST",
+      method: 'POST',
     }),
   dispatchReturn: (id: string, trackingCode: string) =>
     apiRequest<ApiReturn>(`/customers/me/orders/returns/${id}/dispatch`, {
       body: JSON.stringify({ trackingCode }),
-      method: "POST",
+      method: 'POST',
     }),
-  adminOrders: () => apiRequest<ApiOrder[]>("/admin/orders"),
-  adminReturns: () => apiRequest<ApiReturn[]>("/admin/returns"),
+  adminOrders: () => apiRequest<ApiOrder[]>('/admin/orders'),
+  adminReturns: () => apiRequest<ApiReturn[]>('/admin/returns'),
   updateReturnStatus: (
     id: string,
-    status: "TROCA_AUTORIZADA" | "TROCA_NEGADA" | "TROCADO",
+    status: 'TROCA_AUTORIZADA' | 'TROCA_NEGADA' | 'TROCADO',
     restockItems?: boolean,
   ) =>
     apiRequest<ApiReturn>(`/admin/returns/${id}/status`, {
       body: JSON.stringify({ status, restockItems }),
-      method: "PATCH",
+      method: 'PATCH',
     }),
   updateOrderStatus: (id: string, status: string) =>
     apiRequest<ApiOrder>(`/admin/orders/${id}/status`, {
       body: JSON.stringify({ status }),
-      method: "PATCH",
+      method: 'PATCH',
     }),
   dispatchOrder: (id: string, trackingCode: string) =>
     apiRequest<ApiOrder>(`/admin/orders/${id}/dispatch`, {
       body: JSON.stringify({ trackingCode }),
-      method: "POST",
+      method: 'POST',
     }),
-  coupons: () => apiRequest<ApiCoupon[]>("/admin/coupons"),
-  customerCoupons: () => apiRequest<ApiCoupon[]>("/customers/me/coupons"),
+  coupons: () => apiRequest<ApiCoupon[]>('/admin/coupons'),
+  customerCoupons: () => apiRequest<ApiCoupon[]>('/customers/me/coupons'),
   createCoupon: (body: ApiCouponUpsertRequest) =>
-    apiRequest<ApiCoupon>("/admin/coupons", {
+    apiRequest<ApiCoupon>('/admin/coupons', {
       body: JSON.stringify(body),
-      method: "POST",
+      method: 'POST',
     }),
   updateCoupon: (id: string, body: ApiCouponUpsertRequest) =>
     apiRequest<ApiCoupon>(`/admin/coupons/${id}`, {
       body: JSON.stringify(body),
-      method: "PUT",
+      method: 'PUT',
     }),
   deactivateCoupon: (id: string) =>
-    apiRequest<void>(`/admin/coupons/${id}`, { method: "DELETE" }),
+    apiRequest<void>(`/admin/coupons/${id}`, {
+      method: 'DELETE',
+    }),
   analyticsOverview: (from?: string, to?: string, categories?: string[]) => {
     const query = new URLSearchParams();
-    if (from) query.set("from", from);
-    if (to) query.set("to", to);
-    categories?.forEach((category) => query.append("category", category));
+    if (from) query.set('from', from);
+    if (to) query.set('to', to);
+    categories?.forEach((categoryId) => query.append('categoryId', categoryId));
     return apiRequest<ApiAnalyticsOverview>(
       `/admin/analytics/overview?${query}`,
     );
   },
   analyticsSales: (from?: string, to?: string, categories?: string[]) => {
-    const query = new URLSearchParams({ groupBy: "month" });
-    if (from) query.set("from", from);
-    if (to) query.set("to", to);
-    categories?.forEach((category) => query.append("category", category));
+    const query = new URLSearchParams({ groupBy: 'month' });
+    if (from) query.set('from', from);
+    if (to) query.set('to', to);
+    categories?.forEach((categoryId) => query.append('categoryId', categoryId));
     return apiRequest<ApiSalesPoint[]>(`/admin/analytics/sales?${query}`);
   },
   analyticsTopProducts: (from?: string, to?: string, categories?: string[]) => {
     const query = new URLSearchParams();
-    if (from) query.set("from", from);
-    if (to) query.set("to", to);
-    categories?.forEach((category) => query.append("category", category));
+    if (from) query.set('from', from);
+    if (to) query.set('to', to);
+    categories?.forEach((categoryId) => query.append('categoryId', categoryId));
     return apiRequest<ApiTopProduct[]>(
       `/admin/analytics/products/top?${query}`,
     );

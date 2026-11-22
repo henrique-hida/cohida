@@ -1,4 +1,3 @@
 package com.hida.cohida.paymentcard.dto;
 
-public record PaymentCardUpdateRequest(String label) {
-}
+public record PaymentCardUpdateRequest(String label) {}

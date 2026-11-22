@@ -15,42 +15,48 @@ import java.util.List;
 @RequestMapping("/api/admin/products")
 @PreAuthorize("hasRole('ADMIN')")
 public class AdminProductController {
-    private final ProductService products;
+  private final ProductService products;
 
-    public AdminProductController(ProductService products) {
-        this.products = products;
-    }
+  public AdminProductController(ProductService products) {
+    this.products = products;
+  }
 
-    @GetMapping
-    public List<ProductResponse> findAll() {
-        return products.findAllForAdmin().stream().map(ProductResponse::from).toList();
-    }
+  @GetMapping
+  public List<ProductResponse> findAll() {
+    return products.findAllForAdmin().stream()
+        .map(ProductResponse::from)
+        .toList();
+  }
 
-    @GetMapping("/{id}")
-    public ProductResponse findById(@PathVariable Long id) {
-        return ProductResponse.from(products.findForAdmin(id));
-    }
+  @GetMapping("/{id}")
+  public ProductResponse findById(@PathVariable Long id) {
+    return ProductResponse.from(products.findForAdmin(id));
+  }
 
-    @PostMapping
-    @ResponseStatus(HttpStatus.CREATED)
-    public ProductResponse create(@RequestBody ProductUpsertRequest request) {
-        return ProductResponse.from(products.create(request));
-    }
+  @PostMapping
+  @ResponseStatus(HttpStatus.CREATED)
+  public ProductResponse create(@RequestBody ProductUpsertRequest request) {
+    return ProductResponse.from(products.create(request));
+  }
 
-    @PutMapping("/{id}")
-    public ProductResponse update(@PathVariable Long id, @RequestBody ProductUpsertRequest request) {
-        return ProductResponse.from(products.update(id, request));
-    }
+  @PutMapping("/{id}")
+  public ProductResponse update(
+      @PathVariable Long id, @RequestBody ProductUpsertRequest request) {
+    return ProductResponse.from(products.update(id, request));
+  }
 
-    @PatchMapping("/{productId}/variants/{variantId}/stock")
-    public ProductVariantResponse updateStock(@PathVariable Long productId, @PathVariable Long variantId,
-                                              @RequestBody StockUpdateRequest request) {
-        return ProductVariantResponse.from(products.updateStock(productId, variantId, request.stockQuantity()));
-    }
+  @PatchMapping("/{productId}/variants/{variantId}/stock")
+  public ProductVariantResponse updateStock(
+      @PathVariable Long productId,
+      @PathVariable Long variantId,
+      @RequestBody StockUpdateRequest request) {
+    return ProductVariantResponse.from(
+        products.updateStock(productId, variantId, request.stockQuantity()));
+  }
 
-    @DeleteMapping("/{id}")
-    @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void deactivate(@PathVariable Long id) {
-        products.deactivate(id);
-    }
+  @DeleteMapping("/{id}")
+  @ResponseStatus(HttpStatus.NO_CONTENT)
+  public void deactivate(@PathVariable Long id) {
+    products.deactivate(id);
+  }
 }

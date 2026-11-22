@@ -13,19 +13,23 @@ import java.util.List;
 @RequestMapping("/api/customers/me/notifications")
 @PreAuthorize("hasRole('CUSTOMER')")
 public class NotificationController {
-    private final NotificationService notifications;
+  private final NotificationService notifications;
 
-    public NotificationController(NotificationService n) {
-        notifications = n;
-    }
+  public NotificationController(NotificationService n) {
+    notifications = n;
+  }
 
-    @GetMapping
-    public List<NotificationResponse> all(@AuthenticationPrincipal AuthenticatedCustomer p) {
-        return notifications.all(p.customerId()).stream().map(NotificationResponse::from).toList();
-    }
+  @GetMapping
+  public List<NotificationResponse> all(
+      @AuthenticationPrincipal AuthenticatedCustomer p) {
+    return notifications.all(p.customerId()).stream()
+        .map(NotificationResponse::from)
+        .toList();
+  }
 
-    @PatchMapping("/{id}/read")
-    public void read(@AuthenticationPrincipal AuthenticatedCustomer p, @PathVariable Long id) {
-        notifications.read(p.customerId(), id);
-    }
+  @PatchMapping("/{id}/read")
+  public void read(
+      @AuthenticationPrincipal AuthenticatedCustomer p, @PathVariable Long id) {
+    notifications.read(p.customerId(), id);
+  }
 }

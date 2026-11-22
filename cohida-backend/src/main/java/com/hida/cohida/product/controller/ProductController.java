@@ -9,20 +9,23 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/products")
 public class ProductController {
-    private final ProductService products;
+  private final ProductService products;
 
-    public ProductController(ProductService products) {
-        this.products = products;
-    }
+  public ProductController(ProductService products) {
+    this.products = products;
+  }
 
-    @GetMapping
-    public List<ProductResponse> findAll(@RequestParam(required = false) String search,
-                                         @RequestParam(required = false) String category) {
-        return products.findPublic(search, category).stream().map(ProductResponse::from).toList();
-    }
+  @GetMapping
+  public List<ProductResponse> findAll(
+      @RequestParam(required = false) String search,
+      @RequestParam(required = false) Long categoryId) {
+    return products.findPublic(search, categoryId).stream()
+        .map(ProductResponse::from)
+        .toList();
+  }
 
-    @GetMapping("/{slug}")
-    public ProductResponse findBySlug(@PathVariable String slug) {
-        return ProductResponse.from(products.findPublicBySlug(slug));
-    }
+  @GetMapping("/{slug}")
+  public ProductResponse findBySlug(@PathVariable String slug) {
+    return ProductResponse.from(products.findPublicBySlug(slug));
+  }
 }

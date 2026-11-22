@@ -1,7 +1,7 @@
-import { useEffect, useMemo, useState } from "react";
-import { format, parseISO } from "date-fns";
-import { ptBR } from "date-fns/locale";
-import { CalendarDays } from "lucide-react";
+import { useEffect, useMemo, useState } from 'react';
+import { format, parseISO } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
+import { CalendarDays } from 'lucide-react';
 import {
   Area,
   AreaChart,
@@ -11,30 +11,33 @@ import {
   Tooltip,
   XAxis,
   YAxis,
-} from "recharts";
+} from 'recharts';
 
-import { AdminDataState } from "@/components/admin/AdminDataState";
-import { AdminCategoryMultiSelect } from "@/components/admin/AdminCategoryMultiSelect";
-import { AdminListFiltersCard } from "@/components/admin/AdminListFiltersCard";
-import { AdminPageLayout } from "@/components/admin/AdminPageLayout";
-import { Calendar } from "@/components/ui/calendar";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { AdminDataState } from '@/components/admin/AdminDataState';
+// prettier-ignore
+import {
+  AdminCategoryMultiSelect,
+} from '@/components/admin/AdminCategoryMultiSelect';
+import { AdminListFiltersCard } from '@/components/admin/AdminListFiltersCard';
+import { AdminPageLayout } from '@/components/admin/AdminPageLayout';
+import { Calendar } from '@/components/ui/calendar';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-} from "@/components/ui/popover";
-import { useCategories } from "@/data/useCategories";
-import { commerceApi, type ApiSalesPoint } from "@/lib/commerceApi";
-import { formatCurrency } from "@/lib/currency";
+} from '@/components/ui/popover';
+import { useCategories } from '@/data/useCategories';
+import { commerceApi, type ApiSalesPoint } from '@/lib/commerceApi';
+import { formatCurrency } from '@/lib/currency';
 
 function formatMonth(period: string) {
-  const [year, month] = period.split("-").map(Number);
+  const [year, month] = period.split('-').map(Number);
   if (!year || !month) return period;
-  return new Intl.DateTimeFormat("pt-BR", {
-    month: "short",
-    year: "2-digit",
+  return new Intl.DateTimeFormat('pt-BR', {
+    month: 'short',
+    year: '2-digit',
   }).format(new Date(year, month - 1, 1));
 }
 
@@ -56,24 +59,24 @@ function DateFilter({
         render={
           <Button
             aria-label={`Selecionar data de ${label.toLowerCase()}`}
-            className="h-10 justify-start text-left font-normal"
-            variant="outline"
+            className='h-10 justify-start text-left font-normal'
+            variant='outline'
           />
         }
       >
-        <CalendarDays aria-hidden="true" className="text-muted-foreground" />
+        <CalendarDays aria-hidden='true' className='text-muted-foreground' />
         <span>
-          {label}: {selected ? format(selected, "dd/MM/yyyy") : "Selecionar"}
+          {label}: {selected ? format(selected, 'dd/MM/yyyy') : 'Selecionar'}
         </span>
       </PopoverTrigger>
-      <PopoverContent align="start" className="w-auto p-0">
+      <PopoverContent align='start' className='w-auto p-0'>
         <Calendar
           defaultMonth={selected}
           locale={ptBR}
-          mode="single"
+          mode='single'
           onSelect={(date) => {
             if (!date) return;
-            onChange(format(date, "yyyy-MM-dd"));
+            onChange(format(date, 'yyyy-MM-dd'));
             setOpen(false);
           }}
           selected={selected}
@@ -94,19 +97,19 @@ export function AdminAnalyticsPage() {
   );
   const [sales, setSales] = useState<ApiSalesPoint[]>([]);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
+  const [error, setError] = useState('');
 
   useEffect(() => {
     let active = true;
     const timer = window.setTimeout(async () => {
       if (!from || !to || !selectedCategories.length) {
         setSales([]);
-        setError("");
+        setError('');
         setLoading(false);
         return;
       }
       setLoading(true);
-      setError("");
+      setError('');
       try {
         const result = await commerceApi.analyticsSales(
           from,
@@ -120,7 +123,7 @@ export function AdminAnalyticsPage() {
           setError(
             reason instanceof Error
               ? reason.message
-              : "Não foi possível carregar as vendas.",
+              : 'Não foi possível carregar as vendas.',
           );
         }
       } finally {
@@ -142,7 +145,7 @@ export function AdminAnalyticsPage() {
       name: categoryId
         ? (availableCategories.find((category) => category.id === categoryId)
             ?.name ?? categoryId)
-        : "Faturamento",
+        : 'Faturamento',
     }));
   }, [availableCategories, selectedCategories]);
   const salesChartData = useMemo(() => {
@@ -160,9 +163,10 @@ export function AdminAnalyticsPage() {
         });
         rows.set(point.period, row);
       }
-      const series = point.category
-        ? categorySeries.get(point.category)
-        : undefined;
+      const series =
+        point.categoryId !== null
+          ? categorySeries.get(String(point.categoryId))
+          : undefined;
       if (series) {
         row[series.dataKey] =
           Number(row[series.dataKey] ?? 0) + point.revenueCents;
@@ -175,13 +179,13 @@ export function AdminAnalyticsPage() {
   }, [sales, salesSeries]);
   return (
     <AdminPageLayout
-      description="Compare a evolução das vendas entregues por categoria."
-      title="Análises de vendas"
+      description='Compare a evolução das vendas entregues por categoria.'
+      title='Análises de vendas'
     >
-      <AdminListFiltersCard className="mt-8">
-        <div className="flex flex-wrap items-center justify-start gap-2">
-          <DateFilter label="Início" onChange={setFrom} value={from} />
-          <DateFilter label="Fim" onChange={setTo} value={to} />
+      <AdminListFiltersCard className='mt-8'>
+        <div className='flex flex-wrap items-center justify-start gap-2'>
+          <DateFilter label='Início' onChange={setFrom} value={from} />
+          <DateFilter label='Fim' onChange={setTo} value={to} />
           <AdminCategoryMultiSelect
             categories={availableCategories}
             onValueChange={setCategoryFilter}
@@ -191,38 +195,38 @@ export function AdminAnalyticsPage() {
       </AdminListFiltersCard>
       {error ? (
         <p
-          className="mt-6 rounded-lg bg-error p-3 text-sm text-error-foreground"
-          role="alert"
+          className='mt-6 rounded-lg bg-error p-3 text-sm text-error-foreground'
+          role='alert'
         >
           {error}
         </p>
       ) : null}
       {loading ? (
         <AdminDataState
-          description="Consultando as vendas do período selecionado."
-          title="Carregando análises"
-          variant="loading"
+          description='Consultando as vendas do período selecionado.'
+          title='Carregando análises'
+          variant='loading'
         />
       ) : !from || !to ? (
         <AdminDataState
-          description="Selecione as datas de início e fim."
-          title="Selecione um período"
-          variant="empty"
+          description='Selecione as datas de início e fim.'
+          title='Selecione um período'
+          variant='empty'
         />
       ) : selectedCategories.length === 0 ? (
         <AdminDataState
-          description="Selecione uma ou mais categorias para comparar."
-          title="Selecione categorias"
-          variant="empty"
+          description='Selecione uma ou mais categorias para comparar.'
+          title='Selecione categorias'
+          variant='empty'
         />
       ) : !error ? (
         <>
-          <section className="mt-8">
+          <section className='mt-8'>
             <Card>
               <CardHeader>
                 <CardTitle>Faturamento por período</CardTitle>
               </CardHeader>
-              <CardContent className="h-[26rem]">
+              <CardContent className='h-[26rem]'>
                 <ResponsiveContainer>
                   <AreaChart
                     data={salesChartData}
@@ -233,18 +237,18 @@ export function AdminAnalyticsPage() {
                         <linearGradient
                           id={`sales-gradient-${index}`}
                           key={series.dataKey}
-                          x1="0"
-                          x2="0"
-                          y1="0"
-                          y2="1"
+                          x1='0'
+                          x2='0'
+                          y1='0'
+                          y2='1'
                         >
                           <stop
-                            offset="5%"
+                            offset='5%'
                             stopColor={series.color}
                             stopOpacity={0.34}
                           />
                           <stop
-                            offset="95%"
+                            offset='95%'
                             stopColor={series.color}
                             stopOpacity={0.02}
                           />
@@ -252,30 +256,36 @@ export function AdminAnalyticsPage() {
                       ))}
                     </defs>
                     <CartesianGrid
-                      stroke="var(--border)"
-                      strokeDasharray="3 3"
+                      stroke='var(--border)'
+                      strokeDasharray='3 3'
                       vertical={false}
                     />
                     <XAxis
                       axisLine={false}
-                      dataKey="period"
+                      dataKey='period'
                       tickFormatter={formatMonth}
                       tickLine={false}
-                      tick={{ fill: "var(--muted-foreground)", fontSize: 12 }}
+                      tick={{
+                        fill: 'var(--muted-foreground)',
+                        fontSize: 12,
+                      }}
                     />
                     <YAxis
                       axisLine={false}
                       tickFormatter={(value) => formatCurrency(Number(value))}
                       tickLine={false}
-                      tick={{ fill: "var(--muted-foreground)", fontSize: 12 }}
+                      tick={{
+                        fill: 'var(--muted-foreground)',
+                        fontSize: 12,
+                      }}
                     />
-                    <Legend verticalAlign="bottom" height={32} />
+                    <Legend verticalAlign='bottom' height={32} />
                     <Tooltip
                       formatter={(value) => formatCurrency(Number(value))}
                       contentStyle={{
-                        borderRadius: "var(--radius-lg)",
-                        borderColor: "var(--border)",
-                        backgroundColor: "var(--popover)",
+                        borderRadius: 'var(--radius-lg)',
+                        borderColor: 'var(--border)',
+                        backgroundColor: 'var(--popover)',
                       }}
                     />
                     {salesSeries.map((series, index) => (
@@ -283,7 +293,7 @@ export function AdminAnalyticsPage() {
                         activeDot={{
                           r: 5,
                           fill: series.color,
-                          stroke: "var(--background)",
+                          stroke: 'var(--background)',
                           strokeWidth: 2,
                         }}
                         dataKey={series.dataKey}
@@ -292,7 +302,7 @@ export function AdminAnalyticsPage() {
                         name={series.name}
                         stroke={series.color}
                         strokeWidth={3}
-                        type="monotone"
+                        type='monotone'
                       />
                     ))}
                   </AreaChart>

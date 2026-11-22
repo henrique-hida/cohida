@@ -1,6 +1,6 @@
-import type { ReactNode } from "react";
+import type { ReactNode } from 'react';
 
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent } from '@/components/ui/card';
 
 interface AdminListFiltersCardProps {
   children: ReactNode;
@@ -13,7 +13,7 @@ export function AdminListFiltersCard({
 }: AdminListFiltersCardProps) {
   return (
     <Card className={className}>
-      <CardContent className="px-4 py-2 sm:px-5">{children}</CardContent>
+      <CardContent className='px-4 py-2 sm:px-5'>{children}</CardContent>
     </Card>
   );
 }

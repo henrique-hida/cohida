@@ -18,6 +18,10 @@ export default defineConfig([
     languageOptions: {
       globals: globals.browser,
     },
+    rules: {
+      'max-len': ['error', { code: 80, tabWidth: 2 }],
+      quotes: ['error', 'single', { avoidEscape: true }],
+    },
   },
   {
     files: ['src/components/ui/**/*.tsx'],

@@ -13,25 +13,25 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/admin/demo")
 public class AdminDemoController {
-    private final DemoSeederService demo;
+  private final DemoSeederService demo;
 
-    public AdminDemoController(DemoSeederService d) {
-        demo = d;
-    }
+  public AdminDemoController(DemoSeederService d) {
+    demo = d;
+  }
 
-    @PostMapping("/seed")
-    public Map<String, Integer> seed() {
-        return demo.seed();
-    }
+  @PostMapping("/seed")
+  public Map<String, Integer> seed() {
+    return demo.seed();
+  }
 
-    @GetMapping("/seed")
-    public Map<String, Boolean> status() {
-        return Map.of("populated", demo.isSeeded());
-    }
+  @GetMapping("/seed")
+  public Map<String, Boolean> status() {
+    return Map.of("populated", demo.isSeeded());
+  }
 
-    @DeleteMapping("/seed")
-    @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void hide() {
-        demo.hide();
-    }
+  @DeleteMapping("/seed")
+  @ResponseStatus(HttpStatus.NO_CONTENT)
+  public void hide() {
+    demo.hide();
+  }
 }
