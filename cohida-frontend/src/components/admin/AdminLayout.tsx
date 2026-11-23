@@ -13,7 +13,7 @@ import {
   UserRound,
   UsersRound,
 } from 'lucide-react';
-import { Link, Navigate, NavLink, useLocation } from 'react-router';
+import { Link, Navigate, NavLink, Outlet, useLocation } from 'react-router';
 
 import { AppLogo } from '@/components/shared';
 import { AccountMenu } from '@/components/shared/AccountMenu';
@@ -46,7 +46,7 @@ const navigation = [
 ];
 
 interface AdminLayoutProps {
-  children: ReactNode;
+  children?: ReactNode;
 }
 
 export function AdminLayout({ children }: AdminLayoutProps) {
@@ -54,7 +54,7 @@ export function AdminLayout({ children }: AdminLayoutProps) {
     return <Navigate replace to='/entrar' />;
   }
 
-  return <AdminLayoutContent>{children}</AdminLayoutContent>;
+  return <AdminLayoutContent>{children ?? <Outlet />}</AdminLayoutContent>;
 }
 
 function AdminLayoutContent({ children }: AdminLayoutProps) {

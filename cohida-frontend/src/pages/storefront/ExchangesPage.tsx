@@ -4,6 +4,7 @@ import { Navigate, useLocation, useSearchParams } from 'react-router';
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Pagination } from '@/components/shared/Pagination';
 import { AccountSectionCard } from '@/components/shared/AccountSectionCard';
 import {
@@ -14,6 +15,12 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { useCommerce } from '@/data/useCommerce';
+import type { CartItem } from '@/types/commerce';
+
+function exchangeItemLabel(item: CartItem) {
+  const label = [item.productId, item.variantLabel].filter(Boolean).join(' · ');
+  return `${label} × ${item.quantity}`;
+}
 
 const exchangeStatus = {
   authorized: 'Troca autorizada',
@@ -38,6 +45,11 @@ export function ExchangesSection() {
     Boolean(searchParams.get('pedido')),
   );
   const [isSubmitted, setIsSubmitted] = useState(false);
+  const [orderId, setOrderId] = useState(searchParams.get('pedido') ?? '');
+  const [itemId, setItemId] = useState('');
+  const [wholeOrder, setWholeOrder] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState('');
   const [page, setPage] = useState(1);
   const pageSize = 5;
   const totalPages = Math.max(1, Math.ceil(state.exchanges.length / pageSize));
@@ -49,6 +61,11 @@ export function ExchangesSection() {
   const deliveredOrders = state.orders.filter(
     (order) => order.status === 'delivered',
   );
+  const selectedOrder =
+    deliveredOrders.find((order) => order.id === orderId) ?? deliveredOrders[0];
+  const selectedItem =
+    selectedOrder?.items.find((item) => item.id === itemId) ??
+    selectedOrder?.items[0];
   return (
     <AccountSectionCard
       action={
@@ -56,6 +73,7 @@ export function ExchangesSection() {
           onClick={() => {
             setIsRequesting(true);
             setIsSubmitted(false);
+            setError('');
           }}
         >
           <Plus />
@@ -75,7 +93,7 @@ export function ExchangesSection() {
                   Solicitação enviada
                 </h2>
                 <p className='mt-2 text-sm text-muted-foreground'>
-                  Vamos analisar sua solicitação e avisaremos você por e-mail.
+                  Vamos analisar sua solicitação e manter você informado.
                 </p>
                 <Button className='mt-5' onClick={() => setIsRequesting(false)}>
                   Ver solicitações
@@ -92,29 +110,40 @@ export function ExchangesSection() {
                   onSubmit={async (event) => {
                     event.preventDefault();
                     const formData = new FormData(event.currentTarget);
-                    const orderId = String(formData.get('orderId') ?? '');
-                    const order = deliveredOrders.find(
-                      (entry) => entry.id === orderId,
-                    );
-                    const wholeOrder = formData.get('wholeOrder') === 'on';
-                    const orderItemId = wholeOrder
-                      ? null
-                      : (order?.items[0]?.id ?? null);
-                    if (!order || (!wholeOrder && !orderItemId)) return;
-                    await requestExchange({
-                      orderId,
-                      orderItemId,
-                      reason: String(formData.get('reason') ?? ''),
-                    });
-                    setIsSubmitted(true);
+                    if (!selectedOrder || (!wholeOrder && !selectedItem))
+                      return;
+                    const reason = String(formData.get('reason') ?? '');
+                    const details = String(
+                      formData.get('details') ?? '',
+                    ).trim();
+                    setError('');
+                    setSubmitting(true);
+                    try {
+                      await requestExchange({
+                        orderId: selectedOrder.id,
+                        orderItemId: wholeOrder ? null : selectedItem!.id,
+                        reason: details ? `${reason}: ${details}` : reason,
+                      });
+                      setIsSubmitted(true);
+                    } catch (cause) {
+                      setError(
+                        cause instanceof Error
+                          ? cause.message
+                          : 'Não foi possível solicitar a troca.',
+                      );
+                    } finally {
+                      setSubmitting(false);
+                    }
                   }}
                 >
                   <label className='grid gap-2 text-sm font-medium'>
                     Pedido
                     <Select
-                      defaultValue={
-                        searchParams.get('pedido') ?? deliveredOrders[0]?.id
-                      }
+                      value={selectedOrder?.id ?? null}
+                      onValueChange={(value) => {
+                        setOrderId(value ?? '');
+                        setItemId('');
+                      }}
                       name='orderId'
                     >
                       <SelectTrigger
@@ -135,9 +164,37 @@ export function ExchangesSection() {
                     </Select>
                   </label>
                   <label className='flex items-center gap-2 text-sm'>
-                    <input name='wholeOrder' type='checkbox' />
+                    <Checkbox
+                      checked={wholeOrder}
+                      name='wholeOrder'
+                      onCheckedChange={setWholeOrder}
+                    />
                     Solicitar troca da compra inteira
                   </label>
+                  {!wholeOrder && selectedOrder ? (
+                    <label className='grid gap-2 text-sm font-medium'>
+                      Item
+                      <Select
+                        value={selectedItem?.id ?? null}
+                        onValueChange={(value) => setItemId(value ?? '')}
+                      >
+                        <SelectTrigger className='h-10 w-full font-normal'>
+                          <SelectValue>
+                            {selectedItem
+                              ? exchangeItemLabel(selectedItem)
+                              : 'Selecione um item'}
+                          </SelectValue>
+                        </SelectTrigger>
+                        <SelectContent>
+                          {selectedOrder.items.map((item) => (
+                            <SelectItem key={item.id} value={item.id}>
+                              {exchangeItemLabel(item)}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </label>
+                  ) : null}
                   <label className='grid gap-2 text-sm font-medium'>
                     Motivo
                     <Select
@@ -173,10 +230,17 @@ export function ExchangesSection() {
                         'bg-background p-3 font-normal',
                       ].join(' ')}
                       placeholder='Descreva o que aconteceu'
+                      name='details'
+                      maxLength={800}
                     />
                   </label>
                   <div className='flex gap-2'>
-                    <Button type='submit'>Enviar solicitação</Button>
+                    <Button
+                      disabled={submitting || !selectedOrder}
+                      type='submit'
+                    >
+                      {submitting ? 'Enviando...' : 'Enviar solicitação'}
+                    </Button>
                     <Button
                       onClick={() => setIsRequesting(false)}
                       type='button'
@@ -185,6 +249,7 @@ export function ExchangesSection() {
                       Cancelar
                     </Button>
                   </div>
+                  {error ? <p role='alert'>{error}</p> : null}
                 </form>
               </>
             )}

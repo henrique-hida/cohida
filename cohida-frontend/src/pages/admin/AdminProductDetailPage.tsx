@@ -1,89 +1,34 @@
-import { useEffect, useState } from 'react';
-import { ChevronLeft, Pencil, Power } from 'lucide-react';
-import { Link, useNavigate, useParams } from 'react-router';
+import { AdminPage } from '@/components/admin/AdminPage';
 
-import { AdminPageLayout } from '@/components/admin/AdminPageLayout';
+import { ChevronLeft, Pencil, Power } from 'lucide-react';
+import { Link } from 'react-router';
+
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { useCommerce } from '@/data/useCommerce';
-import { useCategories } from '@/data/useCategories';
+// prettier-ignore
+import {
+  useAdminProductDetail,
+} from '@/components/admin/products/useAdminProductDetail';
 import { formatCurrency } from '@/lib/currency';
 
-export function AdminProductDetailPage() {
-  const { productId } = useParams();
-  const navigate = useNavigate();
-  const { state, loadAdminProducts, setProductStatus } = useCommerce();
-  const categories = useCategories();
-  const [error, setError] = useState('');
-
-  useEffect(() => {
-    void loadAdminProducts().catch((cause: Error) => setError(cause.message));
-  }, [loadAdminProducts]);
-
-  const product = state.products.find((item) => item.id === productId);
-
-  async function deactivate() {
-    if (!product) return;
-    try {
-      await setProductStatus(product.id, 'inactive');
-      navigate('/admin/produtos');
-    } catch (cause) {
-      setError(
-        cause instanceof Error ? cause.message : 'Não foi possível desativar.',
-      );
-    }
-  }
-
+function AdminProductDetailPageContent({
+  product,
+  error,
+  categories,
+}: ReturnType<typeof useAdminProductDetail>) {
   if (!product) {
     return (
-      <AdminPageLayout
-        description={
-          error
-            ? 'Não foi possível abrir os dados deste produto.'
-            : [
-                'Consulte os dados comerciais, as',
-                'categorias e as variações do',
-                'produto.',
-              ].join(' ')
-        }
-        title='Produto'
-      >
+      <>
         <p className={error ? 'text-destructive' : 'text-muted-foreground'}>
           {error || 'Carregando produto...'}
         </p>
-      </AdminPageLayout>
+      </>
     );
   }
 
   return (
-    <AdminPageLayout
-      action={
-        <div className='flex flex-wrap gap-2'>
-          <Button
-            render={<Link to='/admin/produtos' />}
-            size='sm'
-            variant='outline'
-          >
-            <ChevronLeft />
-            Produtos
-          </Button>
-          <Button onClick={() => void deactivate()} size='sm' variant='outline'>
-            <Power />
-            Desativar
-          </Button>
-          <Button
-            render={<Link to={`/admin/produtos/${product.id}/editar`} />}
-            size='sm'
-          >
-            <Pencil />
-            Editar
-          </Button>
-        </div>
-      }
-      description={`${product.sku} · ${product.brand}`}
-      title={product.name}
-    >
+    <>
       <div className='mt-8 grid gap-6 md:grid-cols-2'>
         {error ? (
           <p className='text-destructive md:col-span-2'>{error}</p>
@@ -130,6 +75,57 @@ export function AdminProductDetailPage() {
           </CardContent>
         </Card>
       </div>
-    </AdminPageLayout>
+    </>
+  );
+}
+
+const getPageHeader = ({
+  product,
+  error,
+  deactivate,
+}: ReturnType<typeof useAdminProductDetail>) => ({
+  action: product ? (
+    <div className='flex flex-wrap gap-2'>
+      <Button
+        nativeButton={false}
+        render={<Link to='/admin/produtos' />}
+        size='sm'
+        variant='outline'
+      >
+        <ChevronLeft />
+        Produtos
+      </Button>
+      <Button onClick={() => void deactivate()} size='sm' variant='outline'>
+        <Power />
+        Desativar
+      </Button>
+      <Button
+        nativeButton={false}
+        render={<Link to={`/admin/produtos/${product.id}/editar`} />}
+        size='sm'
+      >
+        <Pencil />
+        Editar
+      </Button>
+    </div>
+  ) : null,
+  description: product
+    ? `${product.sku} · ${product.brand}`
+    : error
+      ? 'Não foi possível abrir os dados deste produto.'
+      : [
+          'Consulte os dados comerciais, as categorias',
+          'e as variações do produto.',
+        ].join(' '),
+  overlap: true,
+  title: product?.name ?? 'Produto',
+});
+
+export function AdminProductDetailPage() {
+  const detail = useAdminProductDetail();
+  return (
+    <AdminPage {...getPageHeader(detail)}>
+      <AdminProductDetailPageContent {...detail} />
+    </AdminPage>
   );
 }

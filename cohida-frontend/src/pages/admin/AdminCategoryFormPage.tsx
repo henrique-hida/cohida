@@ -1,14 +1,15 @@
+import { AdminPage } from '@/components/admin/AdminPage';
+
 import { useEffect, useState, type FormEvent } from 'react';
 import { ChevronLeft } from 'lucide-react';
 import { Link, useNavigate, useParams } from 'react-router';
 
 import { AdminDataState } from '@/components/admin/AdminDataState';
-import { AdminPageLayout } from '@/components/admin/AdminPageLayout';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { commerceApi } from '@/lib/commerceApi';
 
-export function AdminCategoryFormPage() {
+function AdminCategoryFormPageContent() {
   const { id } = useParams();
   const navigate = useNavigate();
   const isEditing = Boolean(id);
@@ -82,24 +83,7 @@ export function AdminCategoryFormPage() {
   }
 
   return (
-    <AdminPageLayout
-      action={
-        <Button
-          render={<Link to='/admin/administracao' />}
-          size='sm'
-          variant='outline'
-        >
-          <ChevronLeft aria-hidden='true' />
-          Administração
-        </Button>
-      }
-      description={
-        isEditing
-          ? 'Atualize os dados usados para organizar o catálogo.'
-          : 'Defina os dados da categoria para organizar o catálogo.'
-      }
-      title={isEditing ? 'Editar categoria' : 'Nova categoria'}
-    >
+    <>
       <Card className='mt-8 max-w-3xl'>
         <CardContent className='p-5 sm:p-6'>
           {loading ? (
@@ -162,6 +146,35 @@ export function AdminCategoryFormPage() {
           )}
         </CardContent>
       </Card>
-    </AdminPageLayout>
+    </>
+  );
+}
+
+const getPageHeader = ({ isEditing }: { isEditing: boolean }) => ({
+  action: (
+    <Button
+      nativeButton={false}
+      render={<Link to='/admin/administracao' />}
+      size='sm'
+      variant='outline'
+    >
+      <ChevronLeft aria-hidden='true' />
+      Administração
+    </Button>
+  ),
+  description: isEditing
+    ? 'Atualize os dados usados para organizar o catálogo.'
+    : 'Defina os dados da categoria para organizar o catálogo.',
+  overlap: true,
+  title: isEditing ? 'Editar categoria' : 'Nova categoria',
+});
+
+export function AdminCategoryFormPage() {
+  const { id } = useParams();
+
+  return (
+    <AdminPage {...getPageHeader({ isEditing: Boolean(id) })}>
+      <AdminCategoryFormPageContent />
+    </AdminPage>
   );
 }

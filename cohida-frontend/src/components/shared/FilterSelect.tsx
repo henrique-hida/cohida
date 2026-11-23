@@ -78,7 +78,7 @@ export function FilterSelect({
             'focus-visible:outline-none',
           ].join(' ')}
           onClick={() => onValueChange('')}
-          title='Limpar filtro'
+          data-tooltip='Limpar filtro'
           type='button'
         >
           <X aria-hidden='true' className='size-4' />

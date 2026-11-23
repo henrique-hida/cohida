@@ -1,8 +1,9 @@
+import { DateField } from '@/components/shared/DateField';
+import { AdminPage } from '@/components/admin/AdminPage';
 import { useState, type FormEvent } from 'react';
 import { ChevronLeft } from 'lucide-react';
 import { Link, useNavigate } from 'react-router';
 
-import { AdminPageLayout } from '@/components/admin/AdminPageLayout';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -86,7 +87,7 @@ export function AdminCouponCreatePage() {
   }
 
   return (
-    <AdminPageLayout
+    <AdminPage
       action={
         <Button
           render={<Link to='/admin/cupons' />}
@@ -97,8 +98,12 @@ export function AdminCouponCreatePage() {
           Cupons
         </Button>
       }
-      description='Defina o desconto, o período de validade e as regras de uso.'
-      title='Novo cupom'
+      description={[
+        'Defina o desconto, o período de validade',
+        'e as regras de uso.',
+      ].join(' ')}
+      title={'Novo cupom'}
+      overlap
     >
       <Card className='mt-8 max-w-3xl'>
         <CardContent className='p-5 sm:p-6'>
@@ -207,28 +212,20 @@ export function AdminCouponCreatePage() {
             </label>
             <label className='grid gap-2 text-sm font-medium'>
               Válido a partir de
-              <input
-                className={[
-                  'h-10 rounded-lg border border-input',
-                  'bg-background px-3 font-normal',
-                ].join(' ')}
-                defaultValue={localDateTimeValue(now)}
+              <DateField
                 name='validFrom'
+                defaultValue={localDateTimeValue(now)}
+                dateTime
                 required
-                type='datetime-local'
               />
             </label>
             <label className='grid gap-2 text-sm font-medium'>
               Válido até
-              <input
-                className={[
-                  'h-10 rounded-lg border border-input',
-                  'bg-background px-3 font-normal',
-                ].join(' ')}
-                defaultValue={localDateTimeValue(nextYear)}
+              <DateField
                 name='expiresAt'
+                defaultValue={localDateTimeValue(nextYear)}
+                dateTime
                 required
-                type='datetime-local'
               />
             </label>
             <label className='grid gap-2 text-sm font-medium'>
@@ -277,6 +274,6 @@ export function AdminCouponCreatePage() {
           </form>
         </CardContent>
       </Card>
-    </AdminPageLayout>
+    </AdminPage>
   );
 }

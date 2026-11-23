@@ -1,274 +1,45 @@
-import type { CartItem, Order, Product } from '@/types';
+import { loadCustomerData } from './commerce/loadCustomerData';
+import {
+  clearCheckoutAttempt,
+  readCheckoutAttempt,
+  saveCheckoutAttempt,
+  type CheckoutInput,
+} from './commerce/checkoutAttempt';
+import { emptyState } from './commerce/emptyState';
+import { mapCart, mapCoupon, mapOrder, mapProduct } from './commerce/mappers';
+import type {
+  DemoAddress,
+  DemoCard,
+  DemoCommerceState,
+  DemoCustomer,
+  DemoExchange,
+} from './commerce/types';
+export type {
+  DemoAddress,
+  DemoCard,
+  DemoCommerceState,
+  DemoCustomer,
+  DemoCoupon,
+  DemoExchange,
+} from './commerce/types';
+
+import type { CartItem, Product } from '@/types';
 // prettier-ignore
 import type {
   CustomerResponse as ApiCustomerResponse,
 } from '@/lib/customerApi';
 import {
+  ApiError,
   customerApi,
   logout as clearApiSession,
   updateCurrentAccountName,
 } from '@/lib/customerApi';
 import {
   commerceApi,
-  type ApiCart,
-  type ApiCoupon,
   type ApiCouponUpsertRequest,
-  type ApiOrder,
-  type ApiProduct,
-  type ApiReturn,
-  type ApiExpiredCartItem,
-  resolveProductImageUrl,
   toStoredProductImageUrl,
 } from '@/lib/commerceApi';
 import { tokenizeCardForProcessor } from '@/lib/paymentTokenization';
-
-export interface DemoAddress {
-  city: string;
-  country: string;
-  id: string;
-  label: string;
-  neighborhood: string;
-  number: string;
-  postalCode: string;
-  state: string;
-  street: string;
-  type: 'billing' | 'delivery';
-}
-export interface DemoCard {
-  brand: string;
-  id: string;
-  isPreferred: boolean;
-  label: string;
-  lastDigits: string;
-}
-export interface DemoCustomer {
-  birthDate: string;
-  cpf: string;
-  email: string;
-  id: string;
-  name: string;
-  passwordHash: string;
-  phone: string;
-}
-export interface DemoCoupon {
-  active: boolean;
-  code: string;
-  createdAt: string;
-  id: string;
-  kind: 'exchange' | 'promotional';
-  valueCents: number;
-}
-export interface DemoExchange {
-  id: string;
-  orderId: string;
-  orderItemId: string;
-  productName?: string;
-  reason: string;
-  status:
-    'requested' | 'authorized' | 'sent' | 'received' | 'completed' | 'denied';
-  dispatch?: {
-    carrier: string;
-    notes?: string;
-    postedAt: string;
-    trackingCode: string;
-  };
-}
-
-export interface DemoCommerceState {
-  addresses: DemoAddress[];
-  adminCustomerActive: Record<string, boolean>;
-  adminOrderStatuses: Record<string, string>;
-  buyNowItem: CartItem | null;
-  cards: DemoCard[];
-  cartItems: CartItem[];
-  coupons: DemoCoupon[];
-  customer: DemoCustomer | null;
-  exchanges: DemoExchange[];
-  expiredCartItems: ApiExpiredCartItem[];
-  orders: Order[];
-  products: Product[];
-  sessionCustomerId: string | null;
-  sessionHydrated: boolean;
-  cartTotals: {
-    subtotalCents: number;
-    discountCents: number;
-    shippingCents: number;
-    totalCents: number;
-    couponCode: string | null;
-    couponCodes: string[];
-  };
-}
-
-function emptyState(): DemoCommerceState {
-  return {
-    addresses: [],
-    adminCustomerActive: {},
-    adminOrderStatuses: {},
-    buyNowItem: null,
-    cards: [],
-    cartItems: [],
-    coupons: [],
-    customer: null,
-    exchanges: [],
-    expiredCartItems: [],
-    orders: [],
-    products: [],
-    sessionCustomerId: null,
-    sessionHydrated: false,
-    cartTotals: {
-      subtotalCents: 0,
-      discountCents: 0,
-      shippingCents: 0,
-      totalCents: 0,
-      couponCode: null,
-      couponCodes: [],
-    },
-  };
-}
-
-function mapProduct(product: ApiProduct): Product {
-  const imageUrl = resolveProductImageUrl(product.imageUrl);
-  const variantPrices = product.variants.map((variant) => variant.priceCents);
-  return {
-    id: String(product.id),
-    sku: product.code,
-    slug: product.slug,
-    name: product.name,
-    brand: product.brand,
-    description: product.description,
-    priceCents: variantPrices.length ? Math.min(...variantPrices) : 0,
-    rating: product.rating,
-    reviewCount: product.reviewCount,
-    status: product.active ? 'active' : 'inactive',
-    categoryIds: product.categoryIds.map(String),
-    images: imageUrl
-      ? [
-          {
-            alt: product.name,
-            id: `${product.id}-main`,
-            src: imageUrl,
-          },
-        ]
-      : [],
-    attributes: {
-      marca: product.brand,
-      categorias: product.categoryIds.join(', '),
-      estoque: `${product.variants.reduce(
-        (total, variant) => total + variant.stockQuantity,
-        0,
-      )} unidades disponíveis`,
-    },
-    createdAt: product.createdAt,
-    variants: product.variants.map((variant) => ({
-      id: String(variant.id),
-      sku: variant.sku,
-      label: variant.label,
-      color: variant.color ?? undefined,
-      size: variant.size ?? undefined,
-      priceCents: variant.priceCents,
-      stockQuantity: variant.stockQuantity,
-    })),
-  };
-}
-
-function mapOrder(order: ApiOrder): Order {
-  const statuses: Record<string, Order['status']> = {
-    EM_ABERTO: 'processing',
-    EM_PROCESSAMENTO: 'processing',
-    APROVADA: 'approved',
-    REPROVADA: 'rejected',
-    PAGAMENTO_REALIZADO: 'approved',
-    EM_TRANSITO: 'in_transit',
-    ENTREGUE: 'delivered',
-    CANCELADO: 'rejected',
-  };
-  return {
-    id: String(order.id),
-    customerId: String(order.customerId),
-    status: statuses[order.status] ?? 'processing',
-    items: order.items.map((item) => ({
-      id: String(item.id ?? `${order.id}-${item.variantId}`),
-      productId: item.productName,
-      variantId: String(item.variantId),
-      quantity: item.quantity,
-      unitPriceCents: item.unitPriceCents,
-    })),
-    subtotalCents: order.subtotalCents,
-    discountCents: order.discountCents,
-    shippingCents: order.shippingCents,
-    totalCents: order.totalCents,
-    createdAt: order.createdAt,
-    approvedAt: order.approvedAt ?? undefined,
-    dispatchedAt: order.dispatchedAt ?? undefined,
-    deliveredAt: order.deliveredAt ?? undefined,
-    issuedCoupon:
-      order.issuedCouponCode && order.issuedCouponValueCents != null
-        ? {
-            code: order.issuedCouponCode,
-            valueCents: order.issuedCouponValueCents,
-          }
-        : undefined,
-  };
-}
-
-function mapCart(cart: ApiCart) {
-  return {
-    cartItems: cart.items.map((item) => ({
-      id: String(item.id),
-      productId: String(item.productId),
-      variantId: String(item.variantId),
-      quantity: item.quantity,
-      unitPriceCents: item.unitPriceCents,
-    })),
-    cartTotals: {
-      subtotalCents: cart.subtotalCents,
-      discountCents: cart.discountCents,
-      shippingCents: cart.shippingCents,
-      totalCents: cart.totalCents,
-      couponCode: cart.couponCode,
-      couponCodes:
-        cart.couponCodes ?? (cart.couponCode ? [cart.couponCode] : []),
-    },
-  };
-}
-
-function mapCoupon(coupon: ApiCoupon): DemoCoupon {
-  return {
-    id: String(coupon.id),
-    code: coupon.code,
-    active: coupon.active,
-    createdAt: coupon.createdAt,
-    kind: coupon.origin === 'RETURN' ? 'exchange' : 'promotional',
-    valueCents:
-      coupon.origin === 'RETURN'
-        ? (coupon.remainingCreditCents ?? coupon.discountCents ?? 0)
-        : (coupon.discountCents ??
-          Math.round((coupon.discountPercentage ?? 0) * 100)),
-  };
-}
-
-function mapReturn(item: ApiReturn): DemoExchange {
-  const statuses: Record<string, DemoExchange['status']> = {
-    EM_TROCA: 'requested',
-    TROCA_AUTORIZADA: 'authorized',
-    TROCA_NEGADA: 'denied',
-    TROCADO: 'completed',
-  };
-  return {
-    id: String(item.id),
-    orderId: String(item.orderId),
-    orderItemId: item.orderItemId === null ? '' : String(item.orderItemId),
-    reason: item.reason,
-    status: statuses[item.status] ?? 'requested',
-    dispatch: item.trackingCode
-      ? {
-          carrier: '',
-          postedAt: '',
-          trackingCode: item.trackingCode,
-        }
-      : undefined,
-  };
-}
 
 let state = emptyState();
 const listeners = new Set<() => void>();
@@ -280,42 +51,37 @@ function patch(next: Partial<DemoCommerceState>) {
   save({ ...state, ...next });
 }
 
-async function refreshCustomerData() {
-  // Loading the cart can expire reservations on the server. Fetch expiration
-  // notices afterwards so the UI never renders a cart that was reconciled with
-  // a stale list of expired items.
-  const cart = await commerceApi.cart();
-  const [cards, orders, returns, coupons, expiredCartItems] = await Promise.all(
-    [
-      commerceApi.cards(),
-      commerceApi.orders(),
-      commerceApi.returns(),
-      commerceApi.customerCoupons(),
-      commerceApi.expiredCartItems().catch(() => []),
-    ],
+function mergeProducts(products: Product[]) {
+  const byId = new Map(state.products.map((product) => [product.id, product]));
+  products.forEach((product) => byId.set(product.id, product));
+  patch({ products: [...byId.values()] });
+}
+
+async function ensureProducts(ids: string[]) {
+  const missing = [...new Set(ids)].filter(
+    (id) => !state.products.some((product) => product.id === id),
   );
-  patch({
-    ...mapCart(cart),
-    cards: cards.map((card) => ({
-      id: String(card.id),
-      brand: card.brand,
-      lastDigits: card.lastDigits,
-      label: card.label,
-      isPreferred: card.preferred,
-    })),
-    orders: orders.map(mapOrder),
-    exchanges: returns.map(mapReturn),
-    coupons: coupons.map(mapCoupon),
-    expiredCartItems,
-  });
+  for (let index = 0; index < missing.length; index += 100) {
+    mergeProducts(
+      (await commerceApi.productsByIds(missing.slice(index, index + 100))).map(
+        mapProduct,
+      ),
+    );
+  }
+}
+
+async function refreshCustomerData() {
+  const customerData = await loadCustomerData();
+  await ensureProducts(customerData.cartItems.map((item) => item.productId));
+  patch(customerData);
 }
 
 async function refreshProducts(admin = false) {
-  patch({
-    products: (
-      await (admin ? commerceApi.adminProducts() : commerceApi.products())
-    ).map(mapProduct),
-  });
+  if (admin) {
+    patch({ products: (await commerceApi.adminProducts()).map(mapProduct) });
+  } else {
+    mergeProducts((await commerceApi.productsPage(0)).products.map(mapProduct));
+  }
 }
 
 export const demoCommerceRepository = {
@@ -350,6 +116,11 @@ export const demoCommerceRepository = {
   },
   async loadCatalog() {
     await refreshProducts();
+  },
+  async loadProduct(slug: string) {
+    const product = mapProduct(await commerceApi.product(slug));
+    mergeProducts([product]);
+    return product;
   },
   async loadAdminProducts() {
     await refreshProducts(true);
@@ -437,6 +208,7 @@ export const demoCommerceRepository = {
     });
   },
   async addCartItem(item: CartItem) {
+    await ensureProducts([item.productId]);
     patch(
       mapCart(await commerceApi.addCartItem(item.variantId, item.quantity)),
     );
@@ -468,18 +240,50 @@ export const demoCommerceRepository = {
   async startBuyNow(item: CartItem) {
     await demoCommerceRepository.addCartItem(item);
   },
-  async createOrder(input: {
-    deliveryAddressId: string;
-    payments: Array<{
-      paymentCardId: string;
-      amountCents: number;
-    }>;
-  }) {
-    const order = await commerceApi.checkout(
-      input.deliveryAddressId,
-      input.payments,
-    );
-    await refreshCustomerData();
+  getPendingCheckout() {
+    return state.sessionCustomerId
+      ? readCheckoutAttempt(state.sessionCustomerId)
+      : null;
+  },
+  async createOrder(input: CheckoutInput) {
+    const customerId = state.sessionCustomerId;
+    if (!customerId) throw new Error('Entre em sua conta para continuar.');
+    const previous = readCheckoutAttempt(customerId);
+    if (previous && JSON.stringify(previous.input) !== JSON.stringify(input))
+      throw new Error(
+        'Há uma compra pendente de confirmação. Consulte o pedido anterior.',
+      );
+    const attempt = previous ?? { key: crypto.randomUUID(), input };
+    saveCheckoutAttempt(customerId, attempt);
+    let order;
+    try {
+      order = await commerceApi.checkout(
+        attempt.input.deliveryAddressId,
+        attempt.input.payments,
+        attempt.key,
+        attempt.input.cartSignature,
+      );
+    } catch (error) {
+      if (error instanceof ApiError && error.status === 400) {
+        clearCheckoutAttempt(customerId, attempt.key);
+        if (state.sessionCustomerId === customerId) {
+          try {
+            await refreshCustomerData();
+          } catch {
+            // Keep the original validation error for the customer.
+          }
+        }
+      }
+      throw error;
+    }
+    clearCheckoutAttempt(customerId, attempt.key);
+    if (state.sessionCustomerId === customerId) {
+      try {
+        await refreshCustomerData();
+      } catch {
+        // The completed order remains available even if refreshing fails.
+      }
+    }
     window.dispatchEvent(new Event('cohida:notifications-refresh'));
     return mapOrder(order);
   },

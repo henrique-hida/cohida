@@ -1,3 +1,4 @@
+import { AdminPage } from '@/components/admin/AdminPage';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Plus } from 'lucide-react';
 import { Link } from 'react-router';
@@ -6,7 +7,6 @@ import { AdminDataState } from '@/components/admin/AdminDataState';
 import { AdminFilterSelect } from '@/components/admin/AdminFilterSelect';
 import { AdminListFiltersCard } from '@/components/admin/AdminListFiltersCard';
 import { AdminListToolbar } from '@/components/admin/AdminListToolbar';
-import { AdminPageLayout } from '@/components/admin/AdminPageLayout';
 import { AdminPagination } from '@/components/admin/AdminPagination';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -69,15 +69,16 @@ export function AdminCouponsPage() {
   );
 
   return (
-    <AdminPageLayout
+    <AdminPage
       action={
         <Button render={<Link to='/admin/cupons/novo' />}>
           <Plus aria-hidden='true' />
           Novo cupom
         </Button>
       }
-      description='Gerencie cupons promocionais e créditos de troca.'
-      title='Cupons'
+      description={'Gerencie cupons promocionais e créditos de troca.'}
+      title={'Cupons'}
+      overlap
     >
       <div className='mt-8 grid gap-4'>
         <AdminListFiltersCard>
@@ -204,6 +205,6 @@ export function AdminCouponsPage() {
           </CardContent>
         </Card>
       </div>
-    </AdminPageLayout>
+    </AdminPage>
   );
 }

@@ -2,13 +2,13 @@ import { useState } from 'react';
 import { ChevronLeft } from 'lucide-react';
 import { Link } from 'react-router';
 
-import { AdminPageLayout } from '@/components/admin/AdminPageLayout';
 // prettier-ignore
 import {
   CustomerRegistrationForm,
 } from '@/components/customer/CustomerRegistrationForm';
 import { Button } from '@/components/ui/button';
 import { Toast } from '@/components/ui/toast';
+import { AdminPage } from '@/components/admin/AdminPage';
 import {
   customerApi,
   type CustomerAddressInput,
@@ -32,24 +32,7 @@ export function AdminCustomerFormPage({
   const isEditing = Boolean(customer);
 
   return (
-    <AdminPageLayout
-      action={
-        <Button
-          render={<Link to='/admin/clientes' />}
-          size='sm'
-          variant='outline'
-        >
-          <ChevronLeft aria-hidden='true' />
-          Clientes
-        </Button>
-      }
-      description={
-        isEditing
-          ? `Atualize os dados de ${customer?.name}.`
-          : 'Cadastre os dados do cliente.'
-      }
-      title={isEditing ? 'Editar cliente' : 'Novo cliente'}
-    >
+    <>
       <div className='max-w-3xl'>
         <CustomerRegistrationForm
           cancelAction={
@@ -88,10 +71,30 @@ export function AdminCustomerFormPage({
       {successMessage ? (
         <Toast message={successMessage} onClose={() => setSuccessMessage('')} />
       ) : null}
-    </AdminPageLayout>
+    </>
   );
 }
 
 export function AdminCustomerCreatePage() {
-  return <AdminCustomerFormPage />;
+  return (
+    <AdminPage
+      action={
+        <Button
+          nativeButton={false}
+          render={<Link to='/admin/clientes' />}
+          size='sm'
+          variant='outline'
+        >
+          <ChevronLeft aria-hidden='true' />
+          Clientes
+        </Button>
+      }
+
+      description='Cadastre os dados do cliente.'
+      overlap
+      title='Novo cliente'
+    >
+      <AdminCustomerFormPage />
+    </AdminPage>
+  );
 }

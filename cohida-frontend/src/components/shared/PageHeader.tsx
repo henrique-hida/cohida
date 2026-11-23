@@ -2,7 +2,7 @@ import type { ReactNode } from 'react';
 
 interface PageHeaderProps {
   action?: ReactNode;
-  description: ReactNode;
+  description?: ReactNode;
   eyebrow?: ReactNode;
   overlap?: boolean;
   title: ReactNode;
@@ -25,6 +25,7 @@ export function PageHeader({
         ].join(' ')}
       />
       <header
+        data-overlap={overlap}
         data-slot='page-header'
         className={[
           'relative z-10 mx-auto flex w-full ',

@@ -1,11 +1,12 @@
-import { useEffect, useState } from 'react';
-import { ChevronLeft, PackageCheck } from 'lucide-react';
-import { Link, useParams } from 'react-router';
+import { AdminPage } from '@/components/admin/AdminPage';
 
-import { AdminPageLayout } from '@/components/admin/AdminPageLayout';
+import { ChevronLeft, PackageCheck } from 'lucide-react';
+import { Link } from 'react-router';
+
 import { ConfirmDialog } from '@/components/admin/ConfirmDialog';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
   Card,
   CardContent,
@@ -15,81 +16,30 @@ import {
 } from '@/components/ui/card';
 import { formatCurrency } from '@/lib/currency';
 import { commerceStatus } from '@/lib/commerceStatus';
-import { commerceApi, type ApiOrder, type ApiReturn } from '@/lib/commerceApi';
 import { StatusMessage } from '@/components/ui/status-message';
 
-export function AdminExchangeDetailPage() {
-  const { exchangeId } = useParams();
-  const [request, setRequest] = useState<ApiReturn | null>(null);
-  const [order, setOrder] = useState<ApiOrder | null>(null);
-  const [returnToStock, setReturnToStock] = useState(true);
-  const [message, setMessage] = useState('');
-  const [error, setError] = useState('');
-  const [confirmingCompletion, setConfirmingCompletion] = useState(false);
-  const [confirmingDenial, setConfirmingDenial] = useState(false);
+// prettier-ignore
+import {
+  useAdminExchangeDetail,
+} from '@/components/admin/exchanges/useAdminExchangeDetail';
 
-  useEffect(() => {
-    let active = true;
-    void Promise.all([commerceApi.adminReturns(), commerceApi.adminOrders()])
-      .then(([returns, orders]) => {
-        if (!active) return;
-        const found =
-          returns.find((entry) => String(entry.id) === exchangeId) ?? null;
-        setRequest(found);
-        setOrder(
-          found
-            ? (orders.find((entry) => entry.id === found.orderId) ?? null)
-            : null,
-        );
-      })
-      .catch((cause: Error) => active && setError(cause.message));
-    return () => {
-      active = false;
-    };
-  }, [exchangeId]);
-
-  async function update(
-    status: 'TROCA_AUTORIZADA' | 'TROCA_NEGADA' | 'TROCADO',
-  ) {
-    if (!request) return;
-    setError('');
-    try {
-      const updated = await commerceApi.updateReturnStatus(
-        String(request.id),
-        status,
-        status === 'TROCADO' ? returnToStock : undefined,
-      );
-      setRequest(updated);
-      setMessage(
-        status === 'TROCA_AUTORIZADA'
-          ? 'Troca autorizada e cliente notificado.'
-          : status === 'TROCA_NEGADA'
-            ? 'Troca negada e cliente notificado.'
-            : 'Recebimento confirmado; cupom de troca emitido para o cliente.',
-      );
-    } catch (cause) {
-      const errorMessage =
-        cause instanceof Error
-          ? cause.message
-          : 'Não foi possível atualizar a troca.';
-      setError(
-        errorMessage === 'Já existe um registro com esses dados.'
-          ? [
-              'Não foi possível atualizar o',
-              'status da troca. Atualize a página',
-              'e tente novamente.',
-            ].join(' ')
-          : errorMessage,
-      );
-    }
-  }
-
+function AdminExchangeDetailPageContent({
+  request,
+  order,
+  returnToStock,
+  setReturnToStock,
+  message,
+  setMessage,
+  error,
+  confirmingCompletion,
+  setConfirmingCompletion,
+  confirmingDenial,
+  setConfirmingDenial,
+  update,
+}: ReturnType<typeof useAdminExchangeDetail>) {
   if (error && !request)
     return (
-      <AdminPageLayout
-        description='Não foi possível abrir os dados desta solicitação.'
-        title='Troca'
-      >
+      <>
         <p
           className={[
             'rounded-lg border border-danger-border',
@@ -98,16 +48,13 @@ export function AdminExchangeDetailPage() {
         >
           {error}
         </p>
-      </AdminPageLayout>
+      </>
     );
   if (!request)
     return (
-      <AdminPageLayout
-        description='Consulte a solicitação e atualize o recebimento dos itens.'
-        title='Troca'
-      >
+      <>
         <p className='text-muted-foreground'>Carregando troca...</p>
-      </AdminPageLayout>
+      </>
     );
   const item = request.orderItemId
     ? order?.items.find(
@@ -119,56 +66,7 @@ export function AdminExchangeDetailPage() {
     : (order?.subtotalCents ?? 0);
 
   return (
-    <AdminPageLayout
-      action={
-        <div className='flex flex-wrap items-center gap-2'>
-          <Button
-            render={<Link to='/admin/trocas' />}
-            size='sm'
-            variant='outline'
-          >
-            <ChevronLeft /> Trocas
-          </Button>
-          {request.status === 'EM_TROCA' ? (
-            <>
-              <Button
-                onClick={() => void update('TROCA_AUTORIZADA')}
-                variant='outline'
-              >
-                Autorizar troca
-              </Button>
-              <Button
-                onClick={() => setConfirmingDenial(true)}
-                variant='destructive'
-              >
-                Negar troca
-              </Button>
-            </>
-          ) : null}
-          {request.status === 'TROCA_AUTORIZADA' ? (
-            <Button
-              onClick={() => setConfirmingCompletion(true)}
-              variant='outline'
-            >
-              <PackageCheck /> Confirmar recebimento
-            </Button>
-          ) : null}
-        </div>
-      }
-      description={[
-        'Pedido #',
-        String(request.orderId),
-        String(order ? ` · ${order.customerName}` : ''),
-      ].join('')}
-      title={
-        <span className='flex flex-wrap items-center gap-3'>
-          Troca #{request.id}
-          <Badge variant={commerceStatus(request.status).variant}>
-            {commerceStatus(request.status).label}
-          </Badge>
-        </span>
-      }
-    >
+    <>
       {message ? (
         <div className='mt-6'>
           <StatusMessage
@@ -230,6 +128,11 @@ export function AdminExchangeDetailPage() {
                   ? (item?.productName ?? 'Item do pedido')
                   : 'Compra inteira'}
               </p>
+              {item ? (
+                <p className='mt-1 text-muted-foreground'>
+                  {item.variantLabel} · Quantidade: {item.quantity}
+                </p>
+              ) : null}
             </div>
             <div>
               <p className='text-xs text-muted-foreground'>Valor elegível</p>
@@ -257,12 +160,10 @@ export function AdminExchangeDetailPage() {
                 'border-input p-3 text-sm',
               ].join(' ')}
             >
-              <input
+              <Checkbox
                 checked={returnToStock}
-                className='size-4 accent-primary'
                 disabled={request.status !== 'TROCA_AUTORIZADA'}
-                onChange={(event) => setReturnToStock(event.target.checked)}
-                type='checkbox'
+                onCheckedChange={setReturnToStock}
               />
               <span>
                 <span className='block font-medium'>Retornar ao estoque</span>
@@ -282,6 +183,92 @@ export function AdminExchangeDetailPage() {
           </CardContent>
         </Card>
       </div>
-    </AdminPageLayout>
+    </>
+  );
+}
+
+const getPageHeader = (model: ReturnType<typeof useAdminExchangeDetail>) => {
+  const {
+    error,
+    request,
+    order,
+    setConfirmingCompletion,
+    setConfirmingDenial,
+    update,
+  } = model;
+  if (!request)
+    return error
+      ? {
+          description: 'Não foi possível abrir os dados desta solicitação.',
+          title: 'Troca',
+          overlap: true,
+        }
+      : {
+          description: [
+            'Consulte a solicitação e atualize',
+            'o recebimento dos itens.',
+          ].join(' '),
+          title: 'Troca',
+          overlap: true,
+        };
+  return {
+    action: (
+      <div className='flex flex-wrap items-center gap-2'>
+        <Button
+          render={<Link to='/admin/trocas' />}
+          size='sm'
+          variant='outline'
+        >
+          <ChevronLeft /> Trocas
+        </Button>
+        {request.status === 'EM_TROCA' ? (
+          <>
+            <Button
+              onClick={() => void update('TROCA_AUTORIZADA')}
+              variant='outline'
+            >
+              Autorizar troca
+            </Button>
+            <Button
+              onClick={() => setConfirmingDenial(true)}
+              variant='destructive'
+            >
+              Negar troca
+            </Button>
+          </>
+        ) : null}
+        {request.status === 'TROCA_AUTORIZADA' ? (
+          <Button
+            onClick={() => setConfirmingCompletion(true)}
+            variant='outline'
+          >
+            <PackageCheck /> Confirmar recebimento
+          </Button>
+        ) : null}
+      </div>
+    ),
+    description: [
+      'Pedido #',
+      String(request.orderId),
+      String(order ? ` · ${order.customerName}` : ''),
+    ].join(''),
+    title: (
+      <span className='flex flex-wrap items-center gap-3'>
+        Troca #{request.id}
+        <Badge variant={commerceStatus(request.status).variant}>
+          {commerceStatus(request.status).label}
+        </Badge>
+      </span>
+    ),
+    overlap: true,
+  };
+};
+
+export function AdminExchangeDetailPage() {
+  const detail = useAdminExchangeDetail();
+  return (
+    <AdminPage {...getPageHeader(detail)}>
+      <AdminExchangeDetailPageContent {...detail} />
+    </AdminPage>
   );
 }

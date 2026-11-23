@@ -1,3 +1,4 @@
+import { AdminPage } from '@/components/admin/AdminPage';
 import { useEffect, useMemo, useState } from 'react';
 import { Pencil, Plus, Trash2 } from 'lucide-react';
 import { Link } from 'react-router';
@@ -5,7 +6,6 @@ import { Link } from 'react-router';
 import { AdminDataState } from '@/components/admin/AdminDataState';
 import { AdminListFiltersCard } from '@/components/admin/AdminListFiltersCard';
 import { AdminListToolbar } from '@/components/admin/AdminListToolbar';
-import { AdminPageLayout } from '@/components/admin/AdminPageLayout';
 import { AdminPagination } from '@/components/admin/AdminPagination';
 import { ConfirmDialog } from '@/components/admin/ConfirmDialog';
 import { Button } from '@/components/ui/button';
@@ -81,7 +81,7 @@ export function AdminAdministrationPage() {
   }
 
   return (
-    <AdminPageLayout
+    <AdminPage
       action={
         <Button render={<Link to='/admin/administracao/nova' />}>
           <Plus aria-hidden='true' />
@@ -93,7 +93,8 @@ export function AdminAdministrationPage() {
         'organizam o catálogo e filtram as',
         'análises.',
       ].join(' ')}
-      title='Administração'
+      title={'Administração'}
+      overlap
     >
       <div className='mt-8 grid gap-4'>
         <AdminListFiltersCard>
@@ -209,6 +210,6 @@ export function AdminAdministrationPage() {
           title='Excluir categoria?'
         />
       ) : null}
-    </AdminPageLayout>
+    </AdminPage>
   );
 }

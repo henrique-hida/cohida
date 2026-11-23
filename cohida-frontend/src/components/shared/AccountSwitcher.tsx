@@ -63,7 +63,7 @@ export function AccountSwitcher({
                 <span
                   aria-label='Conta atual'
                   className='size-2 shrink-0 rounded-full bg-primary'
-                  title='Conta atual'
+                  data-tooltip='Conta atual'
                 />
               ) : null}
             </span>

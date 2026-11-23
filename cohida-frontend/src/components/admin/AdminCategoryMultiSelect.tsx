@@ -105,7 +105,7 @@ export function AdminCategoryMultiSelect({
             aria-label='Limpar filtro de categorias'
             onClick={() => onValueChange([])}
             size='icon-sm'
-            title='Limpar filtro de categorias'
+            data-tooltip='Limpar filtro de categorias'
             variant='ghost'
           >
             <X aria-hidden='true' className='text-muted-foreground' />

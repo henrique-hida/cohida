@@ -1,60 +1,22 @@
-import { useEffect, useState } from 'react';
-import { Link, useParams } from 'react-router';
+import { AdminPage } from '@/components/admin/AdminPage';
+import { ConfirmDialog } from '@/components/admin/ConfirmDialog';
+import { useState } from 'react';
 
-import { AdminPageLayout } from '@/components/admin/AdminPageLayout';
+import { Link } from 'react-router';
+
 import { Button } from '@/components/ui/button';
-import { customerApi, type CustomerResponse } from '@/lib/customerApi';
+// prettier-ignore
+import {
+  useAdminCustomerDetail,
+} from '@/components/admin/customers/useAdminCustomerDetail';
 
-export function AdminCustomerDetailPage() {
-  const { customerId } = useParams();
-  const [customer, setCustomer] = useState<CustomerResponse>();
-  const [error, setError] = useState('');
-  useEffect(() => {
-    let active = true;
-    const timer = window.setTimeout(() => {
-      if (!customerId) {
-        setError('Cliente inválido.');
-        return;
-      }
-      setCustomer(undefined);
-      setError('');
-      customerApi
-        .findById(customerId)
-        .then((nextCustomer) => active && setCustomer(nextCustomer))
-        .catch((reason) => {
-          if (!active) return;
-          setError(
-            reason instanceof Error
-              ? reason.message
-              : 'Não foi possível carregar o cliente.',
-          );
-        });
-    }, 0);
-    return () => {
-      active = false;
-      window.clearTimeout(timer);
-    };
-  }, [customerId]);
-  async function deactivate() {
-    if (!customer || !customer.active) return;
-    if (!window.confirm('Excluir este cliente da lista ativa?')) return;
-    try {
-      await customerApi.deactivate(String(customer.id));
-      setCustomer({ ...customer, active: false });
-    } catch (reason) {
-      setError(
-        reason instanceof Error
-          ? reason.message
-          : 'Não foi possível excluir o cliente.',
-      );
-    }
-  }
+function AdminCustomerDetailPageContent({
+  customer,
+  error,
+}: ReturnType<typeof useAdminCustomerDetail>) {
   if (error && !customer)
     return (
-      <AdminPageLayout
-        description='Não foi possível abrir os dados deste cliente.'
-        title='Cliente'
-      >
+      <>
         <p className='text-destructive'>{error}</p>
         <Button
           className='mt-4'
@@ -63,47 +25,11 @@ export function AdminCustomerDetailPage() {
         >
           Voltar para clientes
         </Button>
-      </AdminPageLayout>
+      </>
     );
-  if (!customer)
-    return (
-      <AdminPageLayout
-        description='Consulte os dados de contato e endereços do cliente.'
-        title='Cliente'
-      >
-        Carregando cliente...
-      </AdminPageLayout>
-    );
+  if (!customer) return <>Carregando cliente...</>;
   return (
-    <AdminPageLayout
-      action={
-        <div className='flex flex-wrap gap-2'>
-          <Button
-            render={<Link to='/admin/clientes' />}
-            size='sm'
-            variant='outline'
-          >
-            Clientes
-          </Button>
-          <Button
-            render={<Link to={`/admin/clientes/${customer.id}/editar`} />}
-          >
-            Editar
-          </Button>
-          {customer.active ? (
-            <Button onClick={() => void deactivate()} variant='outline'>
-              Excluir
-            </Button>
-          ) : null}
-        </div>
-      }
-      description={[
-        String(customer.code),
-        ' · ',
-        String(customer.active ? 'ATIVO' : 'INATIVO'),
-      ].join('')}
-      title={customer.name}
-    >
+    <>
       <section className='rounded-xl border p-5'>
         <p>E-mail: {customer.email}</p>
         <p>Telefone: {customer.phone}</p>
@@ -119,6 +45,72 @@ export function AdminCustomerDetailPage() {
         ))}
       </section>
       {error ? <p className='mt-4 text-sm text-destructive'>{error}</p> : null}
-    </AdminPageLayout>
+    </>
+  );
+}
+
+const getPageHeader = ({
+  customer,
+  error,
+}: ReturnType<typeof useAdminCustomerDetail>) => ({
+  action: customer ? (
+    <div className='flex flex-wrap gap-2'>
+      <Button
+        nativeButton={false}
+        render={<Link to='/admin/clientes' />}
+        size='sm'
+        variant='outline'
+      >
+        Clientes
+      </Button>
+      <Button
+        nativeButton={false}
+        render={<Link to={`/admin/clientes/${customer.id}/editar`} />}
+      >
+        Editar
+      </Button>
+    </div>
+  ) : null,
+  description: customer
+    ? `${customer.code} · ${customer.active ? 'ATIVO' : 'INATIVO'}`
+    : error
+      ? 'Não foi possível abrir os dados deste cliente.'
+      : 'Consulte os dados de contato e endereços do cliente.',
+  overlap: true,
+  title: customer?.name ?? 'Cliente',
+});
+
+export function AdminCustomerDetailPage() {
+  const detail = useAdminCustomerDetail();
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const header = getPageHeader(detail);
+  return (
+    <AdminPage
+      {...header}
+      action={
+        <div className='flex flex-wrap gap-2'>
+          {header.action}
+          {detail.customer?.active && (
+            <Button onClick={() => setConfirmDelete(true)} variant='outline'>
+              Excluir
+            </Button>
+          )}
+        </div>
+      }
+    >
+      <AdminCustomerDetailPageContent {...detail} />
+      {confirmDelete && (
+        <ConfirmDialog
+          title='Excluir cliente?'
+          description='O cliente será removido da lista ativa.'
+          confirmLabel='Excluir cliente'
+          onCancel={() => setConfirmDelete(false)}
+          onConfirm={() => {
+            setConfirmDelete(false);
+            void detail.deactivate();
+          }}
+        />
+      )}
+    </AdminPage>
   );
 }

@@ -1,11 +1,11 @@
+import { StoreSearch } from './header/StoreSearch';
+import { NotificationMenu } from './header/NotificationMenu';
 import {
-  Bell,
   LayoutDashboard,
   LogIn,
   LogOut,
   Menu,
   ShoppingCart,
-  Search,
   UserRound,
   X,
 } from 'lucide-react';
@@ -14,18 +14,10 @@ import { Link, useLocation, useNavigate } from 'react-router';
 
 import { AppLogo } from '@/components/shared/AppLogo';
 import { AccountMenu } from '@/components/shared/AccountMenu';
-import { FilterSelect } from '@/components/shared/FilterSelect';
 import { Button } from '@/components/ui/button';
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/components/ui/popover';
 import { useCommerce } from '@/data/useCommerce';
 import {
-  apiRequest,
   getSavedAccounts,
-  getSessionRole,
   hasAdminSession,
   switchAccount,
 } from '@/lib/customerApi';
@@ -38,14 +30,6 @@ interface StoreHeaderProps {
   cartItemCount?: number;
 }
 
-interface CustomerNotification {
-  id: number;
-  type: string;
-  message: string;
-  targetPath: string | null;
-  read: boolean;
-}
-
 export function StoreHeader({ cartItemCount = 0 }: StoreHeaderProps) {
   const { search } = useLocation();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -54,9 +38,6 @@ export function StoreHeader({ cartItemCount = 0 }: StoreHeaderProps) {
   );
   const [categoryId, setCategoryId] = useState(
     () => new URLSearchParams(search).get('categoria') ?? '',
-  );
-  const [notifications, setNotifications] = useState<CustomerNotification[]>(
-    [],
   );
   const { logout, state } = useCommerce();
   const categories = useCategories();
@@ -106,28 +87,6 @@ export function StoreHeader({ cartItemCount = 0 }: StoreHeaderProps) {
   }, [search]);
 
   useEffect(() => {
-    if (getSessionRole() !== 'CUSTOMER') {
-      const timer = window.setTimeout(() => setNotifications([]), 0);
-      return () => window.clearTimeout(timer);
-    }
-    const refreshNotifications = () => {
-      void apiRequest<CustomerNotification[]>('/customers/me/notifications')
-        .then(setNotifications)
-        .catch(() => setNotifications([]));
-    };
-    refreshNotifications();
-    window.addEventListener(
-      'cohida:notifications-refresh',
-      refreshNotifications,
-    );
-    return () =>
-      window.removeEventListener(
-        'cohida:notifications-refresh',
-        refreshNotifications,
-      );
-  }, [state.sessionCustomerId]);
-
-  useEffect(() => {
     const query = searchTerm.trim();
     const currentParams = new URLSearchParams(search);
     if (
@@ -152,49 +111,13 @@ export function StoreHeader({ cartItemCount = 0 }: StoreHeaderProps) {
   }, [categoryId, navigate, search, searchTerm]);
 
   const searchForm = (
-    <div
-      className={[
-        'flex w-full min-w-0 items-center gap-2',
-        'md:w-[26rem] lg:w-[34rem]',
-      ].join(' ')}
-      role='search'
-    >
-      <label className='sr-only' htmlFor='store-search'>
-        Buscar produtos
-      </label>
-      <div className='relative min-w-0 flex-1'>
-        <Search
-          className={[
-            'pointer-events-none absolute top-1/2',
-            'left-3 size-4 -translate-y-1/2',
-            'text-muted-foreground',
-          ].join(' ')}
-        />
-        <input
-          className={[
-            'h-10 w-full rounded-lg border border-input',
-            'bg-background py-2 pr-3 pl-9 text-sm',
-            'outline-none focus-visible:ring-3',
-            'focus-visible:ring-ring/50',
-          ].join(' ')}
-          id='store-search'
-          onChange={(event) => setSearchTerm(event.target.value)}
-          placeholder='Buscar produtos'
-          value={searchTerm}
-        />
-      </div>
-      <FilterSelect
-        ariaLabel='Filtrar produtos por categoria'
-        className='min-w-34 shrink-0'
-        onValueChange={setCategoryId}
-        options={categories.map((category) => ({
-          label: category.name,
-          value: category.slug,
-        }))}
-        placeholder='Categoria'
-        value={categoryId}
-      />
-    </div>
+    <StoreSearch
+      searchTerm={searchTerm}
+      categoryId={categoryId}
+      categories={categories}
+      onSearchChange={setSearchTerm}
+      onCategoryChange={setCategoryId}
+    />
   );
 
   return (
@@ -222,42 +145,7 @@ export function StoreHeader({ cartItemCount = 0 }: StoreHeaderProps) {
           {searchForm}
         </div>
         <div className='flex items-center gap-2 justify-self-end'>
-          <Popover>
-            <PopoverTrigger
-              render={
-                <Button
-                  aria-label='Notificações'
-                  size='icon'
-                  variant='outline'
-                />
-              }
-            >
-              <Bell />
-            </PopoverTrigger>
-            <PopoverContent align='end' className='w-72 p-4'>
-              <p className='font-medium'>Notificações</p>
-              {notifications.length ? (
-                <div className='mt-3 grid gap-2'>
-                  {notifications.map((notification) => (
-                    <Link
-                      className={[
-                        'rounded-lg bg-muted p-3 text-sm',
-                        'hover:bg-muted/70',
-                      ].join(' ')}
-                      key={notification.id}
-                      to={notification.targetPath ?? '/pedidos'}
-                    >
-                      {notification.message}
-                    </Link>
-                  ))}
-                </div>
-              ) : (
-                <p className='mt-1 text-sm text-muted-foreground'>
-                  Você não tem novas notificações.
-                </p>
-              )}
-            </PopoverContent>
-          </Popover>
+          <NotificationMenu sessionCustomerId={state.sessionCustomerId} />
           <Button
             aria-label={`Carrinho com ${currentCartItemCount} itens`}
             className='relative'
@@ -293,7 +181,10 @@ export function StoreHeader({ cartItemCount = 0 }: StoreHeaderProps) {
             triggerClassName='font-semibold'
             trigger={
               accountInitials ? (
-                <span className='text-xs' title={accountName ?? undefined}>
+                <span
+                  className='text-xs'
+                  data-tooltip={accountName ?? undefined}
+                >
                   {accountInitials}
                 </span>
               ) : (

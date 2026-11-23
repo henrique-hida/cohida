@@ -1,21 +1,19 @@
+import { Page } from '@/components/shared/Page';
+import { useParams } from 'react-router';
+import { OrderSummary } from '@/components/order/OrderSummary';
 import {
   Check,
   ChevronLeft,
-  CircleHelp,
   Clock3,
   MapPin,
   PackageCheck,
   Truck,
 } from 'lucide-react';
-import { Link, useParams } from 'react-router';
+import { Link } from 'react-router';
 
-import { StoreHeader } from '@/components/shared';
-import { PageHeader } from '@/components/shared/PageHeader';
-import { PageLayout } from '@/components/shared/PageLayout';
 import { PageContainer } from '@/components/shared/PageContainer';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { formatCurrency } from '@/lib/currency';
 import { useCommerce } from '@/data/useCommerce';
 
 const deliverySteps = [
@@ -37,27 +35,13 @@ function addBusinessDays(date: Date, days: number) {
   return result;
 }
 
-export function OrderDetailPage() {
+type Order = ReturnType<typeof useCommerce>['state']['orders'][number];
+
+function OrderDetailPageContent({ order }: { order?: Order }) {
   const { cancelOrder, state } = useCommerce();
-  const { orderId } = useParams();
-  const order = state.orders.find((entry) => entry.id === orderId);
   if (!order)
     return (
-      <div className='min-h-svh bg-background'>
-        <StoreHeader />
-        <PageHeader
-          action={
-            <Button
-              render={<Link to='/conta?secao=orders' />}
-              variant='outline'
-            >
-              <ChevronLeft />
-              Meus pedidos
-            </Button>
-          }
-          description='Não foi possível encontrar este pedido na sua conta.'
-          title='Pedido não encontrado'
-        />
+      <div className='bg-background'>
         <PageContainer className='py-20 text-center'>
           <p className='text-muted-foreground'>
             Confira seus pedidos e selecione um para acompanhar.
@@ -65,14 +49,19 @@ export function OrderDetailPage() {
         </PageContainer>
       </div>
     );
-  const currentStep =
-    order.status === 'delivered'
-      ? 3
-      : order.status === 'in_transit'
-        ? 2
-        : order.status === 'approved'
-          ? 1
-          : 0;
+  const delivered = [
+    'delivered',
+    'in_exchange',
+    'exchange_authorized',
+    'exchanged',
+  ].includes(order.status);
+  const currentStep = delivered
+    ? 3
+    : order.status === 'in_transit'
+      ? 2
+      : order.status === 'approved'
+        ? 1
+        : 0;
   const statusDates = [
     order.createdAt,
     order.approvedAt,
@@ -90,273 +79,193 @@ export function OrderDetailPage() {
     5,
   );
   return (
-    <div className='min-h-svh bg-background'>
-      <StoreHeader />
-      <PageLayout
-        action={
-          <Button render={<Link to='/conta?secao=orders' />} variant='outline'>
-            <ChevronLeft />
-            Meus pedidos
-          </Button>
-        }
-        description={[
-          'Realizado em ',
-          String(
-            new Intl.DateTimeFormat('pt-BR', { dateStyle: 'medium' }).format(
-              new Date(order.createdAt),
-            ),
-          ),
-        ].join('')}
-        title='Acompanhe sua entrega'
+    <>
+      <div
+        className={[
+          'mt-8 grid gap-8',
+          'lg:grid-cols-[minmax(0,1fr)_22rem]',
+          'lg:items-start',
+        ].join(' ')}
       >
-        <div
-          className={[
-            'mt-8 grid gap-8',
-            'lg:grid-cols-[minmax(0,1fr)_22rem]',
-            'lg:items-start',
-          ].join(' ')}
-        >
-          <div className='grid gap-6'>
-            <Card className='py-0'>
-              <CardContent className='p-5 sm:p-6'>
-                <div
+        <div className='grid gap-6'>
+          <Card className='py-0'>
+            <CardContent className='p-5 sm:p-6'>
+              <div
+                className={[
+                  'flex flex-wrap items-center',
+                  'justify-between gap-2',
+                ].join(' ')}
+              >
+                <h2 className='font-semibold'>Acompanhamento</h2>
+                <span className='text-xs font-medium text-muted-foreground'>
+                  Etapa {currentStep + 1} de {deliverySteps.length}
+                </span>
+              </div>
+              <div
+                className={[
+                  'mt-4 flex items-center gap-3 rounded-xl',
+                  'border border-primary/20 bg-background/80',
+                  'px-4 py-3 sm:px-5',
+                ].join(' ')}
+              >
+                <span
                   className={[
-                    'flex flex-wrap items-center',
-                    'justify-between gap-2',
+                    'grid size-10 shrink-0 place-items-center',
+                    'rounded-xl bg-primary/10 text-primary',
                   ].join(' ')}
                 >
-                  <h2 className='font-semibold'>Acompanhamento</h2>
-                  <span className='text-xs font-medium text-muted-foreground'>
-                    Etapa {currentStep + 1} de {deliverySteps.length}
-                  </span>
-                </div>
-                <div
-                  className={[
-                    'mt-4 flex items-center gap-3 rounded-xl',
-                    'border border-primary/20 bg-background/80',
-                    'px-4 py-3 sm:px-5',
-                  ].join(' ')}
-                >
-                  <span
-                    className={[
-                      'grid size-10 shrink-0 place-items-center',
-                      'rounded-xl bg-primary/10 text-primary',
-                    ].join(' ')}
-                  >
-                    {order.status === 'delivered' ? (
-                      <MapPin className='size-5' />
-                    ) : (
-                      <Clock3 className='size-5' />
+                  {delivered ? (
+                    <MapPin className='size-5' />
+                  ) : (
+                    <Clock3 className='size-5' />
+                  )}
+                </span>
+                <div className='min-w-0 flex-1'>
+                  <p className='text-xs font-medium text-muted-foreground'>
+                    {delivered ? 'Entrega concluída' : 'Previsão da entrega'}
+                  </p>
+                  <p className='mt-0.5 font-semibold text-primary'>
+                    {dateFormatter.format(
+                      order.deliveredAt
+                        ? new Date(order.deliveredAt)
+                        : estimatedDeliveryDate,
                     )}
-                  </span>
-                  <div className='min-w-0 flex-1'>
-                    <p className='text-xs font-medium text-muted-foreground'>
-                      {order.status === 'delivered'
-                        ? 'Entrega concluída'
-                        : 'Previsão da entrega'}
-                    </p>
-                    <p className='mt-0.5 font-semibold text-primary'>
-                      {dateFormatter.format(
-                        order.deliveredAt
-                          ? new Date(order.deliveredAt)
-                          : estimatedDeliveryDate,
-                      )}
-                    </p>
-                  </div>
+                  </p>
                 </div>
-                <ol className='mt-6'>
-                  {deliverySteps.map((step, index) => {
-                    const Icon = step.icon;
-                    const isDone = index <= currentStep;
-                    return (
-                      <li
-                        className='relative flex gap-4 pb-7 last:pb-0'
-                        key={step.label}
-                      >
-                        {index < deliverySteps.length - 1 ? (
-                          <span
-                            aria-hidden='true'
-                            className={[
-                              'absolute top-8 bottom-0 left-4 z-0 w-0.5',
-                              'bg-muted',
-                            ].join(' ')}
-                          >
-                            <span
-                              className={[
-                                'block h-full ',
-                                String(
-                                  index < currentStep
-                                    ? 'w-full bg-primary'
-                                    : 'w-0',
-                                ),
-                              ].join('')}
-                            />
-                          </span>
-                        ) : null}
+              </div>
+              <ol className='mt-6'>
+                {deliverySteps.map((step, index) => {
+                  const Icon = step.icon;
+                  const isDone = index <= currentStep;
+                  return (
+                    <li
+                      className='relative flex gap-4 pb-7 last:pb-0'
+                      key={step.label}
+                    >
+                      {index < deliverySteps.length - 1 ? (
                         <span
+                          aria-hidden='true'
                           className={[
-                            'relative z-10 grid size-8 ',
-                            'place-items-center rounded-full ',
+                            'absolute top-8 bottom-0 left-4 z-0 w-0.5',
+                            'bg-muted',
+                          ].join(' ')}
+                        >
+                          <span
+                            className={[
+                              'block h-full ',
+                              String(
+                                index < currentStep
+                                  ? 'w-full bg-primary'
+                                  : 'w-0',
+                              ),
+                            ].join('')}
+                          />
+                        </span>
+                      ) : null}
+                      <span
+                        className={[
+                          'relative z-10 grid size-8 ',
+                          'place-items-center rounded-full ',
+                          String(
+                            isDone
+                              ? 'bg-primary text-primary-foreground'
+                              : 'bg-muted text-muted-foreground',
+                          ),
+                        ].join('')}
+                      >
+                        <Icon className='size-4' />
+                      </span>
+                      <div
+                        className={[
+                          'flex min-w-0 flex-1 flex-col gap-1',
+                          'sm:flex-row sm:items-start',
+                          'sm:justify-between sm:gap-4',
+                        ].join(' ')}
+                      >
+                        <p
+                          className={[
+                            'pt-1 text-sm font-medium ',
                             String(
                               isDone
-                                ? 'bg-primary text-primary-foreground'
-                                : 'bg-muted text-muted-foreground',
+                                ? 'text-foreground'
+                                : 'text-muted-foreground',
                             ),
                           ].join('')}
                         >
-                          <Icon className='size-4' />
-                        </span>
-                        <div
-                          className={[
-                            'flex min-w-0 flex-1 flex-col gap-1',
-                            'sm:flex-row sm:items-start',
-                            'sm:justify-between sm:gap-4',
-                          ].join(' ')}
-                        >
-                          <p
-                            className={[
-                              'pt-1 text-sm font-medium ',
-                              String(
-                                isDone
-                                  ? 'text-foreground'
-                                  : 'text-muted-foreground',
-                              ),
-                            ].join('')}
-                          >
-                            {step.label}
-                          </p>
-                          <div
-                            className={[
-                              'text-sm text-muted-foreground sm:min-w-32',
-                              'sm:text-right',
-                            ].join(' ')}
-                          >
-                            {statusDates[index]
-                              ? (() => {
-                                  const date = new Date(statusDates[index]);
-                                  return (
-                                    <time dateTime={date.toISOString()}>
-                                      <span className='block'>
-                                        {dateFormatter.format(date)}
-                                      </span>
-                                      <span className='mt-0.5 block text-xs'>
-                                        {timeFormatter.format(date)}
-                                      </span>
-                                    </time>
-                                  );
-                                })()
-                              : isDone
-                                ? 'Data indisponível'
-                                : 'Aguardando'}
-                          </div>
-                        </div>
-                      </li>
-                    );
-                  })}
-                </ol>
-              </CardContent>
-            </Card>
-          </div>
-          <Card className='py-0'>
-            <CardContent className='p-5'>
-              <h2 className='font-semibold'>Resumo do pedido</h2>
-              <div className='mt-5 grid gap-4'>
-                {order.items.map((item) => {
-                  const product = state.products.find((entry) =>
-                    entry.variants.some(
-                      (variant) => variant.id === item.variantId,
-                    ),
-                  );
-                  const variant = product?.variants.find(
-                    (entry) => entry.id === item.variantId,
-                  );
-                  return (
-                    <div className='flex min-w-0 gap-3' key={item.id}>
-                      <img
-                        alt={product?.images[0]?.alt ?? item.productId}
-                        className={[
-                          'size-14 shrink-0 rounded-lg bg-muted',
-                          'object-cover',
-                        ].join(' ')}
-                        src={product?.images[0]?.src}
-                      />
-                      <div className='min-w-0 flex-1'>
-                        <p className='text-sm font-medium'>
-                          {product?.name ?? item.productId}
-                        </p>
-                        <p className='mt-1 text-xs text-muted-foreground'>
-                          {[variant?.label, variant?.sku]
-                            .filter(Boolean)
-                            .join(' · ')}
+                          {step.label}
                         </p>
                         <div
                           className={[
-                            'mt-2 flex justify-between gap-2',
-                            'text-sm',
+                            'text-sm text-muted-foreground sm:min-w-32',
+                            'sm:text-right',
                           ].join(' ')}
                         >
-                          <span className='text-muted-foreground'>
-                            {item.quantity} ×{' '}
-                            {formatCurrency(item.unitPriceCents)}
-                          </span>
-                          <span className='font-medium'>
-                            {formatCurrency(
-                              item.unitPriceCents * item.quantity,
-                            )}
-                          </span>
+                          {statusDates[index]
+                            ? (() => {
+                                const date = new Date(statusDates[index]);
+                                return (
+                                  <time dateTime={date.toISOString()}>
+                                    <span className='block'>
+                                      {dateFormatter.format(date)}
+                                    </span>
+                                    <span className='mt-0.5 block text-xs'>
+                                      {timeFormatter.format(date)}
+                                    </span>
+                                  </time>
+                                );
+                              })()
+                            : isDone
+                              ? 'Data indisponível'
+                              : 'Aguardando'}
                         </div>
                       </div>
-                    </div>
+                    </li>
                   );
                 })}
-              </div>
-              <dl
-                className={[
-                  'mt-5 grid gap-3 border-t border-border',
-                  'pt-4 text-sm',
-                ].join(' ')}
-              >
-                <div className='flex justify-between text-muted-foreground'>
-                  <dt>Subtotal</dt>
-                  <dd>{formatCurrency(order.subtotalCents)}</dd>
-                </div>
-                <div className='flex justify-between text-muted-foreground'>
-                  <dt>Entrega</dt>
-                  <dd>{formatCurrency(order.shippingCents)}</dd>
-                </div>
-                <div
-                  className={[
-                    'flex justify-between border-t',
-                    'border-border pt-3 text-base font-semibold',
-                  ].join(' ')}
-                >
-                  <dt>Total</dt>
-                  <dd>{formatCurrency(order.totalCents)}</dd>
-                </div>
-              </dl>
-              {order.status === 'delivered' ? (
-                <Button
-                  className='mt-6 w-full'
-                  render={<Link to={`/trocas?pedido=${order.id}`} />}
-                  variant='outline'
-                >
-                  <CircleHelp />
-                  Solicitar troca
-                </Button>
-              ) : null}
-              {order.status === 'processing' ? (
-                <Button
-                  className='mt-3 w-full'
-                  onClick={() => void cancelOrder(order.id)}
-                  variant='destructive'
-                >
-                  Cancelar pedido
-                </Button>
-              ) : null}
+              </ol>
             </CardContent>
           </Card>
         </div>
-      </PageLayout>
-    </div>
+        <OrderSummary
+          order={order}
+          products={state.products}
+          cancelOrder={cancelOrder}
+        />
+      </div>
+    </>
+  );
+}
+
+const getPageHeader = ({ order }: { order?: Order }) => ({
+  action: (
+    <Button
+      nativeButton={false}
+      render={<Link to='/conta?secao=orders' />}
+      variant='outline'
+    >
+      <ChevronLeft />
+      Meus pedidos
+    </Button>
+  ),
+  description: order
+    ? [
+        'Realizado em',
+        new Intl.DateTimeFormat('pt-BR', { dateStyle: 'medium' }).format(
+          new Date(order.createdAt),
+        ),
+      ].join(' ')
+    : 'Não foi possível encontrar este pedido na sua conta.',
+  overlap: Boolean(order),
+  title: order ? 'Acompanhe sua entrega' : 'Pedido não encontrado',
+});
+
+export function OrderDetailPage() {
+  const { orderId } = useParams();
+  const { state } = useCommerce();
+  const order = state.orders.find((entry) => entry.id === orderId);
+  return (
+    <Page {...getPageHeader({ order })}>
+      <OrderDetailPageContent order={order} />
+    </Page>
   );
 }

@@ -177,10 +177,7 @@ export function RowActionsMenu({
       {confirming ? (
         <ConfirmDialog
           confirmLabel='Excluir'
-          description={[
-            'Esta ação removerá o registro',
-            'desta sessão de demonstração.',
-          ].join(' ')}
+          description='Esta ação removerá o registro.'
           onCancel={() => setConfirming(false)}
           onConfirm={() => {
             onDelete?.();

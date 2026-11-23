@@ -1,26 +1,15 @@
+import { AdminPage } from '@/components/admin/AdminPage';
+import { StockTable, type StockRow } from '@/components/admin/stock/StockTable';
 import { useEffect, useMemo, useRef, useState } from 'react';
 
 import { AdminDataState } from '@/components/admin/AdminDataState';
 import { AdminFilterSelect } from '@/components/admin/AdminFilterSelect';
 import { AdminListFiltersCard } from '@/components/admin/AdminListFiltersCard';
 import { AdminListToolbar } from '@/components/admin/AdminListToolbar';
-import { AdminPageLayout } from '@/components/admin/AdminPageLayout';
 import { AdminPagination } from '@/components/admin/AdminPagination';
-import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { StatusMessage } from '@/components/ui/status-message';
-import { Table } from '@/components/ui/table';
 import { commerceApi, type ApiProduct } from '@/lib/commerceApi';
-
-type StockRow = {
-  currentStock: number;
-  minimumStock: number;
-  productId: number;
-  productName: string;
-  sku: string;
-  variantId: number;
-  variantLabel: string;
-};
 
 const pageSize = 10;
 
@@ -149,14 +138,35 @@ export function AdminStockPage() {
     }
   }
 
+  function updateStockDraft(row: StockRow, value: string) {
+    setDrafts((current) => ({ ...current, [row.variantId]: value }));
+    window.clearTimeout(saveTimers.current[row.variantId]);
+    if (value && Number.isInteger(Number(value)) && Number(value) >= 0) {
+      saveTimers.current[row.variantId] = window.setTimeout(
+        () => void saveStock(row, value),
+        500,
+      );
+    }
+  }
+
+  function finishStockDraft(row: StockRow, value: string) {
+    window.clearTimeout(saveTimers.current[row.variantId]);
+    if (!value || !Number.isInteger(Number(value)) || Number(value) < 0) {
+      setError('Informe um saldo inteiro igual ou maior que zero.');
+    } else if (saving !== row.variantId && Number(value) !== row.currentStock) {
+      void saveStock(row, value);
+    }
+  }
+
   return (
-    <AdminPageLayout
+    <AdminPage
       description={[
         'Consulte a disponibilidade por',
         'produto e atualize as quantidades',
         'em estoque.',
       ].join(' ')}
-      title='Estoque'
+      title={'Estoque'}
+      overlap
     >
       <div className='mt-8 grid gap-4'>
         <AdminListFiltersCard>
@@ -209,119 +219,13 @@ export function AdminStockPage() {
               />
             ) : rows.length ? (
               <>
-                <Table className='min-w-[48rem] text-left'>
-                  <thead
-                    className={[
-                      'border-b border-border text-xs',
-                      'tracking-wide text-muted-foreground',
-                      'uppercase',
-                    ].join(' ')}
-                  >
-                    <tr>
-                      <th className='pb-3 font-medium'>Produto</th>
-                      <th className='pb-3 font-medium'>Variação</th>
-                      <th className='pb-3 font-medium'>SKU</th>
-                      <th className='pb-3 font-medium'>Situação</th>
-                      <th className='pb-3 text-right font-medium'>Mínimo</th>
-                      <th className='pb-3 text-right font-medium'>Saldo</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {visibleRows.map((row) => {
-                      const lowStock = row.currentStock <= row.minimumStock;
-                      return (
-                        <tr
-                          className='border-b border-border last:border-0'
-                          key={row.variantId}
-                        >
-                          <td className='py-3 font-medium'>
-                            {row.productName}
-                          </td>
-                          <td className='py-3'>{row.variantLabel}</td>
-                          <td className='py-3 text-muted-foreground'>
-                            {row.sku}
-                          </td>
-                          <td className='py-3'>
-                            <Badge variant={lowStock ? 'warning' : 'success'}>
-                              {lowStock ? 'NO LIMITE' : 'DISPONÍVEL'}
-                            </Badge>
-                          </td>
-                          <td className='py-3 text-right'>
-                            {row.minimumStock} un.
-                          </td>
-                          <td className='py-3 text-right'>
-                            <input
-                              aria-label={[
-                                'Saldo de ',
-                                String(row.productName),
-                                ' ',
-                                String(row.variantLabel),
-                              ].join('')}
-                              className={[
-                                'h-9 w-24 rounded-lg border border-input',
-                                'bg-background px-2 text-right text-sm',
-                                'outline-none focus-visible:ring-3',
-                                'focus-visible:ring-ring/50',
-                              ].join(' ')}
-                              disabled={saving === row.variantId}
-                              min='0'
-                              onChange={(event) => {
-                                const value = event.target.value;
-                                setDrafts((current) => ({
-                                  ...current,
-                                  [row.variantId]: value,
-                                }));
-                                window.clearTimeout(
-                                  saveTimers.current[row.variantId],
-                                );
-                                if (
-                                  value &&
-                                  Number.isInteger(Number(value)) &&
-                                  Number(value) >= 0
-                                ) {
-                                  saveTimers.current[row.variantId] =
-                                    window.setTimeout(
-                                      () => void saveStock(row, value),
-                                      500,
-                                    );
-                                }
-                              }}
-                              onBlur={(event) => {
-                                const value = event.target.value;
-                                window.clearTimeout(
-                                  saveTimers.current[row.variantId],
-                                );
-                                if (
-                                  !value ||
-                                  !Number.isInteger(Number(value)) ||
-                                  Number(value) < 0
-                                ) {
-                                  setError(
-                                    [
-                                      'Informe um saldo inteiro igual ou',
-                                      'maior que zero.',
-                                    ].join(' '),
-                                  );
-                                } else if (
-                                  saving !== row.variantId &&
-                                  Number(value) !== row.currentStock
-                                ) {
-                                  void saveStock(row, value);
-                                }
-                              }}
-                              step='1'
-                              type='number'
-                              value={
-                                drafts[row.variantId] ??
-                                String(row.currentStock)
-                              }
-                            />
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </Table>
+                <StockTable
+                  rows={visibleRows}
+                  drafts={drafts}
+                  saving={saving}
+                  onChange={updateStockDraft}
+                  onBlur={finishStockDraft}
+                />
                 <AdminPagination
                   currentPage={safePage}
                   onPageChange={setPage}
@@ -339,6 +243,6 @@ export function AdminStockPage() {
           </CardContent>
         </Card>
       </div>
-    </AdminPageLayout>
+    </AdminPage>
   );
 }

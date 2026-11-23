@@ -1,3 +1,5 @@
+import { AdminPage } from '@/components/admin/AdminPage';
+
 import {
   ArrowUpRight,
   Boxes,
@@ -9,7 +11,6 @@ import {
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router';
 
-import { AdminPageLayout } from '@/components/admin/AdminPageLayout';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -34,11 +35,7 @@ function getGreeting(hour: number) {
   return 'Boa noite';
 }
 
-export function AdminDashboardPage() {
-  const now = new Date();
-  const greeting = getGreeting(now.getHours());
-  const adminName = localStorage.getItem('cohida-admin-name')?.trim();
-  const firstName = adminName?.split(/\s+/)[0] || 'Administradora';
+function AdminDashboardPageContent() {
   const [orders, setOrders] = useState<ApiOrder[]>([]);
   const [products, setProducts] = useState<ApiProduct[]>([]);
   const [returns, setReturns] = useState<ApiReturn[]>([]);
@@ -113,16 +110,7 @@ export function AdminDashboardPage() {
   ];
 
   return (
-    <AdminPageLayout
-      action={
-        <Button render={<Link to='/admin/produtos' />}>
-          <PackagePlus aria-hidden='true' />
-          Novo produto
-        </Button>
-      }
-      description='Acompanhe o que precisa de atenção na operação.'
-      title={`${greeting}, ${firstName}.`}
-    >
+    <>
       <section className='mt-8 grid gap-4 sm:grid-cols-2 xl:grid-cols-4'>
         {metrics.map(({ detail, icon: Icon, label, to, value }) => (
           <Link
@@ -282,6 +270,31 @@ export function AdminDashboardPage() {
           </Card>
         ) : null}
       </section>
-    </AdminPageLayout>
+    </>
+  );
+}
+
+const getPageHeader = ({ hour, name }: { hour: number; name: string }) => ({
+  action: (
+    <Button nativeButton={false} render={<Link to='/admin/produtos' />}>
+      <PackagePlus aria-hidden='true' />
+      Novo produto
+    </Button>
+  ),
+  description: 'Acompanhe o que precisa de atenção na operação.',
+  overlap: true,
+  title: `${getGreeting(hour)}, ${name.split(/\s+/)[0] || 'Administradora'}.`,
+});
+
+export function AdminDashboardPage() {
+  const header = getPageHeader({
+    hour: new Date().getHours(),
+    name: localStorage.getItem('cohida-admin-name')?.trim() ?? '',
+  });
+
+  return (
+    <AdminPage {...header}>
+      <AdminDashboardPageContent />
+    </AdminPage>
   );
 }

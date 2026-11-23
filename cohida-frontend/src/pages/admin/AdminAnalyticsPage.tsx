@@ -1,7 +1,6 @@
+import { AdminPage } from '@/components/admin/AdminPage';
+import { AdminDateFilter } from '@/components/admin/AdminDateFilter';
 import { useEffect, useMemo, useState } from 'react';
-import { format, parseISO } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
-import { CalendarDays } from 'lucide-react';
 import {
   Area,
   AreaChart,
@@ -19,15 +18,7 @@ import {
   AdminCategoryMultiSelect,
 } from '@/components/admin/AdminCategoryMultiSelect';
 import { AdminListFiltersCard } from '@/components/admin/AdminListFiltersCard';
-import { AdminPageLayout } from '@/components/admin/AdminPageLayout';
-import { Calendar } from '@/components/ui/calendar';
-import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/components/ui/popover';
 import { useCategories } from '@/data/useCategories';
 import { commerceApi, type ApiSalesPoint } from '@/lib/commerceApi';
 import { formatCurrency } from '@/lib/currency';
@@ -39,51 +30,6 @@ function formatMonth(period: string) {
     month: 'short',
     year: '2-digit',
   }).format(new Date(year, month - 1, 1));
-}
-
-function DateFilter({
-  label,
-  value,
-  onChange,
-}: {
-  label: string;
-  value: string;
-  onChange: (value: string) => void;
-}) {
-  const [open, setOpen] = useState(false);
-  const selected = value ? parseISO(value) : undefined;
-
-  return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger
-        render={
-          <Button
-            aria-label={`Selecionar data de ${label.toLowerCase()}`}
-            className='h-10 justify-start text-left font-normal'
-            variant='outline'
-          />
-        }
-      >
-        <CalendarDays aria-hidden='true' className='text-muted-foreground' />
-        <span>
-          {label}: {selected ? format(selected, 'dd/MM/yyyy') : 'Selecionar'}
-        </span>
-      </PopoverTrigger>
-      <PopoverContent align='start' className='w-auto p-0'>
-        <Calendar
-          defaultMonth={selected}
-          locale={ptBR}
-          mode='single'
-          onSelect={(date) => {
-            if (!date) return;
-            onChange(format(date, 'yyyy-MM-dd'));
-            setOpen(false);
-          }}
-          selected={selected}
-        />
-      </PopoverContent>
-    </Popover>
-  );
 }
 
 export function AdminAnalyticsPage() {
@@ -178,14 +124,15 @@ export function AdminAnalyticsPage() {
     );
   }, [sales, salesSeries]);
   return (
-    <AdminPageLayout
-      description='Compare a evolução das vendas entregues por categoria.'
-      title='Análises de vendas'
+    <AdminPage
+      description={'Compare a evolução das vendas por categoria.'}
+      title={'Análises de vendas'}
+      overlap
     >
       <AdminListFiltersCard className='mt-8'>
         <div className='flex flex-wrap items-center justify-start gap-2'>
-          <DateFilter label='Início' onChange={setFrom} value={from} />
-          <DateFilter label='Fim' onChange={setTo} value={to} />
+          <AdminDateFilter label='Início' onChange={setFrom} value={from} />
+          <AdminDateFilter label='Fim' onChange={setTo} value={to} />
           <AdminCategoryMultiSelect
             categories={availableCategories}
             onValueChange={setCategoryFilter}
@@ -312,6 +259,6 @@ export function AdminAnalyticsPage() {
           </section>
         </>
       ) : null}
-    </AdminPageLayout>
+    </AdminPage>
   );
 }

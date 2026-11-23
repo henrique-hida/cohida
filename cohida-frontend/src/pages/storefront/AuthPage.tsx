@@ -6,7 +6,7 @@ import { useNavigate } from 'react-router';
 import {
   CustomerRegistrationForm,
 } from '@/components/customer/CustomerRegistrationForm';
-import { PageContainer, StoreHeader } from '@/components/shared';
+import { PageContainer } from '@/components/shared';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { useCommerce } from '@/data/useCommerce';
@@ -85,8 +85,7 @@ export function AuthPage() {
   }
 
   return (
-    <div className='min-h-svh bg-muted/35'>
-      <StoreHeader />
+    <div className='bg-muted/35'>
       <PageContainer className='grid place-items-center py-10'>
         <Card className='w-full max-w-3xl'>
           <CardContent className='p-5 sm:p-6'>

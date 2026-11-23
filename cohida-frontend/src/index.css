@@ -151,3 +151,97 @@
 .status-message-progress {
   animation: status-message-progress 3s linear forwards;
 }
+
+[data-page-layout]:has([data-slot='page-header'][data-overlap='true'])
+  > [data-slot='page-content'] {
+  margin-top: -1rem;
+}
+
+@media (min-width: 40rem) {
+  [data-page-layout]:has([data-slot='page-header'][data-overlap='true'])
+    > [data-slot='page-content'] {
+    margin-top: -1.5rem;
+  }
+}
+input[type='number'] {
+  appearance: textfield;
+  -moz-appearance: textfield;
+}
+
+input[type='checkbox'],
+input[type='radio'] {
+  appearance: none;
+  flex-shrink: 0;
+  width: 1rem;
+  height: 1rem;
+  border: 1px solid var(--input);
+  background: var(--background);
+  display: inline-grid;
+  place-content: center;
+}
+
+input[type='checkbox'] {
+  border-radius: 0.25rem;
+}
+
+input[type='radio'] {
+  border-radius: 50%;
+}
+
+input[type='checkbox']:checked,
+input[type='radio']:checked {
+  border-color: var(--primary);
+  background: var(--primary);
+}
+
+input[type='checkbox']:checked::before {
+  content: '';
+  width: 0.5rem;
+  height: 0.3rem;
+  border: solid var(--primary-foreground);
+  border-width: 0 0 2px 2px;
+  transform: rotate(-45deg) translateY(-1px);
+}
+
+input[type='radio']:checked::before {
+  content: '';
+  width: 0.4rem;
+  height: 0.4rem;
+  border-radius: 50%;
+  background: var(--primary-foreground);
+}
+
+input[type='checkbox']:focus-visible,
+input[type='radio']:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+
+input[type='number']::-webkit-inner-spin-button,
+input[type='number']::-webkit-outer-spin-button {
+  appearance: none;
+  margin: 0;
+}
+
+[data-tooltip] {
+  position: relative;
+}
+
+[data-tooltip]:hover::after,
+[data-tooltip]:focus-visible::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  z-index: 60;
+  bottom: calc(100% + 0.35rem);
+  left: 50%;
+  transform: translateX(-50%);
+  width: max-content;
+  max-width: 15rem;
+  border-radius: 0.375rem;
+  background: var(--foreground);
+  color: var(--background);
+  padding: 0.3rem 0.5rem;
+  font-size: 0.75rem;
+  line-height: 1.2;
+  pointer-events: none;
+}

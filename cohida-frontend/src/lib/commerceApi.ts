@@ -1,245 +1,30 @@
+import type {
+  ApiVariant,
+  ApiProduct,
+  ApiProductImageUpload,
+  ApiProductReview,
+  ApiReviewEligibility,
+  ApiCategory,
+  ApiCart,
+  ApiExpiredCartItem,
+  ApiOrder,
+  ApiCard,
+  ApiCoupon,
+  ApiCouponUpsertRequest,
+  ApiReturn,
+  ApiAnalyticsOverview,
+  ApiSalesPoint,
+  ApiTopProduct,
+} from './commerce/types';
+
+export type * from './commerce/types';
+
 import { apiRequest } from './customerApi';
 
-const apiBaseUrl =
-  import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8080/api';
-
-function apiOrigin() {
-  const origin =
-    typeof window === 'undefined' ? 'http://localhost' : window.location.origin;
-  return new URL(apiBaseUrl, origin).origin;
-}
-
-export function resolveProductImageUrl(imageUrl: string | null | undefined) {
-  if (!imageUrl) return undefined;
-  if (imageUrl.startsWith('/api/products/images/')) {
-    return new URL(imageUrl, apiOrigin()).toString();
-  }
-  return imageUrl;
-}
-
-export function toStoredProductImageUrl(imageUrl: string | null | undefined) {
-  if (!imageUrl) return null;
-  try {
-    const parsed = new URL(
-      imageUrl,
-      typeof window === 'undefined'
-        ? 'http://localhost'
-        : window.location.origin,
-    );
-    return parsed.origin === apiOrigin() &&
-      parsed.pathname.startsWith('/api/products/images/')
-      ? parsed.pathname
-      : imageUrl;
-  } catch {
-    return imageUrl;
-  }
-}
-
-export interface ApiVariant {
-  id: number;
-  sku: string;
-  label: string;
-  color: string | null;
-  size: string | null;
-  priceCents: number;
-  stockQuantity: number;
-}
-
-export interface ApiProduct {
-  id: number;
-  code: string;
-  slug: string;
-  name: string;
-  brand: string;
-  description: string;
-  imageUrl: string | null;
-  minimumStock: number;
-  active: boolean;
-  rating: number;
-  reviewCount: number;
-  categoryIds: number[];
-  variants: ApiVariant[];
-  createdAt: string;
-}
-
-export interface ApiProductImageUpload {
-  imageUrl: string;
-}
-
-export interface ApiProductReview {
-  id: number;
-  reviewer: string;
-  verifiedPurchase: boolean;
-  rating: number;
-  description: string;
-  createdAt: string;
-}
-
-export interface ApiReviewEligibility {
-  eligible: boolean;
-  alreadyReviewed: boolean;
-  orderId: number | null;
-}
-
-export interface ApiCategory {
-  id: number;
-  slug: string;
-  name: string;
-  description: string;
-}
-
-export interface ApiCartItem {
-  id: number;
-  variantId: number;
-  productId: number;
-  productName: string;
-  sku: string;
-  label: string;
-  unitPriceCents: number;
-  quantity: number;
-  lineTotalCents: number;
-  availableStock: number;
-}
-
-export interface ApiCart {
-  id: number;
-  items: ApiCartItem[];
-  couponCode: string | null;
-  /** Compatibility during the transition from couponCode to coupons. */
-  couponCodes?: string[];
-  subtotalCents: number;
-  discountCents: number;
-  shippingCents: number;
-  totalCents: number;
-}
-export interface ApiExpiredCartItem {
-  id: number;
-  variantId: number;
-  productId: number;
-  productName: string;
-  label: string;
-  quantity: number;
-  expiredAt: string;
-}
-
-export interface ApiOrder {
-  id: number;
-  customerId: number;
-  customerName: string;
-  status: string;
-  items: Array<{
-    id?: number;
-    variantId: number;
-    productName: string;
-    sku: string;
-    variantLabel: string;
-    unitPriceCents: number;
-    quantity: number;
-  }>;
-  subtotalCents: number;
-  discountCents: number;
-  shippingCents: number;
-  totalCents: number;
-  couponCode: string | null;
-  cardBrand: string | null;
-  cardLastDigits: string | null;
-  payments?: Array<{
-    paymentCardId: number;
-    brand: string;
-    lastDigits: string;
-    amountCents: number;
-  }>;
-  issuedCouponCode: string | null;
-  issuedCouponValueCents: number | null;
-  deliveryLabel: string;
-  deliveryStreet: string;
-  deliveryNumber: string;
-  deliveryNeighborhood: string;
-  deliveryZipCode: string;
-  deliveryCity: string;
-  deliveryState: string;
-  deliveryCountry: string;
-  createdAt: string;
-  approvedAt?: string | null;
-  dispatchedAt?: string | null;
-  deliveredAt?: string | null;
-}
-
-export interface ApiCard {
-  id: number;
-  brand: string;
-  lastDigits: string;
-  label: string;
-  expiryMonth: number;
-  expiryYear: number;
-  preferred: boolean;
-}
-
-export interface ApiCoupon {
-  id: number;
-  code: string;
-  description: string | null;
-  discountType: 'FIXED' | 'PERCENTAGE';
-  discountCents: number | null;
-  discountPercentage: number | null;
-  maximumDiscountCents: number | null;
-  minimumOrderValueCents: number | null;
-  validFrom: string | null;
-  expiresAt: string | null;
-  maximumUses: number | null;
-  redeemedCount: number;
-  active: boolean;
-  currentlyValid: boolean;
-  origin?: 'ADMIN' | 'RETURN';
-  remainingCreditCents?: number | null;
-  createdAt: string;
-}
-
-export interface ApiCouponUpsertRequest {
-  code: string;
-  description: string;
-  discountType: 'FIXED_AMOUNT' | 'PERCENTAGE';
-  discountCents: number | null;
-  discountPercentage: number | null;
-  maximumDiscountCents: number | null;
-  minimumOrderValueCents: number | null;
-  validFrom: string;
-  expiresAt: string;
-  maximumUses: number | null;
-  active: boolean;
-}
-
-export interface ApiReturn {
-  id: number;
-  orderItemId: number | null;
-  orderId: number;
-  status: string;
-  reason: string;
-  trackingCode: string | null;
-  couponCode: string | null;
-}
-
-export interface ApiAnalyticsOverview {
-  revenueCents: number;
-  orders: number;
-  averageTicketCents: number;
-  discountsCents: number;
-  returns: number;
-}
-
-export interface ApiSalesPoint {
-  period: string;
-  categoryId: number | null;
-  revenueCents: number;
-  orders: number;
-}
-
-export interface ApiTopProduct {
-  sku: string;
-  productName: string;
-  quantity: number;
-  revenueCents: number;
-}
+export {
+  resolveProductImageUrl,
+  toStoredProductImageUrl,
+} from './commerce/productImages';
 
 export const commerceApi = {
   categories: () => apiRequest<ApiCategory[]>('/categories'),
@@ -265,6 +50,24 @@ export const commerceApi = {
     return apiRequest<ApiProduct[]>(
       `/products${query.size ? `?${query}` : ''}`,
     );
+  },
+  product: (slug: string) =>
+    apiRequest<ApiProduct>(`/products/${encodeURIComponent(slug)}`),
+  productsByIds: (ids: string[]) => {
+    const query = new URLSearchParams();
+    ids.forEach((id) => query.append('ids', id));
+    return apiRequest<ApiProduct[]>(`/products/lookup?${query}`);
+  },
+  productsPage: (page: number, search?: string, categoryId?: string) => {
+    const query = new URLSearchParams({ page: String(page), size: '24' });
+    if (search) query.set('search', search);
+    if (categoryId) query.set('categoryId', categoryId);
+    return apiRequest<{
+      products: ApiProduct[];
+      total: number;
+      page: number;
+      size: number;
+    }>(`/products/search?${query}`);
   },
   productReviews: (slug: string) =>
     apiRequest<ApiProductReview[]>(
@@ -292,6 +95,14 @@ export const commerceApi = {
       },
     ),
   adminProducts: () => apiRequest<ApiProduct[]>('/admin/products'),
+  imageProcessingStatus: (id: string) =>
+    apiRequest<{ status: 'PROCESSING' | 'READY' | 'FAILED' }>(
+      `/products/images/jobs/${encodeURIComponent(id)}`,
+    ),
+  retryImageProcessing: (id: string) =>
+    apiRequest<void>(`/products/images/jobs/${encodeURIComponent(id)}/retry`, {
+      method: 'POST',
+    }),
   uploadProductImage: (file: File) => {
     const body = new FormData();
     body.append('file', file);
@@ -388,6 +199,8 @@ export const commerceApi = {
       paymentCardId: string;
       amountCents: number;
     }>,
+    idempotencyKey: string,
+    cartSignature: string,
   ) =>
     apiRequest<ApiOrder>('/customers/me/checkout', {
       body: JSON.stringify({
@@ -396,7 +209,9 @@ export const commerceApi = {
           paymentCardId: Number(payment.paymentCardId),
           amountCents: payment.amountCents,
         })),
+        cartSignature,
       }),
+      headers: { 'Idempotency-Key': idempotencyKey },
       method: 'POST',
     }),
   cancelOrder: (id: string, reason: string) =>
@@ -473,7 +288,7 @@ export const commerceApi = {
     );
   },
   analyticsSales: (from?: string, to?: string, categories?: string[]) => {
-    const query = new URLSearchParams({ groupBy: 'month' });
+    const query = new URLSearchParams();
     if (from) query.set('from', from);
     if (to) query.set('to', to);
     categories?.forEach((categoryId) => query.append('categoryId', categoryId));

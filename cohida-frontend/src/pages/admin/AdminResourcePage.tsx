@@ -5,7 +5,6 @@ import { AdminDataState } from '@/components/admin/AdminDataState';
 import { AdminFilterSelect } from '@/components/admin/AdminFilterSelect';
 import { AdminListFiltersCard } from '@/components/admin/AdminListFiltersCard';
 import { AdminListToolbar } from '@/components/admin/AdminListToolbar';
-import { AdminPageLayout } from '@/components/admin/AdminPageLayout';
 import { AdminPagination } from '@/components/admin/AdminPagination';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -14,6 +13,7 @@ import { commerceApi, type ApiOrder, type ApiReturn } from '@/lib/commerceApi';
 import { commerceStatus } from '@/lib/commerceStatus';
 import { formatCurrency } from '@/lib/currency';
 import { AdminProductsPage } from '@/pages/admin/AdminProductsPage';
+import { AdminPage } from '@/components/admin/AdminPage';
 
 type SalesResource = 'pedidos' | 'trocas';
 
@@ -33,7 +33,19 @@ export function AdminResourcePage({
   resource: 'produtos' | SalesResource;
 }) {
   if (resource === 'produtos') return <AdminProductsPage />;
-  return <AdminSalesResourcePage key={resource} resource={resource} />;
+  return (
+    <AdminPage
+      description={
+        resource === 'pedidos'
+          ? 'Acompanhe pedidos, pagamentos e entregas.'
+          : 'Acompanhe solicitações e autorizações de troca.'
+      }
+      overlap
+      title={resource === 'pedidos' ? 'Pedidos' : 'Trocas'}
+    >
+      <AdminSalesResourcePage key={resource} resource={resource} />
+    </AdminPage>
+  );
 }
 
 function AdminSalesResourcePage({ resource }: { resource: SalesResource }) {
@@ -127,14 +139,7 @@ function AdminSalesResourcePage({ resource }: { resource: SalesResource }) {
   const title = resource === 'pedidos' ? 'Pedidos' : 'Trocas';
 
   return (
-    <AdminPageLayout
-      description={
-        resource === 'pedidos'
-          ? 'Acompanhe pedidos, pagamentos e entregas.'
-          : 'Acompanhe solicitações e autorizações de troca.'
-      }
-      title={title}
-    >
+    <>
       <div className='mt-8 grid gap-4'>
         <AdminListFiltersCard>
           <AdminListToolbar
@@ -239,6 +244,6 @@ function AdminSalesResourcePage({ resource }: { resource: SalesResource }) {
           </CardContent>
         </Card>
       </div>
-    </AdminPageLayout>
+    </>
   );
 }
