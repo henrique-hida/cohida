@@ -20,6 +20,9 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
   @EntityGraph(attributePaths = {"variants", "categories"})
   List<Product> findAllByOrderByNameAsc();
 
+  @EntityGraph(attributePaths = {"variants", "categories"})
+  List<Product> findByIdIn(List<Long> ids);
+
   boolean existsBySlug(String slug);
 
   List<Product> findByNameStartingWith(String name);

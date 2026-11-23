@@ -6,7 +6,8 @@ import com.hida.cohida.coupon.repository.CouponRepository;
 import com.hida.cohida.order.domain.OrderItem;
 import com.hida.cohida.order.domain.OrderStatus;
 import com.hida.cohida.order.domain.SaleOrder;
-import com.hida.cohida.order.service.OrderService;
+import com.hida.cohida.order.repository.OrderRepository;
+import com.hida.cohida.order.exception.OrderNotFoundException;
 import com.hida.cohida.notification.service.NotificationService;
 import com.hida.cohida.product.repository.ProductVariantRepository;
 import com.hida.cohida.returnrequest.domain.ReturnRequest;
@@ -21,14 +22,14 @@ import java.util.UUID;
 @Service
 public class ReturnService {
   private final ReturnRequestRepository returns;
-  private final OrderService orders;
+  private final OrderRepository orders;
   private final CouponRepository coupons;
   private final ProductVariantRepository variants;
   private final NotificationService notifications;
 
   public ReturnService(
       ReturnRequestRepository returns,
-      OrderService orders,
+      OrderRepository orders,
       CouponRepository coupons,
       ProductVariantRepository variants,
       NotificationService notifications) {
@@ -44,7 +45,8 @@ public class ReturnService {
       Long customerId, Long orderId, Long itemId, String reason) {
     if (reason == null || reason.isBlank())
       throw new InvalidRequestException("Informe o motivo da devolução.");
-    SaleOrder order = orders.customerOrder(customerId, orderId);
+    SaleOrder order = orders.findForReturnRequest(orderId, customerId)
+        .orElseThrow(() -> new OrderNotFoundException(orderId));
     if (order.getStatus() != OrderStatus.ENTREGUE)
       throw new InvalidRequestException(
           "A devolução só pode ser solicitada após a entrega.");
@@ -52,6 +54,7 @@ public class ReturnService {
       if (returns.existsByOrderId(orderId))
         throw new InvalidRequestException(
             "Já existe uma troca para este pedido.");
+      order.beginWholeExchange();
       return returns.save(new ReturnRequest(order, reason.trim()));
     }
     OrderItem item =
@@ -62,7 +65,8 @@ public class ReturnService {
                 () ->
                     new InvalidRequestException(
                         "Item não pertence ao pedido."));
-    if (returns.existsByOrderItemId(itemId))
+    if (returns.existsByOrderItemId(itemId)
+        || returns.existsByOrderIdAndOrderItemIsNull(orderId))
       throw new InvalidRequestException(
           "Já existe uma devolução para este item.");
     return returns.save(new ReturnRequest(item, reason.trim()));
@@ -76,7 +80,7 @@ public class ReturnService {
   @Transactional
   public ReturnRequest status(
       Long id, ReturnStatus status, Boolean restockItems) {
-    ReturnRequest r = get(id);
+    ReturnRequest r = getForUpdate(id);
     if (status == null) throw new InvalidRequestException("Informe o status.");
     if (status != ReturnStatus.TROCA_AUTORIZADA
         && status != ReturnStatus.TROCA_NEGADA
@@ -104,7 +108,8 @@ public class ReturnService {
                   credit));
       boolean restock = restockItems == null || restockItems;
       if (restock)
-        r.targetItems()
+        r.targetItems().stream()
+            .sorted(java.util.Comparator.comparing(OrderItem::getVariantId))
             .forEach(
                 item ->
                     variants
@@ -115,8 +120,14 @@ public class ReturnService {
                                     v.getStockQuantity()
                                         + item.getQuantity())));
       r.issue(coupon, restock);
+      if (r.getOrderItem() == null) r.targetOrder().completeWholeExchange();
     } else {
       r.changeStatus(status);
+      if (r.getOrderItem() == null) {
+        if (status == ReturnStatus.TROCA_AUTORIZADA)
+          r.targetOrder().authorizeWholeExchange();
+        else r.targetOrder().denyWholeExchange();
+      }
       if (status == ReturnStatus.TROCA_AUTORIZADA) {
         notifications.notify(
             r.targetOrder().getCustomer(),
@@ -134,6 +145,25 @@ public class ReturnService {
     return returns.save(r);
   }
 
+  @Transactional
+  public ReturnRequest dispatch(
+      Long customerId, Long id, String trackingCode) {
+    String normalizedCode =
+        trackingCode == null ? null : trackingCode.trim();
+    if (normalizedCode == null || normalizedCode.isBlank())
+      throw new InvalidRequestException("Informe o código de rastreio.");
+    if (normalizedCode.length() > 100)
+      throw new InvalidRequestException(
+          "O código de rastreio deve ter até 100 caracteres.");
+    ReturnRequest request = getForUpdate(id);
+    ensureOwner(request, customerId);
+    if (request.getStatus() != ReturnStatus.TROCA_AUTORIZADA)
+      throw new InvalidRequestException(
+          "A devolução precisa ser autorizada antes do envio.");
+    request.registerTrackingCode(normalizedCode);
+    return returns.save(request);
+  }
+
   @Transactional(readOnly = true)
   public List<ReturnRequest> all() {
     return returns.findAllByOrderByCreatedAtDesc();
@@ -148,6 +178,12 @@ public class ReturnService {
   public ReturnRequest get(Long id) {
     return returns
         .findById(id)
+        .orElseThrow(
+            () -> new InvalidRequestException("Devolução não encontrada."));
+  }
+
+  private ReturnRequest getForUpdate(Long id) {
+    return returns.findForUpdate(id)
         .orElseThrow(
             () -> new InvalidRequestException("Devolução não encontrada."));
   }

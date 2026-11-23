@@ -2,6 +2,7 @@ package com.hida.cohida.returnrequest.controller;
 
 import com.hida.cohida.auth.security.AuthenticatedCustomer;
 import com.hida.cohida.returnrequest.dto.CreateReturnRequest;
+import com.hida.cohida.returnrequest.dto.ReturnDispatchRequest;
 import com.hida.cohida.returnrequest.dto.ReturnResponse;
 import com.hida.cohida.returnrequest.service.ReturnService;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -36,5 +37,18 @@ public class ReturnController {
       @RequestBody CreateReturnRequest r) {
     return ReturnResponse.from(
         returns.request(p.customerId(), orderId, r.orderItemId(), r.reason()));
+  }
+
+  @PostMapping("/returns/{id}/dispatch")
+  @Transactional
+  public ReturnResponse dispatch(
+      @AuthenticationPrincipal AuthenticatedCustomer customer,
+      @PathVariable Long id,
+      @RequestBody ReturnDispatchRequest request) {
+    return ReturnResponse.from(
+        returns.dispatch(
+            customer.customerId(),
+            id,
+            request == null ? null : request.trackingCode()));
   }
 }

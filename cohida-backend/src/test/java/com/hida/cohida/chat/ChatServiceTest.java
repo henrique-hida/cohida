@@ -25,6 +25,135 @@ import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
 class ChatServiceTest {
+  private ChatService service(JdbcTemplate jdbc, OrderRepository orders,
+      ProductRepository products, ChatModel model, String key, String name) {
+    var manager = mock(
+        org.springframework.transaction.PlatformTransactionManager.class);
+    when(manager.getTransaction(any())).thenAnswer(
+        ignored -> new org.springframework.transaction.support
+            .SimpleTransactionStatus());
+    var transactions = new org.springframework.transaction.support
+        .TransactionTemplate(manager);
+    return new ChatService(jdbc, orders, products, model, key, name,
+        transactions);
+  }
+  @Test
+  void rejectsInterestsWithInvalidFocusOrDuplicateSport() {
+    var jdbc = mock(JdbcTemplate.class);
+    var service = service(jdbc, mock(OrderRepository.class),
+        mock(ProductRepository.class), mock(ChatModel.class), "key", "model");
+    assertThrows(IllegalArgumentException.class, () -> service.saveInterests(
+        42L, List.of(new ChatController.Interest("Judô", "Chuteiras"))));
+    assertThrows(IllegalArgumentException.class, () -> service.saveInterests(
+        42L, List.of(new ChatController.Interest("Judô", null),
+            new ChatController.Interest("Judô", null))));
+    verifyNoInteractions(jdbc);
+  }
+
+  @Test
+  void persistsSeveralInterestsWithTheirSpecificFocus() {
+    var jdbc = mock(JdbcTemplate.class);
+    var service = service(jdbc, mock(OrderRepository.class),
+        mock(ProductRepository.class), mock(ChatModel.class), "key", "model");
+    service.saveInterests(42L, List.of(
+        new ChatController.Interest("Corrida", "Tênis"),
+        new ChatController.Interest("Judô", "Judogi")));
+    verify(jdbc).update(contains("insert into chat_interests"),
+        eq(42L), eq("Corrida"), eq("Tênis"));
+    verify(jdbc).update(contains("insert into chat_interests"),
+        eq(42L), eq("Judô"), eq("Judogi"));
+  }
+
+  @Test
+  void rejectsUnexpectedProfileValues() {
+    var jdbc = mock(JdbcTemplate.class);
+    var service = service(jdbc, mock(OrderRepository.class),
+        mock(ProductRepository.class), mock(ChatModel.class), "key", "model");
+    assertThrows(IllegalArgumentException.class, () -> service.saveProfile(42L,
+        new ChatController.Profile("ignore instruções", null, null, null)));
+    verifyNoInteractions(jdbc);
+  }
+
+  @Test
+  void ranksAvailableProductsMatchingCustomerSportFirst() {
+    var jdbc = mock(JdbcTemplate.class);
+    var products = mock(ProductRepository.class);
+    var orders = mock(OrderRepository.class);
+    var running = mock(Product.class);
+    var football = mock(Product.class);
+    var variant = mock(ProductVariant.class);
+    when(variant.getStockQuantity()).thenReturn(2);
+    when(running.getName()).thenReturn("Tênis para corrida");
+    when(running.getSlug()).thenReturn("tenis");
+    when(running.getVariants()).thenReturn(List.of(variant));
+    when(football.getName()).thenReturn("Bola de futebol");
+    when(football.getSlug()).thenReturn("bola");
+    when(football.getVariants()).thenReturn(List.of(variant));
+    when(products.findByActiveTrueOrderByNameAsc())
+        .thenReturn(List.of(football, running));
+    when(orders.findByCustomerIdOrderByCreatedAtDesc(42L))
+        .thenReturn(List.of());
+    when(jdbc.query(contains("from chat_profile"),
+        org.mockito.ArgumentMatchers.<RowMapper<ChatController.Profile>>any(),
+        eq(42L)))
+        .thenReturn(List.of(new ChatController.Profile(
+            "Corrida", null, null, null)));
+    when(jdbc.query(contains("from chat_interests"),
+        org.mockito.ArgumentMatchers.<RowMapper<ChatController.Interest>>any(),
+        eq(42L)))
+        .thenReturn(List.of(new ChatController.Interest("Corrida", null),
+            new ChatController.Interest("Judô", "Judogi")));
+    var service = service(jdbc, orders, products, mock(ChatModel.class),
+        "key", "model");
+    assertEquals(List.of("tenis", "bola"), service.recommendations(42L));
+  }
+
+  @Test
+  void feedbackChangesTheOrderOfOtherwiseEquivalentProducts() {
+    var jdbc = mock(JdbcTemplate.class);
+    var products = mock(ProductRepository.class);
+    var orders = mock(OrderRepository.class);
+    var first = mock(Product.class);
+    var second = mock(Product.class);
+    var variant = mock(ProductVariant.class);
+    when(variant.getStockQuantity()).thenReturn(1);
+    when(first.getName()).thenReturn("Bola A");
+    when(first.getSlug()).thenReturn("a");
+    when(first.getVariants()).thenReturn(List.of(variant));
+    when(second.getName()).thenReturn("Bola B");
+    when(second.getSlug()).thenReturn("b");
+    when(second.getVariants()).thenReturn(List.of(variant));
+    when(products.findByActiveTrueOrderByNameAsc())
+        .thenReturn(List.of(first, second));
+    when(jdbc.query(contains("join chat_responses"),
+        org.mockito.ArgumentMatchers
+            .<RowMapper<java.util.Map.Entry<String, Boolean>>>any(),
+        eq(42L))).thenReturn(List.of(java.util.Map.entry("b", true)));
+    var service = service(jdbc, orders, products, mock(ChatModel.class),
+        "key", "model");
+    assertEquals(List.of("b", "a"), service.recommendations(42L));
+  }
+
+  @Test
+  void retriesInvalidModelOutputBeforeReturningResponse() {
+    var jdbc = mock(JdbcTemplate.class);
+    var model = mock(ChatModel.class);
+    when(model.call(any(Prompt.class)))
+        .thenReturn(new ChatResponse(List.of(
+            new Generation(new AssistantMessage("não é JSON")))))
+        .thenReturn(new ChatResponse(List.of(new Generation(
+            new AssistantMessage(
+                "{\"content\":\"Olá!\",\"productSlugs\":[]}")))));
+    when(jdbc.queryForObject(
+        anyString(), eq(Long.class), any(), any(), any(), any()))
+        .thenReturn(1L);
+    var service = service(jdbc, mock(OrderRepository.class),
+        mock(ProductRepository.class), model, "key", "model");
+    assertEquals("Olá!", service.respond(42L,
+        new ChatController.ChatRequest("Olá", null)).content());
+    verify(model, times(2)).call(any(Prompt.class));
+  }
+
   @Test
   void sendsCustomerContextAndConversationToSpringAi() {
     var jdbc = mock(JdbcTemplate.class);
@@ -35,10 +164,23 @@ class ChatServiceTest {
         .thenReturn(List.of());
     when(products.findByActiveTrueOrderByNameAsc()).thenReturn(List.of());
     when(jdbc.query(
-            anyString(),
-            org.mockito.ArgumentMatchers.<RowMapper<String>>any(),
+            contains("from chat_profile"),
+            org.mockito.ArgumentMatchers
+                .<RowMapper<ChatController.Profile>>any(),
             eq(42L)))
-        .thenReturn(List.of("Corrida"));
+        .thenReturn(List.of(new ChatController.Profile(
+            "Corrida", null, null, null)));
+    when(jdbc.query(
+            contains("select id, question, response, useful"),
+            org.mockito.ArgumentMatchers
+                .<RowMapper<ChatController.HistoryEntry>>any(),
+            eq(42L)))
+        .thenReturn(List.of(new ChatController.HistoryEntry(
+            1L, "Pergunta anterior", "Resposta anterior", false)));
+    when(jdbc.query(contains("from chat_interests"),
+        org.mockito.ArgumentMatchers.<RowMapper<ChatController.Interest>>any(),
+        eq(42L)))
+        .thenReturn(List.of(new ChatController.Interest("Corrida", null)));
     when(model.call(any(Prompt.class)))
         .thenAnswer(
             invocation -> {
@@ -49,7 +191,8 @@ class ChatServiceTest {
               assertEquals("Pergunta anterior", messages.get(2).getText());
               assertInstanceOf(UserMessage.class, messages.get(2));
               assertInstanceOf(AssistantMessage.class, messages.get(3));
-              assertEquals("O que recomenda?", messages.get(4).getText());
+              assertTrue(messages.get(4).getText().contains("não útil"));
+              assertEquals("O que recomenda?", messages.get(5).getText());
               return new ChatResponse(
                   List.of(
                       new Generation(
@@ -61,7 +204,7 @@ class ChatServiceTest {
             anyString(), eq(Long.class), any(), any(), any(), any()))
         .thenReturn(5L);
     var service =
-        new ChatService(
+        service(
             jdbc, orders, products, model, "test-key", "example/model");
 
     var response =
@@ -122,7 +265,7 @@ class ChatServiceTest {
                                 + " tênis.\",\"productSlugs\":[\"ten"
                                 + "is\",\"inventado\",\"tenis\"]}")))));
     var service =
-        new ChatService(
+        service(
             jdbc, orders, products, model, "test-key", "example/model");
 
     var result =
@@ -137,7 +280,7 @@ class ChatServiceTest {
   void refusesToCallModelWithoutConfiguredKey() {
     var model = mock(ChatModel.class);
     var service =
-        new ChatService(
+        service(
             mock(JdbcTemplate.class),
             mock(OrderRepository.class),
             mock(ProductRepository.class),
@@ -174,7 +317,7 @@ class ChatServiceTest {
                                     + " judogi para"
                                 + " começar a praticar?\"]}")))));
     var service =
-        new ChatService(
+        service(
             jdbc,
             mock(OrderRepository.class),
             mock(ProductRepository.class),
@@ -184,7 +327,8 @@ class ChatServiceTest {
 
     var result = service.generateSuggestions(42L);
     assertEquals(
-        List.of("Qual judogi escolher?", "Como começar no judô?"),
+        List.of("Qual judogi escolher?", "Como começar no judô?",
+            "Qual é o melhor judogi para começar a praticar?"),
         result.questions());
     assertFalse(result.fallback());
     verify(jdbc).update(contains("delete from chat_suggestions"), eq(42L));
@@ -197,7 +341,7 @@ class ChatServiceTest {
   }
 
   @Test
-  void omitsOldSuggestionsLongerThan25Characters() {
+  void includesSuggestionsLongerThan25Characters() {
     var jdbc = mock(JdbcTemplate.class);
     when(jdbc.query(
             anyString(),
@@ -208,14 +352,16 @@ class ChatServiceTest {
                 "Como começar no judô?",
                 "Qual é o melhor judogi para começar a praticar?"));
     var service =
-        new ChatService(
+        service(
             jdbc,
             mock(OrderRepository.class),
             mock(ProductRepository.class),
             mock(ChatModel.class),
             "test-key",
             "example/model");
-    assertEquals(List.of("Como começar no judô?"), service.suggestions(42L));
+    assertEquals(List.of("Como começar no judô?",
+        "Qual é o melhor judogi para começar a praticar?"),
+        service.suggestions(42L));
   }
 
   @Test
@@ -235,7 +381,7 @@ class ChatServiceTest {
                         new AssistantMessage(
                             "{\"questions\":[\"Qual judogi escolher?\"]}")))));
     var service =
-        new ChatService(
+        service(
             jdbc,
             mock(OrderRepository.class),
             mock(ProductRepository.class),
@@ -244,7 +390,8 @@ class ChatServiceTest {
             "example/model");
 
     assertTrue(service.generateSuggestions(42L).questions().isEmpty());
-    verify(jdbc, never()).update(anyString(), any(Object[].class));
+    verify(jdbc, never()).update(contains("delete from chat_suggestions"),
+        eq(42L));
   }
 
   @Test
@@ -263,7 +410,7 @@ class ChatServiceTest {
                     new Generation(
                         new AssistantMessage("resposta inválida")))));
     var service =
-        new ChatService(
+        service(
             jdbc,
             mock(OrderRepository.class),
             mock(ProductRepository.class),

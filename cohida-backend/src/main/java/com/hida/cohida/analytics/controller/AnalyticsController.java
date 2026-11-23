@@ -36,10 +36,9 @@ public class AnalyticsController {
   public List<SalesPointResponse> sales(
       @RequestParam(required = false) LocalDate from,
       @RequestParam(required = false) LocalDate to,
-      @RequestParam(defaultValue = "day") String groupBy,
       @RequestParam(name = "categoryId", required = false)
           List<Long> categoryIds) {
-    return analytics.sales(from, to, groupBy, categoryIds);
+    return analytics.sales(from, to, categoryIds);
   }
 
   @GetMapping("/products/top")

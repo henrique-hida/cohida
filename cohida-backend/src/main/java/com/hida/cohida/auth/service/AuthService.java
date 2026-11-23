@@ -13,6 +13,7 @@ import com.hida.cohida.customer.domain.CustomerAddress;
 import com.hida.cohida.customer.enums.AddressType;
 import com.hida.cohida.customer.repository.CustomerRepository;
 import com.hida.cohida.customer.service.CustomerService;
+import com.hida.cohida.auth.validation.PasswordPolicy;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -141,9 +142,7 @@ public class AuthService {
     }
     if (isBlank(request.password())
         || !request.password().equals(request.passwordConfirmation())
-        || !request
-            .password()
-            .matches("(?=.*[a-z])(?=.*[A-Z])(?=.*[^A-Za-z0-9]).{8,}")) {
+        || !PasswordPolicy.isStrong(request.password())) {
       throw new InvalidRequestException(
           "A senha deve ter ao menos 8 caracteres, "
               + "maiúscula, minúscula e caractere especial.");

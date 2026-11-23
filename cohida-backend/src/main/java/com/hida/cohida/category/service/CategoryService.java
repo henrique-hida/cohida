@@ -1,6 +1,9 @@
 package com.hida.cohida.category.service;
 
 import com.hida.cohida.auth.exception.ConflictException;
+import com.hida.cohida.cache.PublicCategoryCache;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import com.hida.cohida.auth.exception.InvalidRequestException;
 import com.hida.cohida.category.domain.Category;
 import com.hida.cohida.category.dto.CategoryRequest;
@@ -15,9 +18,12 @@ import java.util.Locale;
 @Service
 public class CategoryService {
   private final CategoryRepository categories;
+  private final PublicCategoryCache cache;
 
-  public CategoryService(CategoryRepository categories) {
+  public CategoryService(
+      CategoryRepository categories, PublicCategoryCache cache) {
     this.categories = categories;
+    this.cache = cache;
   }
 
   @Transactional(readOnly = true)
@@ -31,14 +37,19 @@ public class CategoryService {
     String slug = slugify(name);
     if (categories.existsBySlug(slug))
       throw new ConflictException("Já existe uma categoria com esse nome.");
-    return categories.save(new Category(slug, name, description(request)));
+    Category category = categories.save(
+        new Category(slug, name, description(request)));
+    invalidateAfterCommit();
+    return category;
   }
 
   @Transactional
   public Category update(Long id, CategoryRequest request) {
     Category category = find(id);
     category.update(requiredName(request), description(request));
-    return categories.save(category);
+    categories.save(category);
+    invalidateAfterCommit();
+    return category;
   }
 
   @Transactional
@@ -46,6 +57,17 @@ public class CategoryService {
     Category category = find(id);
     category.deactivate();
     categories.save(category);
+    invalidateAfterCommit();
+  }
+
+  private void invalidateAfterCommit() {
+    TransactionSynchronizationManager.registerSynchronization(
+        new TransactionSynchronization() {
+          @Override
+          public void afterCommit() {
+            cache.invalidate();
+          }
+        });
   }
 
   private Category find(Long id) {

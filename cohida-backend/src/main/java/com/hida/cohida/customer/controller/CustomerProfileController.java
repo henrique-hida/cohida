@@ -3,6 +3,7 @@ package com.hida.cohida.customer.controller;
 import com.hida.cohida.auth.security.AuthenticatedCustomer;
 import com.hida.cohida.customer.dto.*;
 import com.hida.cohida.customer.service.CustomerService;
+import com.hida.cohida.customer.service.CustomerAddressService;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -15,9 +16,12 @@ import java.util.List;
 @PreAuthorize("hasRole('CUSTOMER')")
 public class CustomerProfileController {
   private final CustomerService customerService;
+  private final CustomerAddressService addressService;
 
-  public CustomerProfileController(CustomerService customerService) {
+  public CustomerProfileController(
+      CustomerService customerService, CustomerAddressService addressService) {
     this.customerService = customerService;
+    this.addressService = addressService;
   }
 
   @GetMapping
@@ -53,7 +57,7 @@ public class CustomerProfileController {
   @GetMapping("/addresses")
   public List<CustomerAddressResponse> addresses(
       @AuthenticationPrincipal AuthenticatedCustomer principal) {
-    return customerService.findAddresses(principal.customerId()).stream()
+    return addressService.findAddresses(principal.customerId()).stream()
         .map(CustomerAddressResponse::from)
         .toList();
   }
@@ -64,7 +68,7 @@ public class CustomerProfileController {
       @AuthenticationPrincipal AuthenticatedCustomer principal,
       @RequestBody CustomerAddressRequest request) {
     return CustomerAddressResponse.from(
-        customerService.addAddress(principal.customerId(), request));
+        addressService.addAddress(principal.customerId(), request));
   }
 
   @PatchMapping("/addresses/{addressId}")
@@ -73,7 +77,7 @@ public class CustomerProfileController {
       @PathVariable Long addressId,
       @RequestBody CustomerAddressRequest request) {
     return CustomerAddressResponse.from(
-        customerService.updateAddress(
+        addressService.updateAddress(
             principal.customerId(), addressId, request));
   }
 
@@ -82,6 +86,6 @@ public class CustomerProfileController {
   public void removeAddress(
       @AuthenticationPrincipal AuthenticatedCustomer principal,
       @PathVariable Long addressId) {
-    customerService.removeAddress(principal.customerId(), addressId);
+    addressService.removeAddress(principal.customerId(), addressId);
   }
 }

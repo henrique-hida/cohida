@@ -43,6 +43,8 @@ public class CartItem extends DomainEntity {
   }
 
   public void reserve(int quantity, LocalDateTime reservedUntil) {
+    if (!java.util.Objects.equals(this.reservedUntil, reservedUntil))
+      expiryWarningSent = false;
     this.quantity = quantity;
     this.reservedUntil = reservedUntil;
   }

@@ -18,8 +18,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.math.BigDecimal;
-import java.math.RoundingMode;
 import java.time.LocalDateTime;
 
 @Service
@@ -30,6 +28,8 @@ public class CartService {
   private final CouponRepository coupons;
   private final long reservationMinutes;
   private final ExpiredCartItemRepository expiredItems;
+  private final CartPricing pricing;
+  private final CartReservationService reservations;
 
   public CartService(
       CartRepository carts,
@@ -37,38 +37,64 @@ public class CartService {
       ProductVariantRepository variants,
       CouponRepository coupons,
       @Value("${cohida.cart.reservation-minutes:30}") long reservationMinutes,
-      ExpiredCartItemRepository expiredItems) {
+      ExpiredCartItemRepository expiredItems,
+      CartPricing pricing, CartReservationService reservations) {
     this.carts = carts;
     this.customers = customers;
     this.variants = variants;
     this.coupons = coupons;
     this.reservationMinutes = reservationMinutes;
     this.expiredItems = expiredItems;
+    this.pricing = pricing;
+    this.reservations = reservations;
   }
 
   @Transactional
   public Cart cart(Long customerId) {
+    Customer customer =
+        customers.findForCartUpdate(customerId)
+            .orElseThrow(() -> new CustomerNotFoundException(customerId));
     return carts
-        .findByCustomerId(customerId)
-        .orElseGet(() -> carts.save(new Cart(activeCustomer(customerId))));
+        .findForUpdateByCustomerId(customerId)
+        .orElseGet(() -> {
+          if (!customer.isActive())
+            throw new InvalidRequestException(
+                "A conta do cliente está desativada.");
+          return carts.save(new Cart(customer));
+        });
   }
 
   @Transactional
   public CartResponse view(Long customerId) {
-    Cart cart = carts.findByCustomerId(customerId).orElse(null);
+    customers.findForCartUpdate(customerId)
+        .orElseThrow(() -> new CustomerNotFoundException(customerId));
+    Cart cart = carts.findForUpdateByCustomerId(customerId).orElse(null);
     if (cart == null)
       return new CartResponse(
           null, java.util.List.of(), null, java.util.List.of(), 0, 0, 0, 0);
-    expire(cart);
+    reservations.expire(cart, LocalDateTime.now());
     return CartResponse.from(carts.save(cart), discount(cart));
   }
 
   @Transactional
   public CartResponse add(Long customerId, Long variantId, Integer quantity) {
     int q = quantity(quantity);
+    if (variantId == null)
+      throw new InvalidRequestException("Variação não encontrada.");
     Cart cart = cart(customerId);
-    ProductVariant variant = variant(variantId);
-    expire(cart);
+    reservations.expire(cart, LocalDateTime.now());
+    var variantIds = cart.getItems().stream()
+        .map(item -> item.getVariant().getId())
+        .collect(
+            java.util.stream.Collectors.toCollection(java.util.TreeSet::new));
+    variantIds.add(variantId);
+    ProductVariant variant = null;
+    for (Long id : variantIds) {
+      ProductVariant locked = variants.findWithLockById(id)
+          .orElseThrow(
+              () -> new InvalidRequestException("Variação não encontrada."));
+      if (id.equals(variantId)) variant = locked;
+    }
     cart.add(variant, q, reservationUntil());
     ensureStock(cart);
     return CartResponse.from(carts.save(cart), discount(cart));
@@ -77,7 +103,7 @@ public class CartService {
   @Transactional
   public CartResponse update(Long customerId, Long itemId, Integer quantity) {
     Cart cart = cart(customerId);
-    expire(cart);
+    reservations.expire(cart, LocalDateTime.now());
     CartItem item = cart.item(itemId);
     item.reserve(quantity(quantity), reservationUntil());
     ensureStock(cart);
@@ -126,18 +152,16 @@ public class CartService {
   @Transactional
   public int expireAllReservations() {
     int expiredCount = 0;
-    for (Cart cart : carts.findAll()) {
-      var expired = cart.expireAllReservations();
-      expired.forEach(
-          item ->
-              expiredItems.save(
-                  new com.hida.cohida.cart.domain.ExpiredCartItem(
-                      cart.getCustomer(),
-                      item.getVariant(),
-                      item.getQuantity())));
-      expiredCount += expired.size();
+    long after = 0;
+    while (true) {
+      var customerIds = carts.findCustomerIdsAfter(after,
+          org.springframework.data.domain.PageRequest.of(0, 100));
+      if (customerIds.isEmpty()) return expiredCount;
+      for (Long customerId : customerIds) {
+        expiredCount += reservations.releaseAllForCustomer(customerId);
+      }
+      after = customerIds.getLast();
     }
-    return expiredCount;
   }
 
   @Transactional
@@ -171,106 +195,25 @@ public class CartService {
   }
 
   public long couponValue(Cart cart) {
-    long subtotal =
-        cart.getItems().stream()
-            .mapToLong(
-                item -> item.getVariant().getPriceCents() * item.getQuantity())
-            .sum();
-    return cart.getCoupons().stream()
-        .mapToLong(coupon -> couponValue(coupon, subtotal))
-        .sum();
+    return pricing.couponValue(cart, LocalDateTime.now());
   }
 
   public long discount(Cart cart) {
     return couponValue(cart);
   }
 
-  private long couponValue(Coupon coupon, long subtotal) {
-    if (!coupon.isCurrentlyValid(LocalDateTime.now()))
-      throw new InvalidRequestException("O cupom não está mais válido.");
-    if (coupon.getMinimumOrderValueCents() != null
-        && subtotal < coupon.getMinimumOrderValueCents())
-      throw new InvalidRequestException(
-          "O valor mínimo do cupom não foi atingido.");
-    long value =
-        coupon.isReturnCredit()
-            ? coupon.getRemainingCreditCents()
-            : coupon.getDiscountCents() == null
-                ? BigDecimal.valueOf(subtotal)
-                    .multiply(coupon.getDiscountPercentage())
-                    .divide(BigDecimal.valueOf(100), 0, RoundingMode.DOWN)
-                    .longValue()
-                : coupon.getDiscountCents();
-    return coupon.getMaximumDiscountCents() == null
-        ? value
-        : Math.min(value, coupon.getMaximumDiscountCents());
-  }
-
   public void ensureStock(Cart cart) {
-    for (CartItem item : cart.getItems()) {
-      long reservedByOtherCarts =
-          carts.activeReservationQuantity(
-              item.getVariant().getId(), cart.getId(), LocalDateTime.now());
-      if (!item.getVariant().getProduct().isActive()
-          || item.getQuantity()
-              > item.getVariant().getStockQuantity() - reservedByOtherCarts)
-        throw new InvalidRequestException(
-            "Uma variação do carrinho não possui estoque suficiente.");
-    }
+    reservations.ensureStock(cart);
   }
 
   /** Reconciles a stale cart with current physical stock at checkout. */
   @Transactional
   public boolean reconcileStockAtCheckout(Cart cart) {
-    boolean changed = false;
-    for (CartItem item : new java.util.ArrayList<>(cart.getItems())) {
-      ProductVariant variant =
-          variants.findWithLockById(item.getVariant().getId()).orElseThrow();
-      long available =
-          Math.max(
-              0,
-              variant.getStockQuantity()
-                  - carts.activeReservationQuantity(
-                      variant.getId(), cart.getId(), LocalDateTime.now()));
-      if (item.getQuantity() <= available) continue;
-      changed = true;
-      if (available == 0) cart.remove(item.getId());
-      else item.reserve((int) available, item.getReservedUntil());
-    }
-    if (changed) carts.save(cart);
-    return changed;
-  }
-
-  private void expire(Cart cart) {
-    cart.removeExpiredProducts(LocalDateTime.now())
-        .forEach(
-            item ->
-                expiredItems.save(
-                    new com.hida.cohida.cart.domain.ExpiredCartItem(
-                        cart.getCustomer(),
-                        item.getVariant(),
-                        item.getQuantity())));
+    return reservations.reconcile(cart);
   }
 
   private LocalDateTime reservationUntil() {
     return LocalDateTime.now().plusMinutes(reservationMinutes);
-  }
-
-  private Customer activeCustomer(Long id) {
-    Customer c =
-        customers
-            .findById(id)
-            .orElseThrow(() -> new CustomerNotFoundException(id));
-    if (!c.isActive())
-      throw new InvalidRequestException("A conta do cliente está desativada.");
-    return c;
-  }
-
-  private ProductVariant variant(Long id) {
-    return variants
-        .findById(id)
-        .orElseThrow(
-            () -> new InvalidRequestException("Variação não encontrada."));
   }
 
   private int quantity(Integer q) {

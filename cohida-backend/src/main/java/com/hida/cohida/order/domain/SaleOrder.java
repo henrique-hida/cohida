@@ -184,6 +184,30 @@ public class SaleOrder extends DomainEntity {
         new OrderPayment(this, paymentCard, amountCents, payments.size()));
   }
 
+  public void beginWholeExchange() {
+    if (status != OrderStatus.ENTREGUE)
+      throw new IllegalArgumentException("O pedido ainda não foi entregue.");
+    status = OrderStatus.EM_TROCA;
+  }
+
+  public void authorizeWholeExchange() {
+    if (status != OrderStatus.EM_TROCA)
+      throw new IllegalArgumentException("A troca do pedido é inválida.");
+    status = OrderStatus.TROCA_AUTORIZADA;
+  }
+
+  public void denyWholeExchange() {
+    if (status != OrderStatus.EM_TROCA)
+      throw new IllegalArgumentException("A troca do pedido é inválida.");
+    status = OrderStatus.ENTREGUE;
+  }
+
+  public void completeWholeExchange() {
+    if (status != OrderStatus.TROCA_AUTORIZADA)
+      throw new IllegalArgumentException("A troca do pedido é inválida.");
+    status = OrderStatus.TROCADO;
+  }
+
   public void issueCoupon(Coupon coupon) {
     issuedCoupon = coupon;
   }

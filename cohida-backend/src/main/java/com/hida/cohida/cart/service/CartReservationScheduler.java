@@ -1,56 +1,46 @@
 package com.hida.cohida.cart.service;
 
-import com.hida.cohida.cart.domain.ExpiredCartItem;
 import com.hida.cohida.cart.repository.CartRepository;
-import com.hida.cohida.cart.repository.ExpiredCartItemRepository;
-import com.hida.cohida.notification.service.NotificationService;
+import java.time.LocalDateTime;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-import java.time.LocalDateTime;
 
 @Service
 public class CartReservationScheduler {
+  private static final Logger LOG =
+      LoggerFactory.getLogger(CartReservationScheduler.class);
+  private static final int BATCH_SIZE = 100;
   private final CartRepository carts;
-  private final ExpiredCartItemRepository expired;
-  private final NotificationService notifications;
+  private final CartReservationService reservations;
+  private long afterCustomerId;
 
   public CartReservationScheduler(
-      CartRepository carts,
-      ExpiredCartItemRepository expired,
-      NotificationService notifications) {
+      CartRepository carts, CartReservationService reservations) {
     this.carts = carts;
-    this.expired = expired;
-    this.notifications = notifications;
+    this.reservations = reservations;
   }
 
   @Scheduled(fixedDelayString = "${cohida.cart.reservation-check-ms:60000}")
-  @Transactional
   public void processReservations() {
-    var now = LocalDateTime.now();
-    carts
-        .findAll()
-        .forEach(
-            cart -> {
-              cart.getItems().stream()
-                  .filter(item -> item.needsExpiryWarning(now))
-                  .forEach(
-                      item -> {
-                        item.markExpiryWarningSent();
-                        notifications.notify(
-                            cart.getCustomer(),
-                            "CART_RESERVATION_EXPIRING",
-                            "Um item do seu carrinho expira em até 5 minutos.",
-                            "/carrinho");
-                      });
-              cart.removeExpiredProducts(now)
-                  .forEach(
-                      item ->
-                          expired.save(
-                              new ExpiredCartItem(
-                                  cart.getCustomer(),
-                                  item.getVariant(),
-                                  item.getQuantity())));
-            });
+    LocalDateTime now = LocalDateTime.now();
+    var customers = carts.findCustomersWithDueReservations(now,
+        now.plusMinutes(5), afterCustomerId, PageRequest.of(0, BATCH_SIZE));
+    if (customers.isEmpty() && afterCustomerId != 0) {
+      afterCustomerId = 0;
+      customers = carts.findCustomersWithDueReservations(now,
+          now.plusMinutes(5), afterCustomerId, PageRequest.of(0, BATCH_SIZE));
+    }
+    for (Long customerId : customers) {
+      try {
+        reservations.processDue(customerId, now);
+      } catch (RuntimeException error) {
+        LOG.warn("Falha ao processar reservas do cliente {}: {}", customerId,
+            error.getClass().getSimpleName());
+      }
+    }
+    afterCustomerId = customers.size() < BATCH_SIZE ? 0 : customers.getLast();
   }
 }

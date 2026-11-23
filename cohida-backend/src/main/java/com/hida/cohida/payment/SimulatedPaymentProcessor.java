@@ -5,12 +5,17 @@ import org.springframework.stereotype.Component;
 
 import java.util.List;
 
-/** Development-only processor. Tokens starting with {@code declined} fail. */
+/** Local simulator; token prefixes support deterministic test scenarios. */
 @Component
 public class SimulatedPaymentProcessor implements PaymentProcessor {
   @Override
   public PaymentAuthorization authorize(
       List<PaymentCard> cards, long amountCents) {
+    boolean unavailable = cards.stream()
+        .map(PaymentCard::getProcessorToken)
+        .anyMatch(token -> token.startsWith("unavailable-"));
+    if (unavailable)
+      throw new IllegalStateException("Pagamento simulado indisponível.");
     boolean declined =
         cards.stream()
             .map(PaymentCard::getProcessorToken)

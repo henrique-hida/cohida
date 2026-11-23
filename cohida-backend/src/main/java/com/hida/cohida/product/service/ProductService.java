@@ -10,6 +10,9 @@ import com.hida.cohida.product.dto.ProductUpsertRequest;
 import com.hida.cohida.product.dto.ProductVariantRequest;
 import com.hida.cohida.product.exception.ProductNotFoundException;
 import com.hida.cohida.product.repository.ProductRepository;
+import com.hida.cohida.product.repository.ProductSearch;
+import com.hida.cohida.product.dto.ProductPageResponse;
+import com.hida.cohida.product.dto.ProductResponse;
 import com.hida.cohida.product.repository.ProductVariantRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -21,14 +24,16 @@ import java.util.*;
 public class ProductService {
   private final ProductRepository products;
   private final ProductVariantRepository variants;
+  private final ProductSearch search;
   private final CategoryRepository categories;
 
   public ProductService(
       ProductRepository products,
       ProductVariantRepository variants,
-      CategoryRepository categories) {
+      CategoryRepository categories, ProductSearch search) {
     this.products = products;
     this.variants = variants;
+    this.search = search;
     this.categories = categories;
   }
 
@@ -47,6 +52,33 @@ public class ProductService {
                         .anyMatch(
                             category -> category.getId().equals(categoryId)))
         .toList();
+  }
+
+  @Transactional(readOnly = true)
+  public List<ProductResponse> findPublicByIds(List<Long> ids) {
+    if (ids == null || ids.size() > 100) {
+      throw new InvalidRequestException("Informe até 100 produtos.");
+    }
+    if (ids.isEmpty()) return List.of();
+    return products.findByIdIn(ids).stream().filter(Product::isActive)
+        .map(ProductResponse::from).toList();
+  }
+
+  @Transactional(readOnly = true)
+  public ProductPageResponse findPublicPage(
+      String query, Long categoryId, int page, int size) {
+    if (page < 0 || size < 1 || size > 100) {
+      throw new InvalidRequestException("Paginação inválida.");
+    }
+    var result = search.find(normalize(query), categoryId, page, size);
+    if (result.ids().isEmpty()) {
+      return new ProductPageResponse(List.of(), result.total(), page, size);
+    }
+    var byId = new HashMap<Long, Product>();
+    products.findByIdIn(result.ids()).forEach(p -> byId.put(p.getId(), p));
+    var rows = result.ids().stream().map(byId::get).filter(Objects::nonNull)
+        .map(ProductResponse::from).toList();
+    return new ProductPageResponse(rows, result.total(), page, size);
   }
 
   @Transactional(readOnly = true)
@@ -112,25 +144,6 @@ public class ProductService {
     Product product = findForAdmin(id);
     product.deactivate();
     products.save(product);
-  }
-
-  @Transactional
-  public ProductVariant updateStock(
-      Long productId, Long variantId, Integer stockQuantity) {
-    if (stockQuantity == null || stockQuantity < 0) {
-      throw new InvalidRequestException(
-          "O estoque disponível não pode ser negativo.");
-    }
-    Product product = findForAdmin(productId);
-    ProductVariant variant =
-        product.getVariants().stream()
-            .filter(item -> item.getId().equals(variantId))
-            .findFirst()
-            .orElseThrow(
-                () -> new ProductNotFoundException("variação " + variantId));
-    variant.updateStock(stockQuantity);
-    products.save(product);
-    return variant;
   }
 
   private ValidatedProduct validate(ProductUpsertRequest request) {

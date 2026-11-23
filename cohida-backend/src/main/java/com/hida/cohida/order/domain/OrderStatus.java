@@ -7,5 +7,8 @@ public enum OrderStatus {
   REPROVADA,
   EM_TRANSITO,
   ENTREGUE,
+  EM_TROCA,
+  TROCA_AUTORIZADA,
+  TROCADO,
   CANCELADO
 }

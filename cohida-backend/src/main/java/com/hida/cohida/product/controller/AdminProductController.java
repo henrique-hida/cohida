@@ -5,6 +5,7 @@ import com.hida.cohida.product.dto.ProductUpsertRequest;
 import com.hida.cohida.product.dto.ProductVariantResponse;
 import com.hida.cohida.product.dto.StockUpdateRequest;
 import com.hida.cohida.product.service.ProductService;
+import com.hida.cohida.product.service.ProductStockService;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
@@ -16,9 +17,12 @@ import java.util.List;
 @PreAuthorize("hasRole('ADMIN')")
 public class AdminProductController {
   private final ProductService products;
+  private final ProductStockService stock;
 
-  public AdminProductController(ProductService products) {
+  public AdminProductController(
+      ProductService products, ProductStockService stock) {
     this.products = products;
+    this.stock = stock;
   }
 
   @GetMapping
@@ -51,7 +55,7 @@ public class AdminProductController {
       @PathVariable Long variantId,
       @RequestBody StockUpdateRequest request) {
     return ProductVariantResponse.from(
-        products.updateStock(productId, variantId, request.stockQuantity()));
+        stock.update(productId, variantId, request.stockQuantity()));
   }
 
   @DeleteMapping("/{id}")

@@ -3,10 +3,7 @@ package com.hida.cohida.analytics.service;
 import com.hida.cohida.analytics.dto.AnalyticsOverviewResponse;
 import com.hida.cohida.analytics.dto.SalesPointResponse;
 import com.hida.cohida.analytics.dto.TopProductResponse;
-import com.hida.cohida.order.domain.OrderStatus;
-import com.hida.cohida.order.domain.SaleOrder;
 import com.hida.cohida.order.repository.OrderRepository;
-import com.hida.cohida.product.repository.ProductRepository;
 import com.hida.cohida.returnrequest.repository.ReturnRequestRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -18,73 +15,34 @@ import java.util.*;
 public class AnalyticsService {
   private final OrderRepository orders;
   private final ReturnRequestRepository returns;
-  private final ProductRepository products;
+  private final AnalyticsQueries queries;
 
   public AnalyticsService(
-      OrderRepository o, ReturnRequestRepository r, ProductRepository p) {
-    orders = o;
-    returns = r;
-    products = p;
+      OrderRepository orders, ReturnRequestRepository returns,
+      AnalyticsQueries queries) {
+    this.orders = orders;
+    this.returns = returns;
+    this.queries = queries;
   }
 
-  private List<SaleOrder> filtered(
-      LocalDate from, LocalDate to, List<Long> categoryIds) {
-    List<Long> selectedCategories =
-        categoryIds == null
-            ? List.of()
-            : categoryIds.stream().filter(Objects::nonNull).distinct().toList();
-    boolean hasCategoryFilter = !selectedCategories.isEmpty();
-    Set<String> categorySkus =
-        !hasCategoryFilter
-            ? Set.of()
-            : products.findByActiveTrueOrderByNameAsc().stream()
-                .filter(
-                    product ->
-                        selectedCategories.stream()
-                            .anyMatch(
-                                categoryId ->
-                                    product.getCategories().stream()
-                                        .anyMatch(
-                                            category ->
-                                                category
-                                                    .getId()
-                                                    .equals(categoryId))))
-                .flatMap(product -> product.getVariants().stream())
-                .map(variant -> variant.getSku())
-                .collect(java.util.stream.Collectors.toSet());
-    return orders.findAllByOrderByCreatedAtDesc().stream()
-        .filter(order -> !order.getStatus().equals(OrderStatus.CANCELADO))
-        .filter(
-            order ->
-                from == null
-                    || !order.getCreatedAt().toLocalDate().isBefore(from))
-        .filter(
-            order ->
-                to == null || !order.getCreatedAt().toLocalDate().isAfter(to))
-        .filter(
-            order ->
-                !hasCategoryFilter
-                    || order.getItems().stream()
-                        .anyMatch(item -> categorySkus.contains(item.getSku())))
-        .toList();
+  private List<Long> categories(List<Long> categoryIds) {
+    return categoryIds == null
+        ? List.of()
+        : categoryIds.stream().filter(Objects::nonNull).distinct().toList();
   }
 
   @Transactional(readOnly = true)
   public AnalyticsOverviewResponse overview(
-      LocalDate f, LocalDate t, List<Long> categoryIds) {
-    var list = filtered(f, t, categoryIds);
-    long revenue = list.stream().mapToLong(SaleOrder::getTotalCents).sum();
+      LocalDate from, LocalDate to, List<Long> categoryIds) {
+    long[] totals = queries.overview(from, to, categories(categoryIds));
     return new AnalyticsOverviewResponse(
-        revenue,
-        list.size(),
-        list.isEmpty() ? 0 : revenue / list.size(),
-        list.stream().mapToLong(SaleOrder::getDiscountCents).sum(),
-        returns.count());
+        totals[0], totals[1], totals[1] == 0 ? 0 : totals[0] / totals[1],
+        totals[2], returns.count());
   }
 
   @Transactional(readOnly = true)
   public List<SalesPointResponse> sales(
-      LocalDate f, LocalDate t, String groupBy, List<Long> categoryIds) {
+      LocalDate f, LocalDate t, List<Long> categoryIds) {
     if (f == null
         || t == null
         || t.isBefore(f)
@@ -93,15 +51,12 @@ public class AnalyticsService {
       throw new IllegalArgumentException(
           "Informe um período entre 1 e 24 meses.");
     }
-    List<Long> selectedCategories =
-        categoryIds == null
-            ? List.of()
-            : categoryIds.stream().filter(Objects::nonNull).distinct().toList();
+    List<Long> selectedCategories = categories(categoryIds);
     if (selectedCategories.isEmpty()) return List.of();
 
     Map<String, SalesPointResponse> results = new HashMap<>();
     for (Object[] row :
-        orders.aggregateDeliveredSalesByCategory(
+        orders.aggregateSalesByCategory(
             f.atStartOfDay(),
             t.plusDays(1).atStartOfDay(),
             selectedCategories)) {
@@ -132,32 +87,9 @@ public class AnalyticsService {
     return points;
   }
 
-  private static String period(SaleOrder order, String groupBy) {
-    var date = order.getCreatedAt().toLocalDate();
-    return "month".equalsIgnoreCase(groupBy)
-        ? date.withDayOfMonth(1).toString()
-        : date.toString();
-  }
-
   @Transactional(readOnly = true)
   public List<TopProductResponse> top(
       LocalDate f, LocalDate t, List<Long> categoryIds) {
-    Map<String, long[]> m = new HashMap<>();
-    for (var o : filtered(f, t, categoryIds))
-      for (var i : o.getItems()) {
-        long[] x = m.computeIfAbsent(i.getSku(), k -> new long[] {0, 0});
-        x[0] += i.getQuantity();
-        x[1] += i.getUnitPriceCents() * i.getQuantity();
-      }
-    return m.entrySet().stream()
-        .map(
-            e ->
-                new TopProductResponse(
-                    e.getKey(), e.getKey(), e.getValue()[0], e.getValue()[1]))
-        .sorted(
-            Comparator.comparingLong(TopProductResponse::revenueCents)
-                .reversed())
-        .limit(10)
-        .toList();
+    return queries.top(f, t, categories(categoryIds));
   }
 }

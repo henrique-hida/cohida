@@ -3,6 +3,7 @@ package com.hida.cohida.customer.service;
 import com.hida.cohida.account.repository.AccountRepository;
 import com.hida.cohida.auth.dto.AddressRequest;
 import com.hida.cohida.auth.exception.InvalidRequestException;
+import com.hida.cohida.auth.validation.PasswordPolicy;
 import com.hida.cohida.customer.domain.Customer;
 import com.hida.cohida.customer.domain.CustomerAddress;
 import com.hida.cohida.customer.dto.CustomerAddressRequest;
@@ -96,8 +97,10 @@ public class CustomerService {
         request.phone(),
         request.email());
     customer.replaceAddresses(
-        toAddress(request.billingAddress(), AddressType.BILLING),
-        toAddress(request.deliveryAddress(), AddressType.DELIVERY));
+        CustomerAddressService.toAddress(
+            request.billingAddress(), AddressType.BILLING),
+        CustomerAddressService.toAddress(
+            request.deliveryAddress(), AddressType.DELIVERY));
     return save(customer);
   }
 
@@ -123,7 +126,7 @@ public class CustomerService {
     if (request == null
         || !passwordEncoder.matches(
             request.currentPassword(), customer.getAccount().getPasswordHash())
-        || !strong(request.newPassword())
+        || !PasswordPolicy.isStrong(request.newPassword())
         || !request.newPassword().equals(request.newPasswordConfirmation())) {
       throw new InvalidRequestException(
           "Solicitação de alteração de senha inválida.");
@@ -141,40 +144,7 @@ public class CustomerService {
     customers.save(customer);
   }
 
-  @Transactional(readOnly = true)
-  public List<CustomerAddress> findAddresses(Long customerId) {
-    return findById(customerId).getAddresses();
-  }
-
-  @Transactional
-  public CustomerAddress addAddress(
-      Long customerId, CustomerAddressRequest request) {
-    Customer customer = findById(customerId);
-    CustomerAddress address = toAddress(request);
-    customer.addAddress(address);
-    save(customer);
-    return address;
-  }
-
-  @Transactional
-  public CustomerAddress updateAddress(
-      Long customerId, Long addressId, CustomerAddressRequest request) {
-    Customer customer = findById(customerId);
-    CustomerAddress address = customer.address(addressId);
-    CustomerAddressRequest normalized = normalized(request);
-    address.update(normalized);
-    save(customer);
-    return address;
-  }
-
-  @Transactional
-  public void removeAddress(Long customerId, Long addressId) {
-    Customer customer = findById(customerId);
-    customer.removeAddress(addressId);
-    save(customer);
-  }
-
-  private Customer save(Customer customer) {
+  Customer save(Customer customer) {
     validate(customer);
     assertUnique(customer);
     return customers.save(customer);
@@ -238,71 +208,6 @@ public class CustomerService {
     }
   }
 
-  private static CustomerAddress toAddress(
-      AddressRequest address, AddressType type) {
-    if (address == null
-        || isBlank(address.label())
-        || isBlank(address.street())
-        || isBlank(address.number())
-        || isBlank(address.neighborhood())
-        || !digits(address.postalCode()).matches("\\d{8}")
-        || isBlank(address.city())
-        || isBlank(address.state())
-        || isBlank(address.country())) {
-      throw new InvalidRequestException("Informe um endereço completo.");
-    }
-    return new CustomerAddress(
-        address.label().trim(),
-        type,
-        address.street().trim(),
-        address.number().trim(),
-        address.neighborhood().trim(),
-        digits(address.postalCode()),
-        address.city().trim(),
-        address.state().trim().toUpperCase(Locale.ROOT),
-        address.country().trim());
-  }
-
-  private static CustomerAddress toAddress(CustomerAddressRequest request) {
-    CustomerAddressRequest normalized = normalized(request);
-    return new CustomerAddress(
-        normalized.label(),
-        normalized.type(),
-        normalized.street(),
-        normalized.number(),
-        normalized.neighborhood(),
-        normalized.postalCode(),
-        normalized.city(),
-        normalized.state(),
-        normalized.country());
-  }
-
-  private static CustomerAddressRequest normalized(
-      CustomerAddressRequest request) {
-    if (request == null
-        || request.type() == null
-        || isBlank(request.label())
-        || isBlank(request.street())
-        || isBlank(request.number())
-        || isBlank(request.neighborhood())
-        || !digits(request.postalCode()).matches("\\d{8}")
-        || isBlank(request.city())
-        || isBlank(request.state())
-        || isBlank(request.country())) {
-      throw new InvalidRequestException("Informe um endereço completo.");
-    }
-    return new CustomerAddressRequest(
-        request.type(),
-        request.label().trim(),
-        request.street().trim(),
-        request.number().trim(),
-        request.neighborhood().trim(),
-        digits(request.postalCode()),
-        request.city().trim(),
-        request.state().trim().toUpperCase(Locale.ROOT),
-        request.country().trim());
-  }
-
   private static void validateCpf(String cpf) {
     if (!cpf.matches("\\d{11}")
         || cpf.chars().distinct().count() == 1
@@ -319,11 +224,6 @@ public class CustomerService {
     }
     int remainder = (sum * 10) % 11;
     return remainder == 10 ? 0 : remainder;
-  }
-
-  private static boolean strong(String value) {
-    return value != null
-        && value.matches("(?=.*[a-z])(?=.*[A-Z])(?=.*[^A-Za-z0-9]).{8,}");
   }
 
   private static String digits(String value) {

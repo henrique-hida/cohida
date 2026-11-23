@@ -3,7 +3,7 @@ package com.hida.cohida.order.controller;
 import com.hida.cohida.auth.security.AuthenticatedCustomer;
 import com.hida.cohida.order.dto.CheckoutRequest;
 import com.hida.cohida.order.dto.OrderResponse;
-import com.hida.cohida.order.service.OrderService;
+import com.hida.cohida.order.service.CheckoutService;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -13,29 +13,31 @@ import org.springframework.web.bind.annotation.*;
 @RequestMapping("/api/customers/me/checkout")
 @PreAuthorize("hasRole('CUSTOMER')")
 public class CheckoutController {
-  private final OrderService orders;
+  private final CheckoutService checkout;
 
-  public CheckoutController(OrderService orders) {
-    this.orders = orders;
+  public CheckoutController(CheckoutService checkout) {
+    this.checkout = checkout;
   }
 
   @PostMapping
   @ResponseStatus(HttpStatus.CREATED)
   public OrderResponse checkout(
       @AuthenticationPrincipal AuthenticatedCustomer p,
+      @RequestHeader(value = "Idempotency-Key", required = false) String key,
       @RequestBody CheckoutRequest request) {
     if (request.payments() != null && !request.payments().isEmpty())
-      return OrderResponse.from(
-          orders.checkout(
-              p.customerId(), request.deliveryAddressId(), request.payments()));
-    return OrderResponse.from(
-        orders.checkout(
+      return checkout.checkoutIdempotent(
+          p.customerId(), key, request.deliveryAddressId(), request.payments(),
+          request.cartSignature());
+    return checkout.checkoutIdempotent(
             p.customerId(),
+            key,
             request.deliveryAddressId(),
             request.paymentCardId() == null
                 ? java.util.List.of()
                 : java.util.List.of(
                     new com.hida.cohida.order.dto.PaymentAllocationRequest(
-                        request.paymentCardId(), null))));
+                        request.paymentCardId(), null)),
+            request.cartSignature());
   }
 }

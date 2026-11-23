@@ -73,6 +73,13 @@ public class ReturnRequest extends DomainEntity {
     status = ReturnStatus.TROCADO;
   }
 
+  public void registerTrackingCode(String trackingCode) {
+    if (status != ReturnStatus.TROCA_AUTORIZADA)
+      throw new IllegalStateException(
+          "A devolução precisa ser autorizada antes do envio.");
+    this.trackingCode = trackingCode;
+  }
+
   public SaleOrder targetOrder() {
     return orderItem == null ? order : orderItem.getOrder();
   }

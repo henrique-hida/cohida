@@ -19,6 +19,7 @@ import static org.junit.jupiter.api.Assertions.*;
 @Transactional
 class ProductServiceTest {
   @Autowired private ProductService products;
+  @Autowired private ProductStockService stock;
   @Autowired private CategoryRepository categories;
 
   private Long categoryId;
@@ -44,7 +45,7 @@ class ProductServiceTest {
     assertEquals("Camisa Oficial 2026", updated.getName());
     assertEquals(19990, updated.getVariants().getFirst().getPriceCents());
 
-    products.updateStock(
+    stock.update(
         product.getId(), updated.getVariants().getFirst().getId(), 3);
     assertEquals(
         3,

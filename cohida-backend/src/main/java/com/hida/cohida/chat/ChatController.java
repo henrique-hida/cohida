@@ -30,13 +30,78 @@ public class ChatController {
       long priceCents) {}
 
   public record ChatResponse(
-      long id, String content, List<ProductCard> products) {}
+      long id, String content, List<ProductCard> products,
+      String suggestedInterest) {}
 
   public record Preferences(String preferences) {}
 
   public record Suggestions(List<String> suggestions, boolean fallback) {}
 
   public record Feedback(Boolean useful) {}
+
+  public record Profile(
+      String sport, String experience, String goal, String budget) {}
+
+  public record Interest(String sport, String focus) {}
+
+  @GetMapping("/interests")
+  public List<Interest> interests(
+      @AuthenticationPrincipal AuthenticatedCustomer customer) {
+    return chat.interests(customer.customerId());
+  }
+
+  @PutMapping("/interests")
+  public List<Interest> interests(
+      @AuthenticationPrincipal AuthenticatedCustomer customer,
+      @RequestBody List<Interest> interests) {
+    return chat.saveInterests(customer.customerId(), interests);
+  }
+
+  @GetMapping("/profile")
+  public Profile profile(
+      @AuthenticationPrincipal AuthenticatedCustomer customer) {
+    return chat.profile(customer.customerId());
+  }
+
+  @PutMapping("/profile")
+  public Profile profile(
+      @AuthenticationPrincipal AuthenticatedCustomer customer,
+      @RequestBody Profile profile) {
+    return chat.saveProfile(customer.customerId(), profile);
+  }
+
+  @GetMapping("/recommendations")
+  public List<String> recommendations(
+      @AuthenticationPrincipal AuthenticatedCustomer customer) {
+    return chat.recommendations(customer.customerId());
+  }
+
+  public record HistoryEntry(
+      long id, String question, String response, Boolean useful) {}
+
+  public record DisplayHistory(
+      long id, String question, String response, Boolean useful,
+      List<ProductCard> products) {}
+
+  @GetMapping("/messages")
+  public List<DisplayHistory> history(
+      @AuthenticationPrincipal AuthenticatedCustomer customer) {
+    return chat.historyWithProducts(customer.customerId());
+  }
+
+  @DeleteMapping("/messages")
+  @ResponseStatus(org.springframework.http.HttpStatus.NO_CONTENT)
+  public void clearHistory(
+      @AuthenticationPrincipal AuthenticatedCustomer customer) {
+    chat.clearHistory(customer.customerId());
+  }
+
+  @GetMapping("/profile-suggestions")
+  public Suggestions profileSuggestions(
+      @AuthenticationPrincipal AuthenticatedCustomer customer) {
+    return new Suggestions(
+        chat.profileSuggestions(customer.customerId()), false);
+  }
 
   @GetMapping("/preferences")
   public Preferences preferences(

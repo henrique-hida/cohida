@@ -38,8 +38,6 @@ public class SecurityConfig {
                     .permitAll()
                     .requestMatchers(HttpMethod.GET, "/api/categories")
                     .permitAll()
-                    .requestMatchers("/api/admin/demo/seed")
-                    .permitAll()
                     .requestMatchers(
                         "/api/auth/**",
                         "/v3/api-docs/**",
@@ -72,7 +70,8 @@ public class SecurityConfig {
             "http://127.0.0.1:5175"));
     configuration.setAllowedMethods(
         List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
-    configuration.setAllowedHeaders(List.of("Authorization", "Content-Type"));
+    configuration.setAllowedHeaders(
+        List.of("Authorization", "Content-Type", "Idempotency-Key"));
     UrlBasedCorsConfigurationSource source =
         new UrlBasedCorsConfigurationSource();
     source.registerCorsConfiguration("/api/**", configuration);

@@ -1,6 +1,7 @@
 package com.hida.cohida.product.controller;
 
 import com.hida.cohida.product.dto.ProductResponse;
+import com.hida.cohida.product.dto.ProductPageResponse;
 import com.hida.cohida.product.service.ProductService;
 import org.springframework.web.bind.annotation.*;
 
@@ -22,6 +23,20 @@ public class ProductController {
     return products.findPublic(search, categoryId).stream()
         .map(ProductResponse::from)
         .toList();
+  }
+
+  @GetMapping("/lookup")
+  public List<ProductResponse> lookup(@RequestParam List<Long> ids) {
+    return products.findPublicByIds(ids);
+  }
+
+  @GetMapping("/search")
+  public ProductPageResponse search(
+      @RequestParam(required = false) String search,
+      @RequestParam(required = false) Long categoryId,
+      @RequestParam(defaultValue = "0") int page,
+      @RequestParam(defaultValue = "24") int size) {
+    return products.findPublicPage(search, categoryId, page, size);
   }
 
   @GetMapping("/{slug}")
