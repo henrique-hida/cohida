@@ -155,7 +155,8 @@ export function ChatProfile() {
         <div className='rounded-xl bg-background p-3'>
           <div className='flex items-center justify-between gap-2'>
             <span className='text-xs'>
-              Atividades: {interests.map((item) => item.sport).join(', ')}
+              Atividades:{' '}
+              <strong>{interests.map((item) => item.sport).join(', ')}</strong>
             </span>
             <Button
               aria-label='Alterar atividades'
@@ -178,7 +179,8 @@ export function ChatProfile() {
               key={item.sport}
             >
               <span className='text-xs'>
-                Interesse em {item.sport}: {item.focus ?? 'Não respondido'}
+                Interesse em {item.sport}:{' '}
+                <strong>{item.focus ?? 'Não respondido'}</strong>
               </span>
               <Button
                 aria-label={`Alterar interesse em ${item.sport}`}
@@ -201,7 +203,8 @@ export function ChatProfile() {
               key={item.key}
             >
               <span className='text-xs'>
-                {item.text} {profile?.[item.key] ?? 'Não respondido'}
+                {item.text}{' '}
+                <strong>{profile?.[item.key] ?? 'Não respondido'}</strong>
               </span>
               <Button
                 aria-label={`Alterar ${item.text}`}
