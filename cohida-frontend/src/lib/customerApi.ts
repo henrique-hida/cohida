@@ -1,7 +1,15 @@
-import { logout, saveAccount, tokenKey } from './customer/session';
+import {
+  ensureAccessToken,
+  SessionExpiredError,
+  getCurrentSessionId,
+  logout,
+  saveAccount,
+} from './customer/session';
+import { apiBaseUrl } from './customer/config';
 
 export {
   getSavedAccounts,
+  getCurrentSessionId,
   getSessionRole,
   hasAdminSession,
   logout,
@@ -10,8 +18,7 @@ export {
 } from './customer/session';
 export type { SavedAccount, SessionRole } from './customer/session';
 
-const baseUrl =
-  import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8080/api';
+const baseUrl = apiBaseUrl;
 
 export class ApiError extends Error {
   readonly status: number;
@@ -73,7 +80,25 @@ export async function apiRequest<T>(
   path: string,
   options: RequestInit = {},
 ): Promise<T> {
-  const token = localStorage.getItem(tokenKey);
+  const isAuthenticationEndpoint = path.startsWith('/auth/');
+  const sessionId = getCurrentSessionId();
+  let token: string | null = null;
+  if (!isAuthenticationEndpoint && sessionId) {
+    try {
+      token = await ensureAccessToken();
+    } catch (error) {
+      if (
+        error instanceof SessionExpiredError &&
+        getCurrentSessionId() === sessionId
+      ) {
+        logout();
+        if (window.location.pathname !== '/entrar') {
+          window.location.replace('/entrar');
+        }
+      }
+      throw error;
+    }
+  }
   const headers = new Headers(options.headers);
   const isMultipartBody =
     typeof FormData !== 'undefined' && options.body instanceof FormData;
@@ -83,29 +108,52 @@ export async function apiRequest<T>(
   if (token && !headers.has('Authorization')) {
     headers.set('Authorization', `Bearer ${token}`);
   }
-  const response = await fetch(`${baseUrl}${path}`, {
+  let response = await fetch(`${baseUrl}${path}`, {
     ...options,
+    credentials: 'include',
     headers,
   });
-  if (token && localStorage.getItem(tokenKey) !== token) {
+  if (sessionId !== getCurrentSessionId()) {
+    throw new Error('A conta mudou durante a operação.');
+  }
+  if (response.status === 401 && token && !isAuthenticationEndpoint) {
+    try {
+      const renewed = await ensureAccessToken(true);
+      if (renewed) {
+        headers.set('Authorization', `Bearer ${renewed}`);
+        response = await fetch(`${baseUrl}${path}`, {
+          ...options,
+          credentials: 'include',
+          headers,
+        });
+      }
+    } catch (error) {
+      if (
+        error instanceof SessionExpiredError &&
+        getCurrentSessionId() === sessionId
+      ) {
+        logout();
+        if (window.location.pathname !== '/entrar') {
+          window.location.replace('/entrar');
+        }
+      }
+      throw error;
+    }
+  }
+  if (sessionId !== getCurrentSessionId()) {
     throw new Error('A conta mudou durante a operação.');
   }
   if (!response.ok) {
     const body = (await response.json().catch(() => null)) as {
       message?: string;
     } | null;
-    if (token && localStorage.getItem(tokenKey) !== token) {
+    if (sessionId !== getCurrentSessionId()) {
       throw new Error('A conta mudou durante a operação.');
     }
-    const isAuthenticationEndpoint = path.startsWith('/auth/');
     if (response.status === 401 && token && !isAuthenticationEndpoint) {
-      // Do not let an in-flight request from an old session erase a newer
-      // token just saved by a successful login.
-      if (localStorage.getItem(tokenKey) === token) {
-        logout();
-        if (window.location.pathname !== '/entrar') {
-          window.location.replace('/entrar');
-        }
+      logout();
+      if (window.location.pathname !== '/entrar') {
+        window.location.replace('/entrar');
       }
       throw new Error('Sua sessão expirou. Entre novamente para continuar.');
     }
@@ -118,7 +166,7 @@ export async function apiRequest<T>(
     );
   }
   const data = response.status === 204 ? undefined : await response.json();
-  if (token && localStorage.getItem(tokenKey) !== token) {
+  if (sessionId !== getCurrentSessionId()) {
     throw new Error('A conta mudou durante a operação.');
   }
   return data as T;
@@ -128,18 +176,13 @@ export async function login(email: string, password: string) {
   const authentication = await apiRequest<{
     accessToken: string;
     role: string;
+    sessionId: string;
     customerName?: string;
   }>('/auth/login', {
     body: JSON.stringify({ email, password }),
     method: 'POST',
   });
-  localStorage.setItem(tokenKey, authentication.accessToken);
-  localStorage.removeItem('cohida-admin-name');
-  saveAccount(
-    authentication.accessToken,
-    authentication.role,
-    authentication.customerName,
-  );
+  saveAccount(authentication);
   return authentication;
 }
 
@@ -147,13 +190,13 @@ export async function register(input: CustomerCreateInput) {
   const authentication = await apiRequest<{
     accessToken: string;
     role: string;
+    sessionId: string;
+    customerName?: string;
   }>('/auth/register', {
     body: JSON.stringify(input),
     method: 'POST',
   });
-  localStorage.setItem(tokenKey, authentication.accessToken);
-  localStorage.removeItem('cohida-admin-name');
-  saveAccount(authentication.accessToken, authentication.role);
+  saveAccount(authentication);
   return authentication;
 }
 

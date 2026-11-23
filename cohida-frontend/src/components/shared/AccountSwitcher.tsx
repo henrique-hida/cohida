@@ -7,7 +7,7 @@ import {
   SelectSeparator,
   SelectTrigger,
 } from '@/components/ui/select';
-import type { SavedAccount } from '@/lib/customerApi';
+import { getCurrentSessionId, type SavedAccount } from '@/lib/customerApi';
 
 const addAccountValue = '__add_account__';
 
@@ -54,12 +54,12 @@ export function AccountSwitcher({
         {accounts.map((account) => (
           <SelectItem
             className='px-3 py-2.5'
-            key={account.token}
-            value={account.token}
+            key={account.sessionId}
+            value={account.sessionId}
           >
             <span className='flex min-w-0 flex-1 items-center gap-2'>
               <span className='truncate'>{account.name}</span>
-              {account.token === localStorage.getItem('cohida-access-token') ? (
+              {account.sessionId === getCurrentSessionId() ? (
                 <span
                   aria-label='Conta atual'
                   className='size-2 shrink-0 rounded-full bg-primary'

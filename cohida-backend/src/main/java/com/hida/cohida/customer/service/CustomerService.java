@@ -4,6 +4,7 @@ import com.hida.cohida.account.repository.AccountRepository;
 import com.hida.cohida.auth.dto.AddressRequest;
 import com.hida.cohida.auth.exception.InvalidRequestException;
 import com.hida.cohida.auth.validation.PasswordPolicy;
+import com.hida.cohida.auth.session.RefreshSessionRepository;
 import com.hida.cohida.customer.domain.Customer;
 import com.hida.cohida.customer.domain.CustomerAddress;
 import com.hida.cohida.customer.dto.CustomerAddressRequest;
@@ -30,14 +31,16 @@ public class CustomerService {
   private final CustomerRepository customers;
   private final AccountRepository accounts;
   private final PasswordEncoder passwordEncoder;
+  private final RefreshSessionRepository sessions;
 
   public CustomerService(
       CustomerRepository customers,
       AccountRepository accounts,
-      PasswordEncoder passwordEncoder) {
+      PasswordEncoder passwordEncoder, RefreshSessionRepository sessions) {
     this.customers = customers;
     this.accounts = accounts;
     this.passwordEncoder = passwordEncoder;
+    this.sessions = sessions;
   }
 
   @Transactional
@@ -135,6 +138,9 @@ public class CustomerService {
         .getAccount()
         .changePassword(passwordEncoder.encode(request.newPassword()));
     save(customer);
+    sessions.revokeAccount(
+        customer.getAccount().getId(),
+        java.time.LocalDateTime.now(java.time.ZoneOffset.UTC));
   }
 
   @Transactional
@@ -142,6 +148,9 @@ public class CustomerService {
     Customer customer = findById(id);
     customer.deactivate();
     customers.save(customer);
+    sessions.revokeAccount(
+        customer.getAccount().getId(),
+        java.time.LocalDateTime.now(java.time.ZoneOffset.UTC));
   }
 
   Customer save(Customer customer) {

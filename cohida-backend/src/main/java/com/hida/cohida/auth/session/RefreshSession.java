@@ -18,6 +18,10 @@ public class RefreshSession {
   @JoinColumn(name = "account_id", nullable = false) private Account account;
   @Column(name = "refresh_token_hash", nullable = false, length = 64)
   private String tokenHash;
+  @Column(name = "previous_refresh_token_hash", length = 64)
+  private String previousTokenHash;
+  @Column(name = "rotation_grace_until")
+  private LocalDateTime rotationGraceUntil;
   @Column(name = "created_at", nullable = false)
   private LocalDateTime createdAt;
   @Column(name = "expires_at", nullable = false)
@@ -42,9 +46,15 @@ public class RefreshSession {
   public boolean active(LocalDateTime now) {
     return revokedAt == null && expiresAt.isAfter(now);
   }
+  public String previousTokenHash() { return previousTokenHash; }
+  public boolean inGrace(LocalDateTime now) {
+    return rotationGraceUntil != null && rotationGraceUntil.isAfter(now);
+  }
   public void rotate(String hash, LocalDateTime now) {
+    previousTokenHash = tokenHash;
     tokenHash = hash;
     lastUsedAt = now;
+    rotationGraceUntil = now.plusSeconds(15);
   }
   public void revoke(LocalDateTime now) { revokedAt = now; }
 }

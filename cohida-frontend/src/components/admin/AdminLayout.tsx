@@ -20,6 +20,8 @@ import { AccountMenu } from '@/components/shared/AccountMenu';
 import { Button } from '@/components/ui/button';
 import {
   getSavedAccounts,
+  getCurrentSessionId,
+  logout,
   hasAdminSession,
   switchAccount,
 } from '@/lib/customerApi';
@@ -58,9 +60,10 @@ export function AdminLayout({ children }: AdminLayoutProps) {
 }
 
 function AdminLayoutContent({ children }: AdminLayoutProps) {
-  const adminName =
-    localStorage.getItem('cohida-admin-name') ?? 'Administradora';
   const savedAccounts = getSavedAccounts();
+  const adminName =
+    savedAccounts.find((account) => account.sessionId === getCurrentSessionId())
+      ?.name ?? 'Administradora';
   const { pathname } = useLocation();
   const itemRefs = useRef(new Map<string, HTMLAnchorElement>());
   const [indicator, setIndicator] = useState<{
@@ -75,11 +78,14 @@ function AdminLayoutContent({ children }: AdminLayoutProps) {
   );
 
   function handleAccountSwitch(token: string) {
-    const account = savedAccounts.find((saved) => saved.token === token);
+    const account = savedAccounts.find((saved) => saved.sessionId === token);
     if (!account) return;
 
-    switchAccount(account);
-    window.location.assign(account.role === 'ADMIN' ? '/admin' : '/');
+    void switchAccount(account)
+      .then(() =>
+        window.location.assign(account.role === 'ADMIN' ? '/admin' : '/'),
+      )
+      .catch(() => window.location.assign('/entrar'));
   }
 
   useLayoutEffect(() => {
@@ -209,6 +215,8 @@ function AdminLayoutContent({ children }: AdminLayoutProps) {
             <Button
               className='w-full justify-start'
               render={<Link to='/entrar' />}
+              onClick={logout}
+              nativeButton={false}
               variant='ghost'
             >
               <LogOut />

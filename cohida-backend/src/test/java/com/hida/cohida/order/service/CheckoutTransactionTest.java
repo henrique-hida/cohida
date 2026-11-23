@@ -4,6 +4,9 @@ import com.hida.cohida.account.domain.Account;
 import com.hida.cohida.account.enums.AccountRole;
 import com.hida.cohida.auth.security.AuthenticatedCustomer;
 import com.hida.cohida.analytics.service.AnalyticsService;
+import com.hida.cohida.customer.service.CustomerService;
+import com.hida.cohida.auth.exception.InvalidCredentialsException;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import com.hida.cohida.auth.session.RefreshSessionService;
 import com.hida.cohida.auth.dto.AuthenticationResponse;
 import com.hida.cohida.account.enums.AccountRole;
@@ -148,6 +151,9 @@ class CheckoutTransactionTest {
   @Autowired private JdbcTemplate jdbc;
   @Autowired private AnalyticsService analytics;
   @Autowired private RefreshSessionService sessions;
+  @Autowired private com.hida.cohida.auth.session.RefreshSessionCleanup cleanup;
+  @Autowired private CustomerService customerService;
+  @Autowired private PasswordEncoder encoder;
   @Autowired private com.hida.cohida.auth.service.JwtService jwtService;
   @Autowired private CategoryService categoryService;
   @Autowired private com.hida.cohida.cache.PublicCategoryCache categoryCache;
@@ -667,6 +673,71 @@ class CheckoutTransactionTest {
   }
 
   @Test
+  @EnabledIfEnvironmentVariable(named = "MINIO_TEST_PORT", matches = "59000")
+  @EnabledIfEnvironmentVariable(
+      named = "CHECKOUT_TEST_REDIS_PORT", matches = "56381")
+  void imageQueueRecoversMessageFromInterruptedWorker() {
+    byte[] output = {7, 8, 9};
+    when(imageTransformer.convert(any())).thenReturn(output);
+    var queue = new com.hida.cohida.image.ImageQueue(redis, imageJobs,
+        imageHandler.getObject(), transactions);
+    queue.poll();
+    String url = imageService.getObject().enqueue(new byte[] {1}, "image/png");
+    String id = url.substring(url.lastIndexOf('/') + 1, url.length() - 5);
+    String stream = "cohida:image-events:v1";
+    String group = "image-processing-v1";
+    var record = redis.opsForStream().add(
+        stream, java.util.Map.of("eventId", id));
+    redis.opsForStream().read(
+        org.springframework.data.redis.connection.stream.Consumer.from(
+            group, "dead"),
+        org.springframework.data.redis.connection.stream.StreamOffset.create(
+            stream, org.springframework.data.redis.connection.stream.ReadOffset
+                .lastConsumed()));
+    redis.execute((org.springframework.data.redis.core.RedisCallback<Object>)
+        connection -> connection.execute("XCLAIM", stream.getBytes(),
+            group.getBytes(), "dead".getBytes(), "0".getBytes(),
+            record.getValue().getBytes(), "IDLE".getBytes(),
+            "45000".getBytes(), "JUSTID".getBytes()));
+    queue.poll();
+    assertEquals("READY", imageService.getObject().status(id));
+    verify(imageTransformer, times(1)).convert(any());
+    imageStorage.getObject().delete(
+        com.hida.cohida.image.ImageJobService.outputKey(id));
+  }
+
+  @Test
+  @EnabledIfEnvironmentVariable(named = "MINIO_TEST_PORT", matches = "59000")
+  @EnabledIfEnvironmentVariable(
+      named = "CHECKOUT_TEST_REDIS_PORT", matches = "56381")
+  void imageJobRemainsPendingWhileRedisIsOffline() throws Exception {
+    when(imageTransformer.convert(any())).thenReturn(new byte[] {4});
+    String url = imageService.getObject().enqueue(new byte[] {1}, "image/png");
+    String id = url.substring(url.lastIndexOf('/') + 1, url.length() - 5);
+    int unusedPort;
+    try (var socket = new java.net.ServerSocket(0)) {
+      unusedPort = socket.getLocalPort();
+    }
+    var factory = new org.springframework.data.redis.connection.lettuce
+        .LettuceConnectionFactory("127.0.0.1", unusedPort);
+    factory.afterPropertiesSet();
+    try {
+      var offline = new StringRedisTemplate(factory);
+      offline.afterPropertiesSet();
+      new com.hida.cohida.image.ImageQueue(offline, imageJobs,
+          imageHandler.getObject(), transactions).poll();
+    } finally {
+      factory.destroy();
+    }
+    assertEquals("PROCESSING", imageService.getObject().status(id));
+    new com.hida.cohida.image.ImageQueue(redis, imageJobs,
+        imageHandler.getObject(), transactions).poll();
+    assertEquals("READY", imageService.getObject().status(id));
+    imageStorage.getObject().delete(
+        com.hida.cohida.image.ImageJobService.outputKey(id));
+  }
+
+  @Test
   @EnabledIfEnvironmentVariable(named = "CHECKOUT_TEST_JDBC_URL",
       matches = "jdbc:postgresql://.*cohida_checkout_test")
   void refreshTokenRotationSerializesAndAuditRedactsHash() throws Exception {
@@ -689,20 +760,76 @@ class CheckoutTransactionTest {
         return sessions.refresh(id, issued.secret());
       });
       start.countDown();
-      int successes = 0;
-      for (var result : List.of(first, second)) {
-        try { result.get(10, TimeUnit.SECONDS); successes++; }
-        catch (ExecutionException expected) {
-          assertTrue(expected.getCause() instanceof
-              com.hida.cohida.auth.exception.InvalidCredentialsException);
-        }
-      }
-      assertEquals(1, successes);
+      var firstResult = first.get(10, TimeUnit.SECONDS);
+      var secondResult = second.get(10, TimeUnit.SECONDS);
+      assertEquals(firstResult.secret(), secondResult.secret());
     }
     assertEquals("[REDACTED]", jdbc.queryForObject(
         "select after_values->>'refresh_token_hash' from audit_log "
             + "where table_name = 'auth_sessions' and record_key->>'id' = ? "
             + "order by id desc limit 1", String.class, id));
+  }
+
+  @Test
+  @EnabledIfEnvironmentVariable(named = "CHECKOUT_TEST_JDBC_URL",
+      matches = "jdbc:postgresql://.*cohida_checkout_test")
+  void passwordChangeRevokesExistingRefreshSessions() {
+    transactions.executeWithoutResult(transaction -> {
+      var customer = customers.findById(customerId).orElseThrow();
+      StringBuilder cpf = new StringBuilder(String.format("%09d", customerId));
+      for (int position = 9; position <= 10; position++) {
+        int sum = 0;
+        for (int index = 0; index < position; index++) {
+          sum += (cpf.charAt(index) - '0') * (position + 1 - index);
+        }
+        int digit = (sum * 10) % 11;
+        cpf.append(digit == 10 ? 0 : digit);
+      }
+      jdbc.update("update customers set cpf = ? where id = ?", cpf.toString(),
+          customerId);
+      customer.getAccount().changePassword(encoder.encode("Old@1234"));
+      customer.addAddress(new CustomerAddress(
+          "Cobrança", AddressType.BILLING, "Rua A", "1", "Centro",
+          "01001000", "São Paulo", "SP", "Brasil"));
+    });
+    Long accountId = jdbc.queryForObject(
+        "select id from accounts where customer_id = ?",
+        Long.class, customerId);
+    String access = jwtService.createAccessToken(
+        accountId, customerId, "test@example.test", AccountRole.CUSTOMER);
+    var issued = sessions.issue(new AuthenticationResponse(
+        access, "Bearer", 3600, customerId, "Cliente", "CUSTOMER", null));
+    customerService.changePassword(customerId,
+        new com.hida.cohida.customer.dto.PasswordUpdateRequest(
+            "Old@1234", "New@1234", "New@1234"));
+    assertThrows(InvalidCredentialsException.class,
+        () -> sessions.refresh(
+            issued.authentication().sessionId(), issued.secret()));
+  }
+
+  @Test
+  @EnabledIfEnvironmentVariable(named = "CHECKOUT_TEST_JDBC_URL",
+      matches = "jdbc:postgresql://.*cohida_checkout_test")
+  void cleanupRemovesOnlySessionsPastRetention() {
+    Long accountId = jdbc.queryForObject(
+        "select id from accounts where customer_id = ?",
+        Long.class, customerId);
+    String oldId = UUID.randomUUID().toString();
+    String recentId = UUID.randomUUID().toString();
+    LocalDateTime now = LocalDateTime.now(java.time.ZoneOffset.UTC);
+    for (String id : List.of(oldId, recentId)) {
+      jdbc.update(
+          "insert into auth_sessions (id, account_id, refresh_token_hash, "
+          + "created_at, expires_at) values (?, ?, ?, ?, ?)", id, accountId,
+          "hash", now.minusDays(100),
+          id.equals(oldId) ? now.minusDays(31) : now.plusDays(1));
+    }
+    cleanup.clean();
+    assertEquals(0L, jdbc.queryForObject(
+        "select count(*) from auth_sessions where id = ?", Long.class, oldId));
+    assertEquals(1L, jdbc.queryForObject(
+        "select count(*) from auth_sessions where id = ?",
+        Long.class, recentId));
   }
 
   @Test

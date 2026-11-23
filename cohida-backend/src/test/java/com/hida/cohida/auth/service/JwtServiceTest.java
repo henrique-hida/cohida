@@ -40,4 +40,17 @@ class JwtServiceTest {
 
     assertTrue(service.parse(token + "tampered").isEmpty());
   }
+
+  @Test
+  void rejectsPreviouslyLongLivedTokenBeyondCurrentLifetime() {
+    var oldProperties = new JwtProperties(PROPERTIES.secret(),
+        PROPERTIES.issuer(), Duration.ofDays(30));
+    var issuedYesterday = java.time.Clock.fixed(
+        java.time.Instant.now().minus(Duration.ofDays(1)),
+        java.time.ZoneOffset.UTC);
+    var oldIssuer = new JwtService(oldProperties, issuedYesterday);
+    String token = oldIssuer.createAccessToken(
+        42L, "customer@example.com", AccountRole.CUSTOMER);
+    assertTrue(new JwtService(PROPERTIES).parse(token).isEmpty());
+  }
 }

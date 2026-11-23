@@ -11,6 +11,8 @@ import jakarta.servlet.http.HttpServletRequest;
 import java.time.Duration;
 import java.util.Arrays;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.env.Environment;
+import org.springframework.core.env.Profiles;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseCookie;
@@ -34,9 +36,12 @@ public class AuthController {
 
   public AuthController(AuthService authService, RefreshSessionService sessions,
       @Value("${cohida.auth.cookie-secure:false}") boolean cookieSecure,
-      @Value("${cohida.auth.cookie-same-site:Lax}") String sameSite) {
+      @Value("${cohida.auth.cookie-same-site:Lax}") String sameSite,
+      Environment environment) {
     if (!java.util.List.of("Strict", "Lax", "None").contains(sameSite)
-        || ("None".equals(sameSite) && !cookieSecure)) {
+        || ("None".equals(sameSite) && !cookieSecure)
+        || (environment.acceptsProfiles(Profiles.of("prod", "production"))
+            && !cookieSecure)) {
       throw new IllegalArgumentException("Configuração de cookie inválida.");
     }
     this.authService = authService;

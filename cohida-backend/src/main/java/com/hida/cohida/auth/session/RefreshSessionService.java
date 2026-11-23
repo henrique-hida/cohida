@@ -9,6 +9,9 @@ import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
+import javax.crypto.Mac;
+import javax.crypto.spec.SecretKeySpec;
+import org.springframework.beans.factory.annotation.Value;
 import java.time.LocalDateTime;
 import java.util.Base64;
 import java.util.HexFormat;
@@ -22,12 +25,15 @@ public class RefreshSessionService {
   private final RefreshSessionRepository sessions;
   private final AccountRepository accounts;
   private final JwtService tokens;
+  private final byte[] rotationKey;
 
   public RefreshSessionService(RefreshSessionRepository sessions,
-      AccountRepository accounts, JwtService tokens) {
+      AccountRepository accounts, JwtService tokens,
+      @Value("${security.jwt.secret}") String rotationKey) {
     this.sessions = sessions;
     this.accounts = accounts;
     this.tokens = tokens;
+    this.rotationKey = Base64.getDecoder().decode(rotationKey);
   }
 
   @Transactional
@@ -38,7 +44,7 @@ public class RefreshSessionService {
         .orElseThrow(RefreshSessionService::invalid);
     String id = UUID.randomUUID().toString();
     String secret = secret();
-    LocalDateTime now = LocalDateTime.now();
+    LocalDateTime now = LocalDateTime.now(java.time.ZoneOffset.UTC);
     sessions.save(new RefreshSession(id, account, hash(secret), now,
         now.plusDays(30)));
     return new Issued(withSession(authentication, id), secret);
@@ -46,15 +52,29 @@ public class RefreshSessionService {
 
   @Transactional
   public Issued refresh(String id, String secret) {
-    RefreshSession session = valid(id, secret);
+    RefreshSession session = active(id, secret);
+    LocalDateTime now = LocalDateTime.now(java.time.ZoneOffset.UTC);
+    String suppliedHash = hash(secret);
+    boolean current = equal(session.tokenHash(), suppliedHash);
+    boolean previous = session.inGrace(now)
+        && equal(session.previousTokenHash(), suppliedHash);
+    if (!current && !previous) throw invalid();
+    String next;
+    if (previous) {
+      next = derive(id, secret);
+      if (!equal(session.tokenHash(), hash(next))) throw invalid();
+    } else if (session.inGrace(now)) {
+      next = secret;
+    } else {
+      next = derive(id, secret);
+      session.rotate(hash(next), now);
+    }
     Account account = session.account();
     if (!account.isActive()
         || (account.getCustomer() != null && !account.getCustomer().isActive())
         || (account.getAdmin() != null && !account.getAdmin().isActive())) {
       throw invalid();
     }
-    String next = secret();
-    session.rotate(hash(next), LocalDateTime.now());
     var customer = account.getCustomer();
     Long customerId = customer == null ? null : customer.getId();
     String name =
@@ -68,20 +88,42 @@ public class RefreshSessionService {
 
   @Transactional
   public void revoke(String id, String secret) {
-    valid(id, secret).revoke(LocalDateTime.now());
+    var session = active(id, secret);
+    String supplied = hash(secret);
+    if (!equal(session.tokenHash(), supplied)
+        && !(session.inGrace(LocalDateTime.now(java.time.ZoneOffset.UTC))
+            && equal(session.previousTokenHash(), supplied))) throw invalid();
+    session.revoke(LocalDateTime.now(java.time.ZoneOffset.UTC));
   }
 
-  private RefreshSession valid(String id, String secret) {
+  private RefreshSession active(String id, String secret) {
     if (id == null || !id.matches("[0-9a-f-]{36}") || secret == null) {
       throw invalid();
     }
     var session = sessions.lock(id).orElseThrow(RefreshSessionService::invalid);
-    if (!session.active(LocalDateTime.now()) || !MessageDigest.isEqual(
-        session.tokenHash().getBytes(StandardCharsets.US_ASCII),
-        hash(secret).getBytes(StandardCharsets.US_ASCII))) {
+    if (!session.active(LocalDateTime.now(java.time.ZoneOffset.UTC))) {
       throw invalid();
     }
     return session;
+  }
+
+  private static boolean equal(String left, String right) {
+    return left != null && MessageDigest.isEqual(
+        left.getBytes(StandardCharsets.US_ASCII),
+        right.getBytes(StandardCharsets.US_ASCII));
+  }
+
+  private String derive(String id, String previous) {
+    try {
+      Mac mac = Mac.getInstance("HmacSHA256");
+      mac.init(new SecretKeySpec(rotationKey, "HmacSHA256"));
+      byte[] input = ("cohida-refresh-v1:" + id + ":" + previous)
+          .getBytes(StandardCharsets.US_ASCII);
+      return Base64.getUrlEncoder().withoutPadding()
+          .encodeToString(mac.doFinal(input));
+    } catch (java.security.GeneralSecurityException failure) {
+      throw new IllegalStateException(failure);
+    }
   }
 
   private static AuthenticationResponse withSession(

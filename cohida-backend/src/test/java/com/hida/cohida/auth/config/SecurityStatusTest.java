@@ -85,10 +85,17 @@ class SecurityStatusTest {
         .POST(HttpRequest.BodyPublishers.noBody()).build();
     var rotated = client.send(refresh, HttpResponse.BodyHandlers.ofString());
     assertEquals(200, rotated.statusCode());
-    assertEquals(401, client.send(refresh,
-        HttpResponse.BodyHandlers.discarding()).statusCode());
     String newCookie = rotated.headers().firstValue("Set-Cookie")
         .orElseThrow().split(";", 2)[0];
+    var repeated = client.send(refresh, HttpResponse.BodyHandlers.ofString());
+    assertEquals(200, repeated.statusCode());
+    assertEquals(newCookie, repeated.headers().firstValue("Set-Cookie")
+        .orElseThrow().split(";", 2)[0]);
+    jdbc.update(
+        "update auth_sessions set rotation_grace_until = ? where id = ?",
+        java.time.LocalDateTime.now().minusSeconds(1), id);
+    assertEquals(401, client.send(refresh,
+        HttpResponse.BodyHandlers.discarding()).statusCode());
     var logout = HttpRequest.newBuilder(
         URI.create(base + "/sessions/" + id + "/logout"))
         .header("Cookie", newCookie).header("X-Cohida-Session", "1")

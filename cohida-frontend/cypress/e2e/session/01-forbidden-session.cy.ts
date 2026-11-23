@@ -19,7 +19,7 @@ it('mantém a sessão quando uma ação é negada', () => {
   cy.location('pathname').should('eq', '/conta');
   cy.get('input[name="name"]').should('not.be.disabled');
   cy.window()
-    .its('localStorage')
-    .invoke('getItem', 'cohida-access-token')
+    .its('sessionStorage')
+    .invoke('getItem', 'cohida-current-session')
     .should('be.a', 'string');
 });

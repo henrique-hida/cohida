@@ -1,4 +1,4 @@
-import { Eye, EyeOff, KeyRound, UserRound } from 'lucide-react';
+import { Eye, EyeOff, UserRound } from 'lucide-react';
 import { useState } from 'react';
 import { useNavigate } from 'react-router';
 
@@ -16,7 +16,7 @@ import {
   register as registerApi,
 } from '@/lib/customerApi';
 
-type AuthMode = 'login' | 'register' | 'recovery';
+type AuthMode = 'login' | 'register';
 
 const authCopy: Record<
   AuthMode,
@@ -32,11 +32,6 @@ const authCopy: Record<
     description: 'Preencha seus dados para comprar e acompanhar seus pedidos.',
     title: 'Crie sua conta',
   },
-  recovery: {
-    action: 'Enviar link de recuperação',
-    description: 'O fluxo de recuperação será conectado ao backend.',
-    title: 'Recupere seu acesso',
-  },
 };
 
 export function AuthPage() {
@@ -50,10 +45,6 @@ export function AuthPage() {
 
   async function submitLogin(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (mode === 'recovery') {
-      setError('A recuperação de senha estará disponível com o backend.');
-      return;
-    }
     const formData = new FormData(event.currentTarget);
     setError('');
     setIsSubmitting(true);
@@ -96,11 +87,7 @@ export function AuthPage() {
                   'bg-primary text-primary-foreground',
                 ].join(' ')}
               >
-                {mode === 'recovery' ? (
-                  <KeyRound className='size-5' />
-                ) : (
-                  <UserRound className='size-5' />
-                )}
+                <UserRound className='size-5' />
               </span>
               <div>
                 <h1 className='text-2xl font-semibold tracking-tight'>
@@ -111,38 +98,36 @@ export function AuthPage() {
                 </p>
               </div>
             </div>
-            {mode !== 'recovery' ? (
-              <div className='mt-7 grid grid-cols-2 rounded-lg bg-muted p-1'>
-                <Button
-                  className={
-                    mode === 'login'
-                      ? 'bg-primary text-primary-foreground hover:bg-primary/90'
-                      : 'text-muted-foreground'
-                  }
-                  onClick={() => {
-                    setMode('login');
-                    setError('');
-                  }}
-                  variant='ghost'
-                >
-                  Entrar
-                </Button>
-                <Button
-                  className={
-                    mode === 'register'
-                      ? 'bg-primary text-primary-foreground hover:bg-primary/90'
-                      : 'text-muted-foreground'
-                  }
-                  onClick={() => {
-                    setMode('register');
-                    setError('');
-                  }}
-                  variant='ghost'
-                >
-                  Criar conta
-                </Button>
-              </div>
-            ) : null}
+            <div className='mt-7 grid grid-cols-2 rounded-lg bg-muted p-1'>
+              <Button
+                className={
+                  mode === 'login'
+                    ? 'bg-primary text-primary-foreground hover:bg-primary/90'
+                    : 'text-muted-foreground'
+                }
+                onClick={() => {
+                  setMode('login');
+                  setError('');
+                }}
+                variant='ghost'
+              >
+                Entrar
+              </Button>
+              <Button
+                className={
+                  mode === 'register'
+                    ? 'bg-primary text-primary-foreground hover:bg-primary/90'
+                    : 'text-muted-foreground'
+                }
+                onClick={() => {
+                  setMode('register');
+                  setError('');
+                }}
+                variant='ghost'
+              >
+                Criar conta
+              </Button>
+            </div>
             {mode === 'register' ? (
               <CustomerRegistrationForm
                 onSubmit={async (input) => {
@@ -167,38 +152,34 @@ export function AuthPage() {
                     type='email'
                   />
                 </label>
-                {mode !== 'recovery' ? (
-                  <label className='grid gap-2 text-sm font-medium'>
-                    Senha
-                    <span className='relative'>
-                      <input
-                        className={[
-                          'h-9 w-full rounded-md border border-input',
-                          'bg-background px-3 pr-10 font-normal',
-                        ].join(' ')}
-                        name='password'
-                        required
-                        type={isPasswordVisible ? 'text' : 'password'}
-                      />
-                      <Button
-                        aria-label={
-                          isPasswordVisible
-                            ? 'Ocultar senha'
-                            : 'Visualizar senha'
-                        }
-                        className='absolute top-1/2 right-0 -translate-y-1/2'
-                        onClick={() =>
-                          setIsPasswordVisible((visible) => !visible)
-                        }
-                        size='icon-sm'
-                        type='button'
-                        variant='ghost'
-                      >
-                        {isPasswordVisible ? <EyeOff /> : <Eye />}
-                      </Button>
-                    </span>
-                  </label>
-                ) : null}
+                <label className='grid gap-2 text-sm font-medium'>
+                  Senha
+                  <span className='relative'>
+                    <input
+                      className={[
+                        'h-9 w-full rounded-md border border-input',
+                        'bg-background px-3 pr-10 font-normal',
+                      ].join(' ')}
+                      name='password'
+                      required
+                      type={isPasswordVisible ? 'text' : 'password'}
+                    />
+                    <Button
+                      aria-label={
+                        isPasswordVisible ? 'Ocultar senha' : 'Visualizar senha'
+                      }
+                      className='absolute top-1/2 right-0 -translate-y-1/2'
+                      onClick={() =>
+                        setIsPasswordVisible((visible) => !visible)
+                      }
+                      size='icon-sm'
+                      type='button'
+                      variant='ghost'
+                    >
+                      {isPasswordVisible ? <EyeOff /> : <Eye />}
+                    </Button>
+                  </span>
+                </label>
                 {error ? (
                   <div
                     className={[
@@ -219,24 +200,6 @@ export function AuthPage() {
                 </Button>
               </form>
             )}
-            {mode === 'login' ? (
-              <Button
-                className='mt-3 px-0'
-                onClick={() => setMode('recovery')}
-                variant='link'
-              >
-                Esqueci minha senha
-              </Button>
-            ) : null}
-            {mode === 'recovery' ? (
-              <Button
-                className='mt-4 px-0'
-                onClick={() => setMode('login')}
-                variant='link'
-              >
-                Voltar para entrar
-              </Button>
-            ) : null}
           </CardContent>
         </Card>
       </PageContainer>

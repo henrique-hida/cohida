@@ -133,19 +133,25 @@ falhar, a atualização pode demorar até o TTL. Testes cobrem indisponibilidade
 concorrência, commit e rollback, e a criação foi conferida pela UI. Medir uso e
 custo reais antes de cachear catálogo adicional ou analytics.
 
-O processamento de imagens está em implementação: uploads podem usar MinIO ou
-S3 privado, com tarefa durável no PostgreSQL, entrega pelo Redis Streams e
-saída WebP em chave própria. A UI de criação e reabertura, repetição de evento,
-falha e nova tentativa foram testadas em ambiente isolado. A limpeza periódica
-foi coberta por teste focado; ainda é necessário validar recuperação de worker,
-indisponibilidade dos serviços, substituição de imagem, operação e custos antes
-de considerar o lote concluído.
+O processamento de imagens usa MinIO ou S3 privado, tarefa durável no
+PostgreSQL, Redis Streams e saída WebP em chave própria. Criação, reabertura,
+falha e nova tentativa passaram pela UI; testes em ambiente isolado cobriram
+repetição de eventos, interrupção de worker, indisponibilidade do Redis e
+limpeza. A imagem permaneceu acessível após reiniciar o backend de teste. Ainda
+faltam testes de substituição, falha do armazenamento, migração dos uploads
+antigos, operação em staging e medição de custos antes de concluir o lote.
 
 Na P2 de sessão, a API distingue ausência de autenticação (401) de falta de
 permissão (403). O cliente mantém a sessão no segundo caso e descarta respostas
 que chegaram depois da troca da credencial; a recarga dos dados do cliente
-confere novamente a conta antes de atualizar o estado. A migração de tokens
-para sessões revogáveis com cookies ainda está pendente.
+confere novamente a conta antes de atualizar o estado. A renovação usa cookies HttpOnly por conta e hashes no PostgreSQL; o token de
+acesso fica em memória e dura 15 minutos. Uma janela de 15 segundos permite
+recuperar a mesma rotação após perda de resposta; passado esse prazo a
+credencial anterior é recusada. Logout, troca de senha e desativação revogam a
+renovação. Tokens de acesso emitidos anteriormente são limitados à duração
+atual. A revogação do token de acesso já emitido pode levar até 15 minutos.
+A troca de contas e a renovação após recarregar passaram pela interface. Antes
+da produção, conferir cookies Secure, origens CORS e comportamento das abas.
 
 ## Instruções para executar os lotes
 

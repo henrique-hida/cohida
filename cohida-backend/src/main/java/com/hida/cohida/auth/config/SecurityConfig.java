@@ -2,6 +2,9 @@ package com.hida.cohida.auth.config;
 
 import jakarta.servlet.http.HttpServletResponse;
 import com.hida.cohida.auth.security.JwtAuthenticationFilter;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.env.Environment;
+import org.springframework.core.env.Profiles;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -62,16 +65,38 @@ public class SecurityConfig {
   }
 
   @Bean
-  CorsConfigurationSource corsConfigurationSource() {
+  CorsConfigurationSource corsConfigurationSource(
+      @Value("${cohida.cors.allowed-origins:}") String allowed,
+      Environment environment) {
+    boolean production =
+        environment.acceptsProfiles(Profiles.of("prod", "production"));
+    if (production && allowed.isBlank()) {
+      throw new IllegalStateException(
+          "Configure as origens permitidas de CORS.");
+    }
+    List<String> origins = allowed.isBlank()
+        ? List.of("http://localhost:5173", "http://localhost:5174",
+            "http://localhost:5175", "http://127.0.0.1:5173",
+            "http://127.0.0.1:5174", "http://127.0.0.1:5175")
+        : java.util.Arrays.stream(allowed.split(","))
+            .map(String::trim).filter(value -> !value.isEmpty())
+            .distinct().toList();
+    if (origins.isEmpty()) {
+      throw new IllegalArgumentException("Informe uma origem CORS válida.");
+    }
+    for (String origin : origins) {
+      var uri = java.net.URI.create(origin);
+      if (uri.getHost() == null || uri.getUserInfo() != null
+          || uri.getPath() == null || !uri.getPath().isEmpty()
+          || uri.getQuery() != null || uri.getFragment() != null
+          || !("http".equals(uri.getScheme())
+              || "https".equals(uri.getScheme()))
+          || (production && !"https".equals(uri.getScheme()))) {
+        throw new IllegalArgumentException("Origem CORS inválida.");
+      }
+    }
     CorsConfiguration configuration = new CorsConfiguration();
-    configuration.setAllowedOrigins(
-        List.of(
-            "http://localhost:5173",
-            "http://localhost:5174",
-            "http://localhost:5175",
-            "http://127.0.0.1:5173",
-            "http://127.0.0.1:5174",
-            "http://127.0.0.1:5175"));
+    configuration.setAllowedOrigins(origins);
     configuration.setAllowedMethods(
         List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
     configuration.setAllowedHeaders(

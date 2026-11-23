@@ -15,19 +15,25 @@ export function login(
     .its('body.accessToken');
 }
 
+export function loginInBrowser(
+  email = 'e2e.admin@cohida.test',
+  password = 'Cypress@123',
+) {
+  cy.visit('/entrar');
+  cy.get('input[name="email"]').clear().type(email);
+  cy.get('input[name="password"]').clear().type(password);
+  cy.get('form').contains('button', 'Entrar').click();
+  cy.location('pathname').should('not.eq', '/entrar');
+}
+
 export function prepare() {
   cy.task('prepareSalesAnalytics');
 }
 
 export function visitAnalytics() {
   cy.intercept('GET', '**/api/admin/analytics/sales?*').as('sales');
-  login().then((token) => {
-    cy.visit('/admin/analises', {
-      onBeforeLoad(win) {
-        win.localStorage.setItem('cohida-access-token', token);
-      },
-    });
-  });
+  loginInBrowser();
+  cy.visit('/admin/analises');
   cy.wait('@sales');
 }
 

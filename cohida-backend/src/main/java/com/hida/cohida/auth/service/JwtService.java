@@ -71,6 +71,11 @@ public class JwtService {
               .build()
               .parseSignedClaims(token)
               .getPayload();
+      Date issuedAt = claims.getIssuedAt();
+      if (issuedAt == null || !issuedAt.toInstant()
+          .plus(properties.accessTokenTtl()).isAfter(clock.instant())) {
+        return Optional.empty();
+      }
       Number customerId = claims.get("customerId", Number.class);
       return Optional.of(
           new AuthenticatedCustomer(

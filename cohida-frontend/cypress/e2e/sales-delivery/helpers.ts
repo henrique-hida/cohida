@@ -30,13 +30,11 @@ function apiHeaders(accessToken: string) {
 }
 
 function authenticateInBrowser(email: string, password = 'Demo@123') {
-  return apiLogin(email, password).then((accessToken) =>
-    cy.visit('/entrar', {
-      onBeforeLoad(window) {
-        window.localStorage.setItem('cohida-access-token', accessToken);
-      },
-    }),
-  );
+  cy.visit('/entrar');
+  cy.get('input[name="email"]').clear().type(email);
+  cy.get('input[name="password"]').clear().type(password);
+  cy.get('form').contains('button', 'Entrar').click();
+  return cy.location('pathname').should('not.eq', '/entrar');
 }
 
 function clearExpiredCartItems(accessToken: string) {
@@ -74,17 +72,14 @@ export function loginAsCustomer(email: string, password = 'Demo@123') {
               headers: apiHeaders(accessToken),
             }),
           )
-          .then(() =>
-            cy.visit('/entrar', {
-              onBeforeLoad(window) {
-                window.localStorage.setItem('cohida-access-token', accessToken);
-              },
-            }),
-          ),
+          .then(() => authenticateInBrowser(email, password)),
       ),
     )
     .then(() => cy.visit('/'))
-    .then(() => cy.location('pathname').should('eq', '/'));
+    .then(() => cy.location('pathname').should('eq', '/'))
+    .then(() =>
+      cy.get('button[aria-label="Menu da conta"]').should('be.visible'),
+    );
 }
 
 function replenishCatalogThroughAdmin() {

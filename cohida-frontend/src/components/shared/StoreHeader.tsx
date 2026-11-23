@@ -18,10 +18,10 @@ import { Button } from '@/components/ui/button';
 import { useCommerce } from '@/data/useCommerce';
 import {
   getSavedAccounts,
+  getCurrentSessionId,
   hasAdminSession,
   switchAccount,
 } from '@/lib/customerApi';
-import { logout as logoutApi } from '@/lib/customerApi';
 import { useCategories } from '@/data/useCategories';
 
 import { PageContainer } from './PageContainer';
@@ -42,8 +42,11 @@ export function StoreHeader({ cartItemCount = 0 }: StoreHeaderProps) {
   const { logout, state } = useCommerce();
   const categories = useCategories();
   const navigate = useNavigate();
+  const savedAccounts = getSavedAccounts();
   const adminName = hasAdminSession()
-    ? localStorage.getItem('cohida-admin-name')
+    ? savedAccounts.find(
+        (account) => account.sessionId === getCurrentSessionId(),
+      )?.name
     : null;
   const currentCartItemCount =
     cartItemCount ||
@@ -52,7 +55,6 @@ export function StoreHeader({ cartItemCount = 0 }: StoreHeaderProps) {
     state.customer && state.sessionCustomerId === state.customer.id,
   );
   const signedInAsAdmin = Boolean(adminName);
-  const savedAccounts = getSavedAccounts();
   const accountName = signedInAsAdmin ? adminName : state.customer?.name;
   const accountInitials = accountName
     ?.trim()
@@ -65,16 +67,18 @@ export function StoreHeader({ cartItemCount = 0 }: StoreHeaderProps) {
     .toUpperCase();
 
   function handleLogout() {
-    logoutApi();
     logout();
   }
 
   function handleAccountSwitch(token: string) {
-    const account = savedAccounts.find((saved) => saved.token === token);
+    const account = savedAccounts.find((saved) => saved.sessionId === token);
     if (!account) return;
 
-    switchAccount(account);
-    window.location.assign(account.role === 'ADMIN' ? '/admin' : '/');
+    void switchAccount(account)
+      .then(() =>
+        window.location.assign(account.role === 'ADMIN' ? '/admin' : '/'),
+      )
+      .catch(() => window.location.assign('/entrar'));
   }
 
   useEffect(() => {
@@ -167,9 +171,11 @@ export function StoreHeader({ cartItemCount = 0 }: StoreHeaderProps) {
             ) : null}
           </Button>
           <AccountMenu
-            accountName={signedIn ? accountName : undefined}
-            accounts={signedIn ? savedAccounts : []}
-            showAddAccount={signedIn}
+            accountName={accountName ?? undefined}
+            accounts={savedAccounts}
+            showAddAccount={
+              signedIn || signedInAsAdmin || savedAccounts.length > 0
+            }
             ariaLabel={
               signedInAsAdmin
                 ? 'Menu da administradora'

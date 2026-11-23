@@ -22,6 +22,7 @@ export function AccountProfile({
   onDeactivate,
   updateCustomer,
 }: AccountProfileProps) {
+  const { logout } = useCommerce();
   const [isEditing, setIsEditing] = useState(false);
   const [profileError, setProfileError] = useState('');
   const [savingProfile, setSavingProfile] = useState(false);
@@ -145,6 +146,7 @@ export function AccountProfile({
                 String(formData.get('newPasswordConfirmation') ?? ''),
               );
               setIsChangingPassword(false);
+              logout();
             }}
           >
             <label className='grid gap-1 text-sm'>

@@ -6,7 +6,7 @@ import { resolve } from 'node:path';
 export default defineConfig({
   allowCypressEnv: false,
   e2e: {
-    baseUrl: 'http://127.0.0.1:5174',
+    baseUrl: 'http://localhost:5174',
     supportFile: false,
     video: false,
     setupNodeEvents(on, config) {
