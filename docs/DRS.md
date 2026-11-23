@@ -348,7 +348,7 @@ Ao posicionar o cursor sobre um ponto da linha, o sistema deve exibir o valor ex
 
 - O sistema deve integrar uma IA generativa para oferecer recomendações personalizadas de artigos esportivos aos clientes com base no histórico de compras e preferências.
 - A IA deve permitir a interação via chatbot para auxiliar na busca por artigos esportivos, responder dúvidas e sugerir conteúdos relevantes.
-- O modelo de IA deve ser treinado com base em dados de vendas e feedback dos usuários, garantindo personalização contínua.
+- O sistema deve permitir que os clientes avaliem as respostas do chatbot e registrar essas avaliações.
 - Regras de Negócio
 ### Cadastro de Produtos Esportivos
 

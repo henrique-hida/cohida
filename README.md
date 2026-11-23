@@ -35,8 +35,10 @@ docker compose down
 ## Demo data commands
 
 From `cohida-frontend`, run the npm command to load demo products, coupons,
-customers, and orders. The demo endpoint is public and intended for testing;
-remove or secure it before deploying to production.
+customers, and orders. Compose enables the demo profile. The endpoint requires
+an administrator and is disabled when the production profile is active. The
+script uses the local E2E administrator by default; override its login with
+`COHIDA_DEMO_ADMIN_EMAIL` and `COHIDA_DEMO_ADMIN_PASSWORD` when needed.
 
 ```bash
 npm run demo:seed
@@ -50,6 +52,46 @@ npm run demo:remove
 
 Set `COHIDA_API_URL` to use an API base other than
 `http://localhost:8080/api`.
+
+## Pagamentos simulados
+
+O pagamento é processado localmente e não gera cobrança. Use apenas dados
+fictícios: os formulários atuais não integram um serviço de tokenização real.
+No formulário, o número de teste `4000 0000 0000 0002` simula uma recusa;
+outros números fictícios válidos simulam aprovação. Em testes de backend, um
+token com prefixo `unavailable-` simula falha do processador. Nenhum desses
+cenários acessa um provedor externo.
+
+O resultado aprovado ou recusado é registrado no outbox na mesma transação do
+pedido. No Compose, o processo publica os eventos no Redis Streams e cria uma
+notificação interna em segundo plano. O PostgreSQL mantém o registro durável e
+a deduplicação; mensagens sem conclusão são republicadas e mensagens pendentes
+de consumidores interrompidos são recuperadas. O processamento não envia
+e-mails. A fila fica desligada por padrão fora do Compose; configure
+`COHIDA_QUEUE_ENABLED=true` e o endereço do Redis para habilitá-la.
+
+Os eventos com cinco falhas ficam registrados em `payment_outbox.failed_at` e
+exigem investigação antes de reprocessar. Monitore também eventos pendentes e
+logs de falha. O Redis da fila usa AOF, limite de memória e `noeviction` no
+Compose; em produção, configure persistência, alertas e dimensionamento
+compatíveis com a carga. Não compartilhe sua política de memória com cache.
+
+## Cache de categorias
+
+O Compose inicia um Redis independente para cache, limitado a 32 MB com
+`allkeys-lfu` e sem volume. A API usa cache apenas para a lista pública de
+categorias, com TTL de 60 a 75 segundos e invalidação após commit. Estoque,
+preços finais, pagamentos e dados privados continuam no PostgreSQL. Se o Redis
+falhar, a leitura consulta o banco; uma falha na invalidação pode manter dados
+antigos até o TTL expirar.
+
+Fora do Compose, o cache fica desligado por padrão. Para habilitá-lo, configure
+`COHIDA_CACHE_ENABLED`, `COHIDA_CACHE_HOST`, `COHIDA_CACHE_PORT` e um
+`COHIDA_CACHE_NAMESPACE` exclusivo por ambiente e versão; quando necessário,
+configure `COHIDA_CACHE_PASSWORD` e `COHIDA_CACHE_SSL=true` no backend. Use
+uma instância separada da fila. Monitore latência, hit rate, memória e
+expulsões antes de ampliar o cache. O preenchimento é agrupado por processo;
+com várias réplicas, medir concorrência antes de adotar um lock distribuído.
 
 ## Sales analysis tests
 
@@ -71,11 +113,15 @@ them and force clean dependency installation, run `docker compose down -v`.
 ## Assistente de recomendação
 
 O chatbot usa Spring AI para se comunicar com o OpenRouter e está disponível
-para clientes autenticados. O cliente informa suas
-preferências no próprio chat; o backend as combina com os itens de pedidos
+para clientes autenticados. O chat apresenta perguntas para conhecer as
+preferências do cliente; o backend as combina com os itens de pedidos
 aprovados, em transporte ou entregues e com o catálogo ativo disponível.
 As perguntas, respostas e avaliações são registradas no banco. O histórico
-da conversa exibido fica disponível durante a sessão da página.
+da conversa é recuperado ao abrir o chat. A primeira lista de produtos da home
+usa interesses informados e categorias de compras para ordenar produtos
+disponíveis; sem esses sinais, apresenta uma seleção geral. As avaliações das
+respostas também influenciam a conversa e têm peso reduzido na ordem dos
+produtos associados. Ao limpar a conversa, suas avaliações são removidas.
 
 Para usar o OpenRouter, defina no `.env` da raiz:
 
@@ -98,5 +144,5 @@ modelo e seu provedor podem processar esses dados, use dados de demonstração
 para testes e consulte as políticas do provedor escolhido. A disponibilidade e
 os limites dependem do modelo e da conta OpenRouter.
 
-Esta versão usa apenas contexto: não executa treinamento ou ajuste fino. O
-item de treinamento do RNF0044 e da atividade permanece pendente de decisão.
+Esta versão utiliza os dados disponíveis como contexto para personalizar as
+respostas e registra as avaliações dos clientes.
