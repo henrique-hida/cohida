@@ -8,7 +8,7 @@ default_permissions = "cohida"
 
   [mcp_servers.playwright]
     command = "npx"
-    args = ["--yes", "@playwright/mcp@0.0.85", "--browser", "chrome", "--isolated"]
+    args = ["--yes", "@playwright/mcp@0.0.85", "--browser", "chrome", "--isolated", "--headless"]
 
   [mcp_servers.idea]
     url = "http://127.0.0.1:64342/stream"
