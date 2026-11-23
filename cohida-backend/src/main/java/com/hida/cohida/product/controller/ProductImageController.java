@@ -1,6 +1,10 @@
 package com.hida.cohida.product.controller;
 
 import com.hida.cohida.product.dto.ProductImageUploadResponse;
+import com.hida.cohida.image.ImageJobService;
+import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.web.server.ResponseStatusException;
+import java.util.Map;
 import com.hida.cohida.product.service.ProductImageStorageService;
 import org.springframework.core.io.Resource;
 import org.springframework.http.CacheControl;
@@ -21,9 +25,12 @@ import java.util.concurrent.TimeUnit;
 @RequestMapping("/api/products/images")
 public class ProductImageController {
   private final ProductImageStorageService images;
+  private final ObjectProvider<ImageJobService> jobs;
 
-  public ProductImageController(ProductImageStorageService images) {
+  public ProductImageController(
+      ProductImageStorageService images, ObjectProvider<ImageJobService> jobs) {
     this.images = images;
+    this.jobs = jobs;
   }
 
   @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
@@ -32,6 +39,29 @@ public class ProductImageController {
       @RequestPart("file") MultipartFile file) {
     return ResponseEntity.status(201)
         .body(new ProductImageUploadResponse(images.store(file)));
+  }
+
+  @GetMapping("/jobs/{id}")
+  @PreAuthorize("hasRole('ADMIN')")
+  public Map<String, String> status(@PathVariable String id) {
+    ImageJobService service = jobs.getIfAvailable();
+    if (service == null) {
+      throw new ResponseStatusException(
+          org.springframework.http.HttpStatus.NOT_FOUND);
+    }
+    return Map.of("status", service.status(id));
+  }
+
+  @PostMapping("/jobs/{id}/retry")
+  @PreAuthorize("hasRole('ADMIN')")
+  public ResponseEntity<Void> retry(@PathVariable String id) {
+    ImageJobService service = jobs.getIfAvailable();
+    if (service == null) {
+      throw new ResponseStatusException(
+          org.springframework.http.HttpStatus.NOT_FOUND);
+    }
+    service.retry(id);
+    return ResponseEntity.accepted().build();
   }
 
   @GetMapping("/{filename:.+}")

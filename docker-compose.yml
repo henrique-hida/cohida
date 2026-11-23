@@ -22,7 +22,7 @@ services:
     ports:
       - "8080:8080"
     environment:
-      SPRING_PROFILES_ACTIVE: docker
+      SPRING_PROFILES_ACTIVE: docker,demo
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-cohida}?currentSchema=cohida
       SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-cohida}
       SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-cohida_dev_password}
@@ -30,6 +30,22 @@ services:
       COHIDA_CART_RESERVATION_MINUTES: ${COHIDA_CART_RESERVATION_MINUTES:-30}
       COHIDA_CART_RESERVATION_CHECK_MS: ${COHIDA_CART_RESERVATION_CHECK_MS:-60000}
       COHIDA_UPLOAD_DIRECTORY: /app/uploads/products
+      COHIDA_QUEUE_ENABLED: "true"
+      COHIDA_CACHE_ENABLED: "true"
+      COHIDA_CACHE_HOST: redis-cache
+      COHIDA_CACHE_PORT: "6379"
+      COHIDA_CACHE_NAMESPACE: cohida:dev:v1
+      COHIDA_STORAGE_ENABLED: "true"
+      COHIDA_STORAGE_ENDPOINT: http://minio:9000
+      COHIDA_STORAGE_REGION: us-east-1
+      COHIDA_STORAGE_BUCKET: cohida-products
+      COHIDA_STORAGE_ACCESS_KEY: ${MINIO_ROOT_USER:-cohida_dev}
+      COHIDA_STORAGE_SECRET_KEY: ${MINIO_ROOT_PASSWORD:-cohida_dev_password}
+      COHIDA_STORAGE_PATH_STYLE: "true"
+      COHIDA_STORAGE_CREATE_BUCKET: "true"
+      COHIDA_IMAGE_CLEANUP_ENABLED: "true"
+      SPRING_DATA_REDIS_HOST: redis-queue
+      SPRING_DATA_REDIS_PORT: "6379"
       OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-unconfigured}
       OPENROUTER_MODEL: ${OPENROUTER_MODEL:-openrouter/free}
     volumes:
@@ -39,6 +55,27 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+
+  redis-queue:
+    image: redis:7.4-alpine
+    command: ["redis-server", "--appendonly", "yes", "--maxmemory", "64mb", "--maxmemory-policy", "noeviction"]
+    volumes:
+      - redis_queue_data:/data
+
+  minio:
+    image: pgsty/minio@sha256:b6bfe7239bfc83fb90d31612d9704d86039dd714f7904b3f1ad68f211e602372
+    command: server /data
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-cohida_dev}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-cohida_dev_password}
+    ports:
+      - "127.0.0.1:9000:9000"
+    volumes:
+      - minio_data:/data
+
+  redis-cache:
+    image: redis:7.4-alpine
+    command: ["redis-server", "--save", "", "--appendonly", "no", "--maxmemory", "32mb", "--maxmemory-policy", "allkeys-lfu"]
 
   postgres:
     image: postgres:17-alpine
@@ -61,3 +98,5 @@ volumes:
   maven_repository:
   product_uploads:
   postgres_data:
+  redis_queue_data:
+  minio_data:

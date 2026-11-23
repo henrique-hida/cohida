@@ -1,6 +1,10 @@
 package com.hida.cohida.product.service;
 
 import com.hida.cohida.auth.exception.InvalidRequestException;
+import com.hida.cohida.image.ImageJobService;
+import com.hida.cohida.storage.S3ObjectStorage;
+import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.core.io.ByteArrayResource;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.UrlResource;
@@ -21,10 +25,19 @@ import static org.springframework.http.HttpStatus.NOT_FOUND;
 public class ProductImageStorageService {
   private static final long MAX_FILE_SIZE = 8L * 1024 * 1024;
   private final Path directory;
+  private final ObjectProvider<ImageJobService> jobs;
+  private final ObjectProvider<S3ObjectStorage> storage;
+  private final boolean queueEnabled;
 
   public ProductImageStorageService(
-      @Value("${cohida.upload.directory:uploads/products}") String directory) {
+      @Value("${cohida.upload.directory:uploads/products}") String directory,
+      ObjectProvider<ImageJobService> jobs,
+      ObjectProvider<S3ObjectStorage> storage,
+      @Value("${cohida.queue.enabled:false}") boolean queueEnabled) {
     this.directory = Path.of(directory).toAbsolutePath().normalize();
+    this.jobs = jobs;
+    this.storage = storage;
+    this.queueEnabled = queueEnabled;
   }
 
   public String store(MultipartFile file) {
@@ -43,6 +56,13 @@ public class ProductImageStorageService {
             "Envie uma imagem PNG, JPEG ou WebP válida.");
       }
 
+      ImageJobService imageJobs = jobs.getIfAvailable();
+      if (imageJobs != null) {
+        if (!queueEnabled) {
+          throw new IllegalStateException("Fila de imagens indisponível.");
+        }
+        return imageJobs.enqueue(contents, file.getContentType());
+      }
       Files.createDirectories(directory);
       String filename = UUID.randomUUID() + extension;
       Files.write(
@@ -65,10 +85,20 @@ public class ProductImageStorageService {
 
     try {
       Path image = directory.resolve(filename).normalize();
-      if (!image.startsWith(directory) || !Files.isRegularFile(image)) {
+      if (!image.startsWith(directory)) {
         throw new ResponseStatusException(NOT_FOUND);
       }
-      return new UrlResource(image.toUri());
+      if (Files.isRegularFile(image)) return new UrlResource(image.toUri());
+      ImageJobService imageJobs = jobs.getIfAvailable();
+      S3ObjectStorage objects = storage.getIfAvailable();
+      if (imageJobs != null && objects != null && filename.endsWith(".webp")) {
+        String id = filename.substring(0, filename.length() - 5);
+        if ("READY".equals(imageJobs.statusOrNull(id))) {
+          return new ByteArrayResource(
+              objects.get(ImageJobService.outputKey(id)));
+        }
+      }
+      throw new ResponseStatusException(NOT_FOUND);
     } catch (IOException exception) {
       throw new ResponseStatusException(NOT_FOUND);
     }
