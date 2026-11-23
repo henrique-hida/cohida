@@ -1,6 +1,7 @@
 package com.hida.cohida.chat;
 
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.List;
 import okhttp3.MediaType;
 import okhttp3.Protocol;
 import okhttp3.Request;
@@ -58,7 +59,8 @@ class SpringAiOpenRouterTest {
                             "reasoning", java.util.Map.of("max_tokens", 128)))
                     .build()));
     assertEquals(
-        "Resposta simulada", response.getResult().getOutput().getText());
+        "{\"content\":\"Resposta simulada\",\"productSlugs\":[]}",
+        response.getResult().getOutput().getText());
     assertNotNull(request.get());
     assertEquals("POST", request.get().method());
     assertEquals("/api/v1/chat/completions", request.get().url().encodedPath());
@@ -69,6 +71,26 @@ class SpringAiOpenRouterTest {
         requestBody.get().matches("(?s).*\\\"max_tokens\\\"\\s*:\\s*600.*"));
     assertTrue(requestBody.get().contains("\"reasoning\""));
     assertTrue(requestBody.get().contains("128"));
+  }
+
+  @Test
+  void gatewayRequestsStrictSchemaAndRequiresCompatibleProvider() {
+    var gateway = new ChatModelGateway(chatModel, "test-key", "example/model");
+    gateway.respond(List.of(new UserMessage("Olá")), 1L);
+    assertNotNull(requestBody.get());
+    assertTrue(requestBody.get().contains("\"json_schema\""));
+    assertTrue(requestBody.get().contains("\"strict\":true"));
+    assertTrue(requestBody.get().contains("\"require_parameters\":true"));
+    assertTrue(requestBody.get().contains("\"productSlugs\""));
+  }
+
+  @Test
+  void suggestionsUseTheirOwnStructuredSchema() {
+    var gateway = new ChatModelGateway(chatModel, "test-key", "example/model");
+    assertEquals(List.of("Qual tênis?"), gateway.suggestions("Corrida", 1L));
+    assertTrue(requestBody.get().contains("\"require_parameters\":true"));
+    assertTrue(requestBody.get().contains("\"questions\""));
+    assertTrue(requestBody.get().contains("\"json_schema\""));
   }
 
   @TestConfiguration(proxyBeanMethods = false)
@@ -85,12 +107,16 @@ class SpringAiOpenRouterTest {
                   intercepted.body().writeTo(body);
                 }
                 requestBody.set(body.readUtf8());
+                String content = requestBody.get().contains("\"questions\"")
+                    ? "{\\\"questions\\\":[\\\"Qual tênis?\\\"]}"
+                    : "{\\\"content\\\":\\\"Resposta simulada\\\","
+                        + "\\\"productSlugs\\\":[]}";
                 String json =
                     "{\"id\":\"test\",\"object\":\"chat.completion\","
                         + "\"created\":0,\"model\":\"example/model\","
                         + "\"choices\":[{\"index\":0,\"message\":{"
                         + "\"role\":\"assistant\","
-                        + "\"content\":\"Resposta simulada\"},"
+                        + "\"content\":\"" + content + "\"},"
                         + "\"finish_reason\":\"stop\"}]}";
                 return new Response.Builder()
                     .request(intercepted)
