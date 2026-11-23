@@ -6,4 +6,5 @@ public record AuthenticationResponse(
     long expiresInSeconds,
     Long customerId,
     String customerName,
-    String role) {}
+    String role,
+    String sessionId) {}

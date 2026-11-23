@@ -110,7 +110,8 @@ public class AuthService {
         jwtService.getAccessTokenTtlSeconds(),
         customerId,
         name,
-        account.getRole().name());
+        account.getRole().name(),
+        null);
   }
 
   private String nextCode() {

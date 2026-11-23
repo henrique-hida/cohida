@@ -4,6 +4,9 @@ import com.hida.cohida.account.domain.Account;
 import com.hida.cohida.account.enums.AccountRole;
 import com.hida.cohida.auth.security.AuthenticatedCustomer;
 import com.hida.cohida.analytics.service.AnalyticsService;
+import com.hida.cohida.auth.session.RefreshSessionService;
+import com.hida.cohida.auth.dto.AuthenticationResponse;
+import com.hida.cohida.account.enums.AccountRole;
 import com.hida.cohida.category.service.CategoryService;
 import com.hida.cohida.cart.service.CartService;
 import com.hida.cohida.cart.service.CartReservationService;
@@ -75,7 +78,9 @@ import static org.mockito.Mockito.*;
 @SpringBootTest(properties = {
   "spring.datasource.url=jdbc:h2:mem:checkout_tx",
   "spring.task.scheduling.enabled=false",
-  "cohida.openrouter.api-key=integration-test"
+  "cohida.openrouter.api-key=integration-test",
+  "security.jwt.access-token-ttl=1h",
+  "security.jwt.issuer=cohida-api"
 })
 class CheckoutTransactionTest {
   @DynamicPropertySource
@@ -142,6 +147,8 @@ class CheckoutTransactionTest {
   @Autowired private PaymentEventHandler eventHandler;
   @Autowired private JdbcTemplate jdbc;
   @Autowired private AnalyticsService analytics;
+  @Autowired private RefreshSessionService sessions;
+  @Autowired private com.hida.cohida.auth.service.JwtService jwtService;
   @Autowired private CategoryService categoryService;
   @Autowired private com.hida.cohida.cache.PublicCategoryCache categoryCache;
   @Autowired private com.hida.cohida.demo.DemoSeederService demoSeeder;
@@ -657,6 +664,45 @@ class CheckoutTransactionTest {
         com.hida.cohida.image.ImageJobService.outputKey(id)));
     imageStorage.getObject().delete(
         com.hida.cohida.image.ImageJobService.outputKey(id));
+  }
+
+  @Test
+  @EnabledIfEnvironmentVariable(named = "CHECKOUT_TEST_JDBC_URL",
+      matches = "jdbc:postgresql://.*cohida_checkout_test")
+  void refreshTokenRotationSerializesAndAuditRedactsHash() throws Exception {
+    Long accountId = jdbc.queryForObject(
+        "select id from accounts where customer_id = ?",
+        Long.class, customerId);
+    String access = jwtService.createAccessToken(accountId, customerId,
+        "test@example.test", AccountRole.CUSTOMER);
+    var issued = sessions.issue(new AuthenticationResponse(
+        access, "Bearer", 3600, customerId, "Cliente", "CUSTOMER", null));
+    String id = issued.authentication().sessionId();
+    var start = new CountDownLatch(1);
+    try (var executor = Executors.newFixedThreadPool(2)) {
+      var first = executor.submit(() -> {
+        start.await();
+        return sessions.refresh(id, issued.secret());
+      });
+      var second = executor.submit(() -> {
+        start.await();
+        return sessions.refresh(id, issued.secret());
+      });
+      start.countDown();
+      int successes = 0;
+      for (var result : List.of(first, second)) {
+        try { result.get(10, TimeUnit.SECONDS); successes++; }
+        catch (ExecutionException expected) {
+          assertTrue(expected.getCause() instanceof
+              com.hida.cohida.auth.exception.InvalidCredentialsException);
+        }
+      }
+      assertEquals(1, successes);
+    }
+    assertEquals("[REDACTED]", jdbc.queryForObject(
+        "select after_values->>'refresh_token_hash' from audit_log "
+            + "where table_name = 'auth_sessions' and record_key->>'id' = ? "
+            + "order by id desc limit 1", String.class, id));
   }
 
   @Test
