@@ -13,6 +13,7 @@ import org.springframework.ai.converter.BeanOutputConverter;
 import org.springframework.ai.openai.OpenAiChatOptions;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;
+import org.springframework.web.client.RestClientResponseException;
 
 /** Encapsulates model calls, structured parsing and bounded retries. */
 final class ChatModelGateway {
@@ -36,7 +37,7 @@ final class ChatModelGateway {
   void requireConfigured() {
     if (apiKey.isBlank() || apiKey.equals("unconfigured"))
       throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE,
-          "O assistente ainda não foi configurado.");
+          "Assistente indisponível no momento. Tente novamente mais tarde.");
   }
 
   String replyFormat() {
@@ -45,18 +46,28 @@ final class ChatModelGateway {
 
   ChatService.AiReply respond(List<Message> messages, long customerId) {
     for (int attempt = 1; attempt <= 2; attempt++) {
+      String text;
       try {
-        var response = chatModel.call(new Prompt(messages, options()));
-        String text = responseText(response);
+        text = responseText(chatModel.call(new Prompt(messages, options())));
+      } catch (RuntimeException error) {
+        LOG.warn("Chat provider request failed on attempt {}: {}",
+            attempt, failureType(error));
+        continue;
+      }
+      try {
         var reply = REPLY.convert(text);
         if (reply == null || reply.content() == null
-            || reply.content().isBlank()
-            || reply.content().length() > 4000 || reply.productSlugs() == null
-            || reply.productSlugs().size() > 10)
-          throw new IllegalStateException("Invalid response");
-        return reply;
+            || reply.content().isBlank() || reply.content().length() > 4000) {
+          throw new IllegalStateException("Invalid content");
+        }
+        List<String> slugs = reply.productSlugs() == null ? List.of()
+            : reply.productSlugs().stream().filter(java.util.Objects::nonNull)
+                .map(String::trim).filter(slug -> !slug.isEmpty())
+                .distinct().limit(10).toList();
+        return new ChatService.AiReply(reply.content(), slugs);
       } catch (RuntimeException error) {
-        LOG.warn("Invalid chat response on attempt {}", attempt);
+        LOG.warn("Chat provider output invalid on attempt {}: {}",
+            attempt, failureType(error));
       }
     }
     LOG.warn("Chat response generation failed for customer {}", customerId);
@@ -86,11 +97,20 @@ final class ChatModelGateway {
           throw new IllegalStateException("Empty result");
         return questions;
       } catch (RuntimeException error) {
-        LOG.warn("Chat suggestions failed on attempt {} for customer {}",
-            attempt, customerId);
+        LOG.warn("Chat suggestions failed on attempt {} for customer {}: {}",
+            attempt, customerId, failureType(error));
       }
     }
     throw new IllegalStateException("Suggestions unavailable");
+  }
+
+  private static String failureType(Throwable error) {
+    for (Throwable cause = error; cause != null; cause = cause.getCause()) {
+      if (cause instanceof RestClientResponseException response) {
+        return "HTTP " + response.getStatusCode().value();
+      }
+    }
+    return error.getClass().getSimpleName();
   }
 
   private String responseText(

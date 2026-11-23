@@ -155,6 +155,18 @@ class ChatServiceTest {
   }
 
   @Test
+  void acceptsValidAnswerWithoutOptionalProductSlugs() {
+    var model = mock(ChatModel.class);
+    when(model.call(any(Prompt.class))).thenReturn(new ChatResponse(List.of(
+        new Generation(new AssistantMessage("{\"content\":\"Olá!\"}")))));
+    var result = new ChatModelGateway(model, "key", "model")
+        .respond(List.of(new UserMessage("Olá")), 42L);
+    assertEquals("Olá!", result.content());
+    assertTrue(result.productSlugs().isEmpty());
+    verify(model, times(1)).call(any(Prompt.class));
+  }
+
+  @Test
   void sendsCustomerContextAndConversationToSpringAi() {
     var jdbc = mock(JdbcTemplate.class);
     var orders = mock(OrderRepository.class);
