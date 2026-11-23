@@ -40,6 +40,7 @@ import {
   toStoredProductImageUrl,
 } from '@/lib/commerceApi';
 import { tokenizeCardForProcessor } from '@/lib/paymentTokenization';
+import { tokenKey } from '@/lib/customer/session';
 
 let state = emptyState();
 const listeners = new Set<() => void>();
@@ -71,9 +72,11 @@ async function ensureProducts(ids: string[]) {
 }
 
 async function refreshCustomerData() {
+  const token = localStorage.getItem(tokenKey);
   const customerData = await loadCustomerData();
+  if (!token || localStorage.getItem(tokenKey) !== token) return;
   await ensureProducts(customerData.cartItems.map((item) => item.productId));
-  patch(customerData);
+  if (localStorage.getItem(tokenKey) === token) patch(customerData);
 }
 
 async function refreshProducts(admin = false) {

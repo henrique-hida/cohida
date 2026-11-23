@@ -141,6 +141,12 @@ foi coberta por teste focado; ainda é necessário validar recuperação de work
 indisponibilidade dos serviços, substituição de imagem, operação e custos antes
 de considerar o lote concluído.
 
+Na P2 de sessão, a API distingue ausência de autenticação (401) de falta de
+permissão (403). O cliente mantém a sessão no segundo caso e descarta respostas
+que chegaram depois da troca da credencial; a recarga dos dados do cliente
+confere novamente a conta antes de atualizar o estado. A migração de tokens
+para sessões revogáveis com cookies ainda está pendente.
+
 ## Instruções para executar os lotes
 
 1. Ler `AGENTS.md`, [DRS.md](DRS.md), skills de backend, frontend, validação,

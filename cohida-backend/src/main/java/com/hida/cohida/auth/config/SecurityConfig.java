@@ -1,5 +1,6 @@
 package com.hida.cohida.auth.config;
 
+import jakarta.servlet.http.HttpServletResponse;
 import com.hida.cohida.auth.security.JwtAuthenticationFilter;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -28,6 +29,9 @@ public class SecurityConfig {
       HttpSecurity http, JwtAuthenticationFilter jwtFilter) throws Exception {
     return http.csrf(AbstractHttpConfigurer::disable)
         .cors(cors -> {})
+        .exceptionHandling(errors -> errors.authenticationEntryPoint(
+            (request, response, error) ->
+                response.sendError(HttpServletResponse.SC_UNAUTHORIZED)))
         .sessionManagement(
             session ->
                 session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))

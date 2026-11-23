@@ -87,16 +87,18 @@ export async function apiRequest<T>(
     ...options,
     headers,
   });
+  if (token && localStorage.getItem(tokenKey) !== token) {
+    throw new Error('A conta mudou durante a operação.');
+  }
   if (!response.ok) {
     const body = (await response.json().catch(() => null)) as {
       message?: string;
     } | null;
+    if (token && localStorage.getItem(tokenKey) !== token) {
+      throw new Error('A conta mudou durante a operação.');
+    }
     const isAuthenticationEndpoint = path.startsWith('/auth/');
-    if (
-      (response.status === 401 || response.status === 403) &&
-      token &&
-      !isAuthenticationEndpoint
-    ) {
+    if (response.status === 401 && token && !isAuthenticationEndpoint) {
       // Do not let an in-flight request from an old session erase a newer
       // token just saved by a successful login.
       if (localStorage.getItem(tokenKey) === token) {
@@ -108,13 +110,18 @@ export async function apiRequest<T>(
       throw new Error('Sua sessão expirou. Entre novamente para continuar.');
     }
     throw new ApiError(
-      body?.message ?? 'Não foi possível concluir a operação.',
+      body?.message ??
+        (response.status === 403
+          ? 'Você não tem permissão para realizar esta ação.'
+          : 'Não foi possível concluir a operação.'),
       response.status,
     );
   }
-  return response.status === 204
-    ? (undefined as T)
-    : ((await response.json()) as T);
+  const data = response.status === 204 ? undefined : await response.json();
+  if (token && localStorage.getItem(tokenKey) !== token) {
+    throw new Error('A conta mudou durante a operação.');
+  }
+  return data as T;
 }
 
 export async function login(email: string, password: string) {

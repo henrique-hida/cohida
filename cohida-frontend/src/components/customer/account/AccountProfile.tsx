@@ -23,6 +23,8 @@ export function AccountProfile({
   updateCustomer,
 }: AccountProfileProps) {
   const [isEditing, setIsEditing] = useState(false);
+  const [profileError, setProfileError] = useState('');
+  const [savingProfile, setSavingProfile] = useState(false);
   const [isChangingPassword, setIsChangingPassword] = useState(false);
   const [visiblePasswordFields, setVisiblePasswordFields] = useState<
     Record<string, boolean>
@@ -44,16 +46,28 @@ export function AccountProfile({
     >
       <form
         className='grid gap-4 sm:grid-cols-2'
-        onSubmit={(event) => {
+        onSubmit={async (event) => {
           event.preventDefault();
           const formData = new FormData(event.currentTarget);
-          updateCustomer({
-            birthDate: String(formData.get('birthDate') ?? ''),
-            email: String(formData.get('email') ?? ''),
-            name: String(formData.get('name') ?? ''),
-            phone: String(formData.get('phone') ?? ''),
-          });
-          setIsEditing(false);
+          setProfileError('');
+          setSavingProfile(true);
+          try {
+            await updateCustomer({
+              birthDate: String(formData.get('birthDate') ?? ''),
+              email: String(formData.get('email') ?? ''),
+              name: String(formData.get('name') ?? ''),
+              phone: String(formData.get('phone') ?? ''),
+            });
+            setIsEditing(false);
+          } catch (error) {
+            setProfileError(
+              error instanceof Error
+                ? error.message
+                : 'Não foi possível salvar.',
+            );
+          } finally {
+            setSavingProfile(false);
+          }
         }}
       >
         {[
@@ -86,8 +100,17 @@ export function AccountProfile({
             )}
           </label>
         ))}
+        {profileError ? (
+          <p className='text-sm text-destructive sm:col-span-2' role='alert'>
+            {profileError}
+          </p>
+        ) : null}
         {isEditing ? (
-          <Button className='sm:col-span-2 sm:ml-auto' type='submit'>
+          <Button
+            className='sm:col-span-2 sm:ml-auto'
+            disabled={savingProfile}
+            type='submit'
+          >
             Salvar alterações
           </Button>
         ) : null}
