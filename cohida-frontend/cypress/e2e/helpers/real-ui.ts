@@ -33,7 +33,7 @@ export function testCustomer(): TestCustomer {
 export function fillCustomerRegistration(customer: TestCustomer) {
   cy.get('input[name="name"]').type(customer.name);
   cy.get('input[name="cpf"]').type(customer.cpf);
-  cy.get('input[name="birthDate"]').type('1995-05-15');
+  cy.get('input[aria-label="Data"]').type('15051995');
   cy.get('input[name="phone"]').type('11999991234');
   cy.get('input[name="email"]').type(customer.email);
   cy.get('input[name="password"]').type('Cypress@123');

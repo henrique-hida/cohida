@@ -17,8 +17,20 @@ const apiBaseUrl = (
 ).replace(/\/$/, "");
 
 try {
+  const login = await fetch(`${apiBaseUrl}/auth/login`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      email: process.env.COHIDA_DEMO_ADMIN_EMAIL ?? "e2e.admin@cohida.test",
+      password: process.env.COHIDA_DEMO_ADMIN_PASSWORD ?? "Cypress@123",
+    }),
+  });
+  if (!login.ok) throw new Error(`Login falhou com HTTP ${login.status}.`);
+  const { accessToken } = await login.json();
+  if (!accessToken) throw new Error("Login não retornou um token.");
   const response = await fetch(`${apiBaseUrl}/admin/demo/seed`, {
     method: methods[action].method,
+    headers: { Authorization: `Bearer ${accessToken}` },
   });
 
   if (!response.ok) {

@@ -1,6 +1,8 @@
 /// <reference types="cypress" />
 
-const apiBaseUrl = 'http://localhost:8080/api';
+const apiBaseUrl = String(
+  Cypress.expose('apiBaseUrl') ?? 'http://localhost:8080/api',
+);
 const adminCredentials = {
   email: 'e2e.admin@cohida.test',
   password: 'Cypress@123',

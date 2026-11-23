@@ -5,9 +5,9 @@ import {
   visitAnalytics,
 } from './helpers';
 
-it('5) exclui a compra em transporte do histórico', () => {
+it('5) inclui a compra em transporte no histórico', () => {
   prepare();
   visitAnalytics();
   selectCategories('Análise teste B');
-  expectChartValue('mar', 'Análise teste B', '0,00');
+  expectChartValue('mar', 'Análise teste B', '200,00');
 });

@@ -21,10 +21,8 @@ it(
     loginAsCustomer('clara.demo@cohida.test');
     startCheckoutWithFirstAvailableProduct();
     cy.contains('label', cardLabel).find('input[type="checkbox"]').check();
-    cy.intercept('POST', '**/api/customers/me/checkout').as('checkout');
     cy.contains('button', 'Confirmar pedido').click();
-    cy.contains('h1', 'Pedido em processamento').should('be.visible');
-    cy.wait('@checkout').its('response.body.status').should('eq', 'REPROVADA');
+    cy.contains('h1', 'Pagamento recusado').should('be.visible');
     cy.visit('/pedidos');
     cy.get('a[href^="/pedidos/"]').should('exist');
     cy.contains('Reprovado').should('be.visible');

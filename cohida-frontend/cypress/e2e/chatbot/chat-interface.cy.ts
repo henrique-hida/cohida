@@ -6,6 +6,17 @@ describe('Interface do assistente', () => {
     cy.intercept('GET', '**/customers/me/chat/suggestions', {
       suggestions: [],
     });
+    cy.intercept('GET', '**/customers/me/chat/profile-suggestions', {
+      suggestions: [],
+    });
+    cy.intercept('GET', '**/customers/me/chat/messages', []);
+    cy.intercept('GET', '**/customers/me/chat/interests', []);
+    cy.intercept('GET', '**/customers/me/chat/profile', {
+      sport: 'Pular',
+      experience: 'Pular',
+      goal: 'Pular',
+      budget: 'Pular',
+    });
     cy.visit('/entrar');
     cy.get('input[name="email"]').type('ana.demo@cohida.test');
     cy.get('input[name="password"]').type('Demo@123', {

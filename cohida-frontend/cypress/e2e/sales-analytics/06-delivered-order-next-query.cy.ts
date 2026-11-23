@@ -13,11 +13,11 @@ afterEach(() => {
   cy.task('prepareSalesAnalytics');
 });
 
-it('6) reflete uma compra que passa a entregue na consulta seguinte', () => {
+it('6) mantém a venda ao passar de transporte para entregue', () => {
   prepare();
   visitAnalytics();
   selectCategories('Análise teste B');
-  expectChartValue('mar', 'Análise teste B', '0,00');
+  expectChartValue('mar', 'Análise teste B', '200,00');
   login().then((token) => {
     cy.request<Order[]>({
       url: `${api}/admin/orders`,
