@@ -463,6 +463,12 @@ public class ChatService {
             vente disponibilidade, preços ou características.
             Ao recomendar produtos, inclua seus slugs exatos em productSlugs, \
             sem repetir. Se não recomendar produtos, use uma lista vazia.
+            Os produtos de productSlugs serão exibidos em cartões pela loja. \
+            No texto, apresente a recomendação de forma breve e natural, em \
+            parágrafos. Não enumere produtos nem use listas com marcadores, \
+            listas numeradas ou tabelas para apresentá-los. Não repita nomes, \
+            preços e detalhes que já aparecem nos cartões. Explique o motivo \
+            geral da escolha; você pode mencionar diferenças relevantes.
             O texto content deve ser uma resposta natural ao cliente, sem apre\
             sentar JSON, slugs, códigos internos ou tabelas de produtos.
             Se não houver informação suficiente, diga isso e faça perguntas. D\

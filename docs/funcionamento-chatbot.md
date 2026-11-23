@@ -43,8 +43,10 @@ legado de preferências em texto. Ela usa listas prontas se a geração falhar;
      palavras da pergunta e do perfil com nome e categorias;
    - as últimas 10 perguntas e respostas salvas, incluindo suas avaliações.
 3. O backend monta instruções para responder em português, usar o catálogo
-   fornecido, não inventar dados e priorizar a pergunta atual. A mensagem, o
-   contexto e o catálogo selecionado são enviados ao provedor externo.
+   fornecido, não inventar dados e priorizar a pergunta atual. Ao recomendar
+   produtos, pede uma explicação breve em parágrafos e orienta a não repetir
+   a apresentação dos cartões em listas. A mensagem, o contexto e o catálogo
+   selecionado são enviados ao provedor externo.
 4. O Spring AI solicita ao OpenRouter uma resposta estruturada em JSON, com
    `content` para o texto e `productSlugs` para os produtos. A requisição
    exige um provedor que aceite os parâmetros, solicita modo estrito e limita
