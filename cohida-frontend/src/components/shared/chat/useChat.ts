@@ -13,11 +13,27 @@ export function useChat(customerId: string | null) {
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
-  const [suggestedInterest, setSuggestedInterest] = useState<string | null>(
-    null,
-  );
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const historyLoaded = useRef(false);
+  const historyVersion = useRef(0);
+
+  useEffect(() => {
+    function handleHistoryCleared() {
+      historyVersion.current += 1;
+      historyLoaded.current = true;
+      setMessages([]);
+      setNotice('Conversa e avaliações removidas.');
+    }
+    window.addEventListener(
+      'cohida:chat-history-cleared',
+      handleHistoryCleared,
+    );
+    return () =>
+      window.removeEventListener(
+        'cohida:chat-history-cleared',
+        handleHistoryCleared,
+      );
+  }, [customerId]);
 
   useEffect(() => {
     if (isOpen && messages.length > 0) {
@@ -30,6 +46,7 @@ export function useChat(customerId: string | null) {
   useEffect(() => {
     if (!customerId || !isOpen) return;
     let active = true;
+    const version = historyVersion.current;
     async function loadPreferences() {
       try {
         const [saved, history] = await Promise.all([
@@ -49,7 +66,7 @@ export function useChat(customerId: string | null) {
               >('/customers/me/chat/messages'),
         ]);
         if (!active) return;
-        if (history) {
+        if (history && version === historyVersion.current) {
           setMessages(
             history.flatMap((entry) => [
               { role: 'user' as const, content: entry.question },
@@ -103,12 +120,10 @@ export function useChat(customerId: string | null) {
       await apiRequest<void>('/customers/me/chat/messages', {
         method: 'DELETE',
       });
-      setMessages([]);
-      setSuggestedInterest(null);
+      window.dispatchEvent(new Event('cohida:chat-history-cleared'));
       window.dispatchEvent(new Event('cohida:preferences-changed'));
-      setNotice('Conversa e avaliações removidas.');
     } catch {
-      setError('Não foi possível limpar a conversa.');
+      setError('Não foi possível iniciar um novo chat.');
     } finally {
       setBusy(false);
     }
@@ -145,7 +160,11 @@ export function useChat(customerId: string | null) {
         ...current,
         { ...response, role: 'assistant' },
       ]);
-      setSuggestedInterest(response.suggestedInterest);
+      window.dispatchEvent(new Event('cohida:preferences-changed'));
+      if (response.suggestedInterest) {
+        window.dispatchEvent(new Event('cohida:category-interests-changed'));
+        setNotice(`Categoria adicionada: ${response.suggestedInterest}.`);
+      }
     } catch (err) {
       setMessages((current) =>
         current.map((message) =>
@@ -159,33 +178,6 @@ export function useChat(customerId: string | null) {
           ? err.message
           : 'Não foi possível enviar sua mensagem.',
       );
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  async function confirmInterest() {
-    if (!suggestedInterest) return;
-    setBusy(true);
-    try {
-      const interests = await apiRequest<
-        { sport: string; focus: string | null }[]
-      >('/customers/me/chat/interests');
-      if (!interests.some((item) => item.sport === suggestedInterest)) {
-        await apiRequest('/customers/me/chat/interests', {
-          method: 'PUT',
-          body: JSON.stringify([
-            ...interests,
-            { sport: suggestedInterest, focus: null },
-          ]),
-        });
-      }
-      setSuggestedInterest(null);
-      window.dispatchEvent(new Event('cohida:interest-added'));
-      window.dispatchEvent(new Event('cohida:preferences-changed'));
-      setNotice('Interesse adicionado ao seu perfil.');
-    } catch {
-      setError('Não foi possível adicionar o interesse.');
     } finally {
       setBusy(false);
     }
@@ -230,8 +222,5 @@ export function useChat(customerId: string | null) {
     sendMessage,
     clearHistory,
     rate,
-    suggestedInterest,
-    setSuggestedInterest,
-    confirmInterest,
   };
 }

@@ -1,4 +1,6 @@
-package com.hida.cohida.chat;
+package com.hida.cohida.chat.service;
+
+
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;

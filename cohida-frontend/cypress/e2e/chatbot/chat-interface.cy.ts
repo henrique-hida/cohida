@@ -1,22 +1,14 @@
+import { mockCustomerSession } from './helpers/mock-session';
+
 describe('Interface do assistente', () => {
   beforeEach(() => {
-    cy.intercept('GET', '**/customers/me/chat/preferences', {
-      preferences: '',
-    });
-    cy.intercept('GET', '**/customers/me/chat/suggestions', {
-      suggestions: [],
-    });
+    mockCustomerSession();
     cy.intercept('GET', '**/customers/me/chat/profile-suggestions', {
-      suggestions: [],
+      suggestions: ['Quero começar a correr'],
     });
     cy.intercept('GET', '**/customers/me/chat/messages', []);
-    cy.intercept('GET', '**/customers/me/chat/interests', []);
-    cy.intercept('GET', '**/customers/me/chat/profile', {
-      sport: 'Pular',
-      experience: 'Pular',
-      goal: 'Pular',
-      budget: 'Pular',
-    });
+    cy.intercept('GET', '**/customers/me/chat/category-interests', []);
+    cy.intercept('GET', '**/customers/me/chat/experience-options', []);
     cy.visit('/entrar');
     cy.get('input[name="email"]').type('ana.demo@cohida.test');
     cy.get('input[name="password"]').type('Demo@123', {
@@ -109,5 +101,38 @@ describe('Interface do assistente', () => {
     cy.contains('button', 'Quero começar a correr').click();
     cy.contains('a', 'Tênis Exemplo').should('contain', '150,00').click();
     cy.location('pathname').should('eq', '/produtos/tenis-exemplo');
+  });
+
+  it('destaca apenas o ícone da avaliação selecionada', () => {
+    cy.intercept('POST', '**/customers/me/chat/messages', {
+      body: { id: 9, content: 'Resposta simulada.', products: [] },
+    });
+    cy.intercept('PUT', '**/customers/me/chat/messages/9/feedback', {
+      statusCode: 204,
+    }).as('feedback');
+    cy.get('[aria-label="Abrir assistente coHida"]').click();
+    cy.contains('button', 'Quero começar a correr').click();
+    cy.contains('Resposta simulada.').should('be.visible');
+    cy.get('[aria-label="Resposta útil"]').click();
+    cy.wait('@feedback');
+    cy.get('[aria-label="Resposta útil"]')
+      .should('have.attr', 'aria-pressed', 'true')
+      .find('svg')
+      .should('have.class', 'text-primary');
+    cy.get('[aria-label="Resposta não útil"]')
+      .should('have.attr', 'aria-pressed', 'false')
+      .find('svg')
+      .should('not.have.class', 'text-primary');
+    cy.get('[aria-label="Resposta não útil"]').click();
+    cy.wait('@feedback');
+    cy.get('[aria-label="Resposta não útil"]')
+      .should('have.attr', 'aria-pressed', 'true')
+      .find('svg')
+      .should('have.class', 'text-primary');
+    cy.get('[aria-label="Resposta útil"]')
+      .should('have.attr', 'aria-pressed', 'false')
+      .find('svg')
+      .should('not.have.class', 'text-primary');
+    cy.contains('Avaliação registrada').should('not.exist');
   });
 });

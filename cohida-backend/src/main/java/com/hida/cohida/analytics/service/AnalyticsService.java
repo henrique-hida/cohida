@@ -3,6 +3,7 @@ package com.hida.cohida.analytics.service;
 import com.hida.cohida.analytics.dto.AnalyticsOverviewResponse;
 import com.hida.cohida.analytics.dto.SalesPointResponse;
 import com.hida.cohida.analytics.dto.TopProductResponse;
+import com.hida.cohida.analytics.repository.AnalyticsQueries;
 import com.hida.cohida.order.repository.OrderRepository;
 import com.hida.cohida.returnrequest.repository.ReturnRequestRepository;
 import org.springframework.stereotype.Service;

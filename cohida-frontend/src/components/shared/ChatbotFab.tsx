@@ -7,23 +7,16 @@ import {
   BotMessageSquare,
   SlidersHorizontal,
   Sparkles,
+  MessageSquarePlus,
   X,
 } from 'lucide-react';
-import { useState } from 'react';
 import { Link, useLocation } from 'react-router';
+import { useState } from 'react';
 
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useCommerce } from '@/data/useCommerce';
 import { getSessionRole } from '@/lib/customerApi';
-
-const chatbotSuggestions = [
-  'Quero começar a correr',
-  'Equipamentos para treino?',
-  'Produtos para futebol?',
-  'Itens para trilha?',
-  'Presente para treinar?',
-];
 
 export function ChatbotFab() {
   const { pathname } = useLocation();
@@ -35,7 +28,6 @@ export function ChatbotFab() {
 }
 
 function ChatWindow({ customerId }: { customerId: string | null }) {
-  const [showPreferences, setShowPreferences] = useState(false);
   const [confirmClear, setConfirmClear] = useState(false);
   const {
     isOpen,
@@ -54,9 +46,6 @@ function ChatWindow({ customerId }: { customerId: string | null }) {
     sendMessage,
     clearHistory,
     rate,
-    suggestedInterest,
-    setSuggestedInterest,
-    confirmInterest,
   } = useChat(customerId);
 
   return (
@@ -112,20 +101,8 @@ function ChatWindow({ customerId }: { customerId: string | null }) {
             </p>
           ) : (
             <>
-              <div className='min-h-0 overflow-y-auto' hidden={showPreferences}>
-                {messages.length > 0 && (
-                  <div className='px-3 pt-2 text-right'>
-                    <Button
-                      disabled={busy || loadingPreferences}
-                      onClick={() => setConfirmClear(true)}
-                      size='xs'
-                      type='button'
-                      variant='ghost'
-                    >
-                      Limpar conversa
-                    </Button>
-                  </div>
-                )}
+              <div className='min-h-0 overflow-y-auto'>
+                <ChatProfile />
                 <div aria-live='polite' className='grid gap-3 p-4'>
                   <p
                     className={[
@@ -148,35 +125,6 @@ function ChatWindow({ customerId }: { customerId: string | null }) {
                       onNavigate={() => setIsOpen(false)}
                     />
                   ))}
-                  {suggestedInterest && (
-                    <div
-                      className={[
-                        'rounded-2xl border border-primary/20',
-                        'bg-primary/5 p-3 text-sm',
-                      ].join(' ')}
-                    >
-                      <p>
-                        Quer adicionar {suggestedInterest} aos seus interesses?
-                      </p>
-                      <div className='mt-2 flex gap-2'>
-                        <Button
-                          size='xs'
-                          disabled={busy}
-                          onClick={() => void confirmInterest()}
-                        >
-                          Sim, adicionar
-                        </Button>
-                        <Button
-                          size='xs'
-                          variant='ghost'
-                          disabled={busy}
-                          onClick={() => setSuggestedInterest(null)}
-                        >
-                          Agora não
-                        </Button>
-                      </div>
-                    </div>
-                  )}
                   {busy && (
                     <p className='text-sm text-muted-foreground'>Pensando...</p>
                   )}
@@ -196,10 +144,7 @@ function ChatWindow({ customerId }: { customerId: string | null }) {
                       <Skeleton aria-hidden='true' className='h-6 w-48' />
                     </div>
                   ) : (
-                    (suggestions.length > 0
-                      ? suggestions
-                      : chatbotSuggestions
-                    ).map((suggestion) => (
+                    suggestions.map((suggestion) => (
                       <Button
                         className={[
                           'h-auto max-w-full whitespace-normal',
@@ -228,77 +173,65 @@ function ChatWindow({ customerId }: { customerId: string | null }) {
                   {notice}
                 </p>
               )}
-              <div
-                className='min-h-0 overflow-y-auto'
-                id='chat-preferences'
-                hidden={!showPreferences}
-              >
-                <ChatProfile />
-              </div>
-              {showPreferences ? (
-                <div className='border-t border-border p-3'>
-                  <Button
-                    className='w-full'
-                    onClick={() => setShowPreferences(false)}
-                    size='sm'
-                    type='button'
-                    variant='outline'
-                  >
-                    Voltar ao chat
-                  </Button>
-                </div>
-              ) : (
-                <form
-                  className='flex gap-2 border-t border-border p-3'
-                  onSubmit={(event) => {
-                    event.preventDefault();
-                    void sendMessage();
-                  }}
+              <div className='flex gap-2 border-t border-border px-3 pt-2'>
+                <Button
+                  nativeButton={false}
+                  render={<Link to='/conta?secao=preferences' />}
+                  onClick={() => setIsOpen(false)}
+                  size='xs'
+                  variant='ghost'
+                  aria-label='Preferências de categorias'
                 >
-                  <Button
-                    aria-controls='chat-preferences'
-                    aria-expanded={showPreferences}
-                    aria-label='Preferências esportivas'
-                    onClick={() => setShowPreferences((current) => !current)}
-                    size='icon-sm'
-                    type='button'
-                    variant={showPreferences ? 'secondary' : 'ghost'}
-                  >
-                    <SlidersHorizontal />
-                  </Button>
-                  <input
-                    aria-label='Sua mensagem'
-                    className={[
-                      ['h-9 min-w-0 flex-1 rounded-lg', 'border'].join(' '),
-                      ['border-input bg-background px-3', 'text-sm'].join(' '),
-                      'outline-none focus-visible:ring-3',
-                      'focus-visible:ring-ring/50',
-                    ].join(' ')}
-                    disabled={busy || loadingPreferences}
-                    maxLength={2000}
-                    onChange={(event) => setPrompt(event.target.value)}
-                    placeholder='Digite sua pergunta'
-                    value={prompt}
-                  />
-                  <Button
-                    aria-label='Enviar mensagem'
-                    disabled={busy || loadingPreferences || !prompt.trim()}
-                    size='icon-sm'
-                    type='submit'
-                  >
-                    <ArrowUp />
-                  </Button>
-                </form>
-              )}
+                  <SlidersHorizontal /> Preferências
+                </Button>
+                <Button
+                  disabled={busy || loadingPreferences || !messages.length}
+                  onClick={() => setConfirmClear(true)}
+                  size='xs'
+                  variant='ghost'
+                >
+                  <MessageSquarePlus /> Novo chat
+                </Button>
+              </div>
+              <form
+                className='flex gap-2 p-3 pt-2'
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  void sendMessage();
+                }}
+              >
+                <input
+                  aria-label='Sua mensagem'
+                  className={[
+                    ['h-9 min-w-0 flex-1 rounded-lg', 'border'].join(' '),
+                    ['border-input bg-background px-3', 'text-sm'].join(' '),
+                    'outline-none focus-visible:ring-3',
+                    'focus-visible:ring-ring/50',
+                  ].join(' ')}
+                  disabled={busy || loadingPreferences}
+                  maxLength={2000}
+                  onChange={(event) => setPrompt(event.target.value)}
+                  placeholder='Digite sua pergunta'
+                  value={prompt}
+                />
+                <Button
+                  aria-label='Enviar mensagem'
+                  disabled={busy || loadingPreferences || !prompt.trim()}
+                  size='icon-sm'
+                  type='submit'
+                >
+                  <ArrowUp />
+                </Button>
+              </form>
             </>
           )}
         </section>
       )}
       {confirmClear && (
         <ConfirmDialog
-          title='Limpar conversa?'
-          description='A conversa e suas avaliações serão apagadas.'
-          confirmLabel='Limpar conversa'
+          title='Iniciar novo chat?'
+          description='A conversa atual e suas avaliações serão apagadas.'
+          confirmLabel='Novo chat'
           onCancel={() => setConfirmClear(false)}
           onConfirm={() => {
             setConfirmClear(false);

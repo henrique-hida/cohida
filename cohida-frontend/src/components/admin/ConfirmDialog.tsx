@@ -1,4 +1,5 @@
 import { useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { AlertTriangle, X } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
@@ -24,7 +25,7 @@ export function ConfirmDialog({
     document.addEventListener('keydown', escape);
     return () => document.removeEventListener('keydown', escape);
   }, [onCancel]);
-  return (
+  return createPortal(
     <div
       aria-labelledby='confirm-title'
       aria-modal='true'
@@ -66,6 +67,7 @@ export function ConfirmDialog({
           </Button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

@@ -13,7 +13,8 @@ import com.hida.cohida.account.enums.AccountRole;
 import com.hida.cohida.category.service.CategoryService;
 import com.hida.cohida.cart.service.CartService;
 import com.hida.cohida.cart.service.CartReservationService;
-import com.hida.cohida.chat.ChatService;
+import com.hida.cohida.chat.service.ChatService;
+import com.hida.cohida.category.repository.CategorySuggestionJobStore;
 import com.hida.cohida.cart.repository.CartRepository;
 import com.hida.cohida.category.domain.Category;
 import com.hida.cohida.category.repository.CategoryRepository;
@@ -158,6 +159,9 @@ class CheckoutTransactionTest {
   @Autowired private CategoryService categoryService;
   @Autowired private com.hida.cohida.cache.PublicCategoryCache categoryCache;
   @Autowired private com.hida.cohida.demo.DemoSeederService demoSeeder;
+  @Autowired private com.hida.cohida.category.service.CategorySuggestionService
+      categorySuggestions;
+  @Autowired private CategorySuggestionJobStore suggestionJobs;
   @Autowired private jakarta.persistence.EntityManager entityManager;
   @Autowired private ChatService chat;
   @Autowired private ReturnService returnService;
@@ -507,8 +511,6 @@ class CheckoutTransactionTest {
   }
 
   @Test
-  @EnabledIfEnvironmentVariable(named = "CHECKOUT_TEST_JDBC_URL",
-      matches = "jdbc:postgresql://.*cohida_checkout_test")
   void overviewAndTopAggregateMatchingOrdersWithoutDuplicatingCategories() {
     transactions.executeWithoutResult(transaction -> {
       var customer = customers.findById(customerId).orElseThrow();
@@ -583,6 +585,91 @@ class CheckoutTransactionTest {
       assertTrue(variants.existsBySku("DEMO-RUN-001"));
       transaction.setRollbackOnly();
     });
+  }
+
+  @Test
+  @EnabledIfEnvironmentVariable(named = "CHECKOUT_TEST_JDBC_URL",
+      matches = "jdbc:postgresql://.*cohida_checkout_test")
+  void demoSeedAddsQuestionsWithoutOverwritingAdministratorEdits() {
+    transactions.executeWithoutResult(transaction -> {
+      demoSeeder.seed();
+      var questionCounts = jdbc.queryForList("select count(s.id) "
+          + "from categories c left join category_chat_suggestions s "
+          + "on s.category_id = c.id where c.slug in "
+          + "('football', 'running', 'training', 'outdoor', 'martial-arts') "
+          + "group by c.id order by c.id", Long.class);
+      assertEquals(List.of(4L, 4L, 4L, 4L, 4L), questionCounts);
+      Long runningId = jdbc.queryForObject(
+          "select id from categories where slug = 'running'", Long.class);
+      categorySuggestions.save(runningId, List.of("Pergunta revisada?"));
+
+      demoSeeder.seed();
+
+      assertEquals(List.of("Pergunta revisada?"),
+          categorySuggestions.details(runningId).questions());
+      verifyNoInteractions(chatModel);
+      transaction.setRollbackOnly();
+    });
+  }
+
+  @Test
+  @EnabledIfEnvironmentVariable(named = "CHECKOUT_TEST_JDBC_URL",
+      matches = "jdbc:postgresql://.*cohida_checkout_test")
+  void categoryJobCannotOverwriteAnAdministratorEdit() {
+    var category = transactions.execute(transaction -> {
+      jdbc.update("update category_suggestion_jobs set status = 'EDITED'");
+      return categoryService.create(
+          new com.hida.cohida.category.dto.CategoryRequest(
+              "Fila " + UUID.randomUUID(), "Categoria de teste"));
+    });
+    var claimed = transactions.execute(transaction -> suggestionJobs.claim());
+    assertNotNull(claimed);
+    assertEquals(category.getId(), claimed.id());
+
+    transactions.executeWithoutResult(transaction ->
+        categorySuggestions.save(category.getId(), List.of("Editada?")));
+    var completed = transactions.execute(transaction ->
+        suggestionJobs.complete(claimed));
+
+    assertEquals(false, completed);
+    assertEquals(List.of("Editada?"),
+        categorySuggestions.details(category.getId()).questions());
+    verifyNoInteractions(chatModel);
+  }
+
+  @Test
+  @EnabledIfEnvironmentVariable(named = "CHECKOUT_TEST_JDBC_URL",
+      matches = "jdbc:postgresql://.*cohida_checkout_test")
+  void categoryJobsCompleteOrFailOnlyWithTheClaimedToken() {
+    var category = transactions.execute(transaction -> {
+      jdbc.update("update category_suggestion_jobs set status = 'EDITED'");
+      return categoryService.create(
+          new com.hida.cohida.category.dto.CategoryRequest(
+              "Fila " + UUID.randomUUID(), "Categoria de teste"));
+    });
+    var claimed = transactions.execute(transaction -> suggestionJobs.claim());
+    assertNotNull(claimed);
+    assertEquals(category.getId(), claimed.id());
+    var stale = new CategorySuggestionJobStore.Job(claimed.id(),
+        claimed.name(), claimed.description(), UUID.randomUUID());
+    suggestionJobs.fail(stale);
+    assertEquals("PROCESSING", categorySuggestions.details(claimed.id())
+        .status());
+    Boolean completed = transactions.execute(transaction ->
+        suggestionJobs.complete(claimed));
+    assertEquals(Boolean.TRUE, completed);
+    assertEquals("COMPLETED", categorySuggestions.details(claimed.id())
+        .status());
+
+    var failedCategory = transactions.execute(transaction ->
+        categoryService.create(
+            new com.hida.cohida.category.dto.CategoryRequest(
+                "Fila " + UUID.randomUUID(), "Categoria de teste")));
+    var failed = transactions.execute(transaction -> suggestionJobs.claim());
+    assertNotNull(failed);
+    assertEquals(failedCategory.getId(), failed.id());
+    suggestionJobs.fail(failed);
+    assertEquals("FAILED", categorySuggestions.details(failed.id()).status());
   }
 
   @Test
@@ -939,7 +1026,7 @@ class CheckoutTransactionTest {
         });
     try (var executor = Executors.newSingleThreadExecutor()) {
       var result = executor.submit(() -> chat.respond(customerId,
-          new com.hida.cohida.chat.ChatController.ChatRequest("Olá", null)));
+          new com.hida.cohida.chat.dto.ChatDtos.ChatRequest("Olá", null)));
       assertTrue(started.await(10, TimeUnit.SECONDS));
       try {
         chat.clearHistory(customerId);
@@ -957,33 +1044,34 @@ class CheckoutTransactionTest {
   @Test
   @EnabledIfEnvironmentVariable(named = "CHECKOUT_TEST_JDBC_URL",
       matches = "jdbc:postgresql://.*cohida_checkout_test")
-  void preferenceChangesInvalidateSuggestionsGeneratedInFlight()
+  void clearingPreferencesDuringGenerationDoesNotRestoreInterests()
       throws Exception {
-    chat.savePreferences(customerId, "Judô");
     var started = new CountDownLatch(1);
     var release = new CountDownLatch(1);
     when(chatModel.call(any(org.springframework.ai.chat.prompt.Prompt.class)))
         .thenAnswer(invocation -> {
-          assertFalse(TransactionSynchronizationManager
-              .isActualTransactionActive());
           started.countDown();
           assertTrue(release.await(10, TimeUnit.SECONDS));
           return new org.springframework.ai.chat.model.ChatResponse(List.of(
               new org.springframework.ai.chat.model.Generation(
                   new org.springframework.ai.chat.messages.AssistantMessage(
-                      "{\"questions\":[\"Qual judogi escolher?\"]}"))));
+                      "{\"content\":\"Olá\",\"productSlugs\":[],"
+                          + "\"categoryIds\":[" + categoryId + "]}"))));
         });
+    chat.saveCategoryInterests(customerId, List.of(
+        new com.hida.cohida.chat.dto.ChatDtos.CategoryInterest(
+            categoryId, "Teste", "Iniciante")));
     try (var executor = Executors.newSingleThreadExecutor()) {
-      var result = executor.submit(() -> chat.generateSuggestions(customerId));
+      var result = executor.submit(() -> chat.respond(customerId,
+          new com.hida.cohida.chat.dto.ChatDtos.ChatRequest("Olá", null)));
       assertTrue(started.await(10, TimeUnit.SECONDS));
       try {
-        chat.savePreferences(customerId, "Corrida");
-        chat.savePreferences(customerId, "Judô");
+        chat.clearCategoryInterests(customerId);
       } finally {
         release.countDown();
       }
-      assertTrue(result.get(10, TimeUnit.SECONDS).questions().isEmpty());
-      assertTrue(chat.suggestions(customerId).isEmpty());
+      assertNull(result.get(10, TimeUnit.SECONDS).suggestedInterest());
+      assertTrue(chat.categoryInterests(customerId).isEmpty());
     }
   }
 

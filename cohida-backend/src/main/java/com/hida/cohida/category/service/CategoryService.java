@@ -9,6 +9,8 @@ import com.hida.cohida.category.domain.Category;
 import com.hida.cohida.category.dto.CategoryRequest;
 import com.hida.cohida.category.repository.CategoryRepository;
 import org.springframework.stereotype.Service;
+import com.hida.cohida.category.domain.CategorySuggestionJob;
+import com.hida.cohida.category.repository.CategorySuggestionJobRepository;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.text.Normalizer;
@@ -19,11 +21,14 @@ import java.util.Locale;
 public class CategoryService {
   private final CategoryRepository categories;
   private final PublicCategoryCache cache;
+  private final CategorySuggestionJobRepository jobs;
 
   public CategoryService(
-      CategoryRepository categories, PublicCategoryCache cache) {
+      CategoryRepository categories, PublicCategoryCache cache,
+      CategorySuggestionJobRepository jobs) {
     this.categories = categories;
     this.cache = cache;
+    this.jobs = jobs;
   }
 
   @Transactional(readOnly = true)
@@ -39,6 +44,7 @@ public class CategoryService {
       throw new ConflictException("Já existe uma categoria com esse nome.");
     Category category = categories.save(
         new Category(slug, name, description(request)));
+    jobs.save(new CategorySuggestionJob(category.getId()));
     invalidateAfterCommit();
     return category;
   }
@@ -48,6 +54,7 @@ public class CategoryService {
     Category category = find(id);
     category.update(requiredName(request), description(request));
     categories.save(category);
+    jobs.lockByCategoryId(id).ifPresent(CategorySuggestionJob::refreshPending);
     invalidateAfterCommit();
     return category;
   }

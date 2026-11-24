@@ -1,6 +1,6 @@
 import { AdminPage } from '@/components/admin/AdminPage';
 
-import { useEffect, useState, type FormEvent } from 'react';
+import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { ChevronLeft } from 'lucide-react';
 import { Link, useNavigate, useParams } from 'react-router';
 
@@ -8,6 +8,7 @@ import { AdminDataState } from '@/components/admin/AdminDataState';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { commerceApi } from '@/lib/commerceApi';
+import { apiRequest } from '@/lib/customerApi';
 
 function AdminCategoryFormPageContent() {
   const { id } = useParams();
@@ -21,6 +22,10 @@ function AdminCategoryFormPageContent() {
   const [loading, setLoading] = useState(isEditing && !invalidId);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const [questions, setQuestions] = useState<string[]>([]);
+  const [questionStatus, setQuestionStatus] = useState('');
+  const [questionSaving, setQuestionSaving] = useState(false);
+  const questionsDirty = useRef(false);
 
   useEffect(() => {
     if (!id) return;
@@ -56,6 +61,76 @@ function AdminCategoryFormPageContent() {
     };
   }, [categoryId, id, invalidId]);
 
+  useEffect(() => {
+    if (!categoryId || invalidId) return;
+    let active = true;
+    async function loadQuestions() {
+      try {
+        const result = await apiRequest<{
+          status: string;
+          questions: string[];
+        }>(`/admin/categories/${categoryId}/chat-suggestions`);
+        if (!active) return;
+        setQuestionStatus(result.status);
+        setQuestions((current) =>
+          questionsDirty.current ||
+          result.status === 'PENDING' ||
+          result.status === 'PROCESSING'
+            ? current
+            : result.questions,
+        );
+      } catch {
+        if (active) setError('Não foi possível carregar as perguntas.');
+      }
+    }
+    void loadQuestions();
+    const timer = window.setInterval(() => {
+      if (questionStatus === 'PENDING' || questionStatus === 'PROCESSING') {
+        void loadQuestions();
+      }
+    }, 4000);
+    return () => {
+      active = false;
+      window.clearInterval(timer);
+    };
+  }, [categoryId, invalidId, questionStatus]);
+
+  async function saveQuestions() {
+    if (!categoryId) return;
+    setQuestionSaving(true);
+    setError('');
+    try {
+      const result = await apiRequest<{ status: string; questions: string[] }>(
+        `/admin/categories/${categoryId}/chat-suggestions`,
+        { method: 'PUT', body: JSON.stringify({ questions }) },
+      );
+      questionsDirty.current = false;
+      setQuestionStatus(result.status);
+      setQuestions(result.questions);
+    } catch {
+      setError('Não foi possível salvar as perguntas.');
+    } finally {
+      setQuestionSaving(false);
+    }
+  }
+
+  async function retryQuestions() {
+    if (!categoryId) return;
+    setQuestionSaving(true);
+    setError('');
+    try {
+      await apiRequest<void>(
+        `/admin/categories/${categoryId}/chat-suggestions/retry`,
+        { method: 'POST' },
+      );
+      setQuestionStatus('PENDING');
+    } catch {
+      setError('Não foi possível solicitar a geração das perguntas.');
+    } finally {
+      setQuestionSaving(false);
+    }
+  }
+
   async function save(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setSaving(true);
@@ -68,7 +143,9 @@ function AdminCategoryFormPageContent() {
       if (categoryId !== null) {
         await commerceApi.updateCategory(categoryId, category);
       } else {
-        await commerceApi.createCategory(category);
+        const created = await commerceApi.createCategory(category);
+        navigate(`/admin/administracao/${created.id}/editar`);
+        return;
       }
       navigate('/admin/administracao');
     } catch (reason) {
@@ -126,6 +203,95 @@ function AdminCategoryFormPageContent() {
                   value={description}
                 />
               </label>
+              {isEditing && (
+                <section className='grid gap-3'>
+                  <h2 className='font-medium'>Perguntas sugeridas no chat</h2>
+                  {(questionStatus === 'PENDING' ||
+                    questionStatus === 'PROCESSING') && (
+                    <p className='text-sm'>Preparando perguntas...</p>
+                  )}
+                  {questionStatus === 'FAILED' && (
+                    <div className='flex flex-wrap items-center gap-2'>
+                      <p className='text-sm'>
+                        Não foi possível gerar perguntas.
+                      </p>
+                      <Button
+                        disabled={questionSaving}
+                        size='sm'
+                        type='button'
+                        variant='outline'
+                        onClick={() => void retryQuestions()}
+                      >
+                        Tentar novamente
+                      </Button>
+                    </div>
+                  )}
+                  {questions.map((question, index) => (
+                    <div className='grid gap-1 text-sm' key={index}>
+                      <label htmlFor={`question-${index}`}>
+                        Pergunta {index + 1}
+                      </label>
+                      <div className='flex gap-2'>
+                        <input
+                          id={`question-${index}`}
+                          className={[
+                            'h-10 min-w-0 flex-1 rounded-lg border',
+                            'border-input bg-background px-3',
+                          ].join(' ')}
+                          maxLength={240}
+                          value={question}
+                          onChange={(event) => {
+                            questionsDirty.current = true;
+                            setQuestions((current) =>
+                              current.map((item, position) =>
+                                position === index ? event.target.value : item,
+                              ),
+                            );
+                          }}
+                        />
+                        <Button
+                          aria-label={`Remover pergunta ${index + 1}`}
+                          type='button'
+                          variant='outline'
+                          onClick={() => {
+                            questionsDirty.current = true;
+                            setQuestions((current) =>
+                              current.filter(
+                                (_, position) => position !== index,
+                              ),
+                            );
+                          }}
+                        >
+                          Remover
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                  {questions.length < 4 && (
+                    <Button
+                      size='sm'
+                      type='button'
+                      variant='outline'
+                      onClick={() => {
+                        questionsDirty.current = true;
+                        setQuestions((current) => [...current, '']);
+                      }}
+                    >
+                      Adicionar pergunta
+                    </Button>
+                  )}
+                  <Button
+                    disabled={
+                      questionSaving || questions.some((q) => !q.trim())
+                    }
+                    size='sm'
+                    type='button'
+                    onClick={() => void saveQuestions()}
+                  >
+                    Salvar perguntas
+                  </Button>
+                </section>
+              )}
               <div className='flex flex-wrap gap-2'>
                 <Button disabled={saving} type='submit'>
                   {saving

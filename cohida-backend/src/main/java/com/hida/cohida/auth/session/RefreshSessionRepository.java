@@ -19,4 +19,13 @@ public interface RefreshSessionRepository
       + "where s.account.id = :accountId and s.revokedAt is null")
   int revokeAccount(@Param("accountId") Long accountId,
       @Param("now") java.time.LocalDateTime now);
+
+  @Modifying
+  @Query(value = """
+      delete from auth_sessions where id in (
+        select id from auth_sessions
+        where expires_at < :cutoff or revoked_at < :cutoff
+        order by expires_at limit 500 for update skip locked)
+      """, nativeQuery = true)
+  int deleteExpiredBatch(@Param("cutoff") java.time.LocalDateTime cutoff);
 }

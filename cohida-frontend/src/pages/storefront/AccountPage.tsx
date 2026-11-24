@@ -22,6 +22,7 @@ import {
 } from '@/components/customer/account/AccountAddresses';
 import { AccountCards } from '@/components/customer/account/AccountCards';
 import { AccountProfile } from '@/components/customer/account/AccountProfile';
+import { ChatPreferences } from '@/components/customer/account/ChatPreferences';
 
 function AccountPageContent() {
   const {
@@ -50,6 +51,7 @@ function AccountPageContent() {
     'coupons',
     'exchanges',
     'orders',
+    'preferences',
     'profile',
   ];
   const activeSection = validSections.includes(
@@ -161,6 +163,7 @@ function AccountPageContent() {
             {activeSection === 'orders' ? <OrdersSection /> : null}
             {activeSection === 'coupons' ? <CouponsSection /> : null}
             {activeSection === 'exchanges' ? <ExchangesSection /> : null}
+            {activeSection === 'preferences' ? <ChatPreferences /> : null}
           </section>
         </div>
       </>

@@ -1,6 +1,7 @@
 package com.hida.cohida.demo;
 
 import com.hida.cohida.category.repository.CategoryRepository;
+import com.hida.cohida.category.repository.CategoryDemoSuggestionStore;
 import com.hida.cohida.coupon.dto.CouponUpsertRequest;
 import com.hida.cohida.coupon.repository.CouponRepository;
 import com.hida.cohida.coupon.service.CouponService;
@@ -33,6 +34,7 @@ public class DemoSeederService {
   private final OrderRepository orders;
   private final ProductReviewRepository productReviews;
   private final DemoOrderSeeder orderSeeder;
+  private final CategoryDemoSuggestionStore demoSuggestions;
 
   public DemoSeederService(
       ProductService p,
@@ -42,7 +44,8 @@ public class DemoSeederService {
       CouponRepository cr,
       OrderRepository or,
       DemoOrderSeeder orderSeeder,
-      ProductReviewRepository productReviews) {
+      ProductReviewRepository productReviews,
+      CategoryDemoSuggestionStore demoSuggestions) {
     products = p;
     productRepo = pr;
     this.categoryRepo = categoryRepo;
@@ -51,10 +54,12 @@ public class DemoSeederService {
     orders = or;
     this.orderSeeder = orderSeeder;
     this.productReviews = productReviews;
+    this.demoSuggestions = demoSuggestions;
   }
 
   @Transactional
   public Map<String, Integer> seed() {
+    seedChatSuggestions();
     Map<String, Product> productsBySku = new HashMap<>();
     for (Product product : demoCatalogProducts()) {
       String cleanName = cleanProductName(product.getName());
@@ -159,6 +164,10 @@ public class DemoSeederService {
         couponRepo.findByCodeStartingWith("DEMO-").size(),
         "orders",
         (int) orders.count());
+  }
+
+  private void seedChatSuggestions() {
+    DemoChatFixtures.suggestions().forEach(demoSuggestions::seed);
   }
 
   @Transactional(readOnly = true)

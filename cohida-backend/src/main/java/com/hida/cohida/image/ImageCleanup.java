@@ -1,12 +1,12 @@
 package com.hida.cohida.image;
 
 import com.hida.cohida.storage.S3ObjectStorage;
+import com.hida.cohida.product.repository.ProductRepository;
 import java.time.Duration;
 import java.time.Instant;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnExpression;
-import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
@@ -18,15 +18,15 @@ public class ImageCleanup {
   private static final Duration RETENTION = Duration.ofDays(7);
   private final S3ObjectStorage storage;
   private final ImageJobRepository jobs;
-  private final JdbcTemplate jdbc;
+  private final ProductRepository products;
   private String pendingCursor;
   private String outputCursor;
 
   public ImageCleanup(S3ObjectStorage storage, ImageJobRepository jobs,
-      JdbcTemplate jdbc) {
+      ProductRepository products) {
     this.storage = storage;
     this.jobs = jobs;
-    this.jdbc = jdbc;
+    this.products = products;
   }
 
   @Scheduled(initialDelayString = "${cohida.image.cleanup.delay-ms:3600000}",
@@ -57,9 +57,6 @@ public class ImageCleanup {
   }
 
   private boolean referenced(String id) {
-    Long count = jdbc.queryForObject(
-        "select count(*) from products where image_url = ?", Long.class,
-        "/api/products/images/" + id + ".webp");
-    return count != null && count > 0;
+    return products.existsByImageUrl("/api/products/images/" + id + ".webp");
   }
 }

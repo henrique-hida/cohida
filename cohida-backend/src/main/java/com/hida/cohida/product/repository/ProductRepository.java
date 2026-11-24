@@ -25,5 +25,7 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
 
   boolean existsBySlug(String slug);
 
+  boolean existsByImageUrl(String imageUrl);
+
   List<Product> findByNameStartingWith(String name);
 }

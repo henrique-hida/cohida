@@ -3,6 +3,7 @@ import {
   MapPin,
   Package,
   Repeat2,
+  SlidersHorizontal,
   Ticket,
   UserRound,
 } from 'lucide-react';
@@ -10,7 +11,13 @@ import {
 import { Button } from '@/components/ui/button';
 
 export type CustomerAccountSection =
-  'addresses' | 'cards' | 'coupons' | 'exchanges' | 'orders' | 'profile';
+  | 'addresses'
+  | 'cards'
+  | 'coupons'
+  | 'exchanges'
+  | 'orders'
+  | 'profile'
+  | 'preferences';
 
 const sections: {
   icon: typeof UserRound;
@@ -27,6 +34,7 @@ const sections: {
     id: 'exchanges',
     label: 'Trocas e devoluções',
   },
+  { icon: SlidersHorizontal, id: 'preferences', label: 'Preferências do chat' },
 ];
 
 interface CustomerAccountSidebarProps {

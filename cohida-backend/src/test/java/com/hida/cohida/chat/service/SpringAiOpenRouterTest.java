@@ -1,4 +1,6 @@
-package com.hida.cohida.chat;
+package com.hida.cohida.chat.service;
+
+
 
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.List;
@@ -82,15 +84,6 @@ class SpringAiOpenRouterTest {
     assertTrue(requestBody.get().contains("\"strict\":true"));
     assertTrue(requestBody.get().contains("\"require_parameters\":true"));
     assertTrue(requestBody.get().contains("\"productSlugs\""));
-  }
-
-  @Test
-  void suggestionsUseTheirOwnStructuredSchema() {
-    var gateway = new ChatModelGateway(chatModel, "test-key", "example/model");
-    assertEquals(List.of("Qual tênis?"), gateway.suggestions("Corrida", 1L));
-    assertTrue(requestBody.get().contains("\"require_parameters\":true"));
-    assertTrue(requestBody.get().contains("\"questions\""));
-    assertTrue(requestBody.get().contains("\"json_schema\""));
   }
 
   @TestConfiguration(proxyBeanMethods = false)

@@ -4,20 +4,20 @@ import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
 import com.hida.cohida.storage.S3ObjectStorage;
+import com.hida.cohida.product.repository.ProductRepository;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
-import org.springframework.jdbc.core.JdbcTemplate;
 
 class ImageCleanupTest {
   @Test
   void removesOnlyOldUnreferencedCompletedOrOrphanedObjects() {
     var storage = mock(S3ObjectStorage.class);
     var jobs = mock(ImageJobRepository.class);
-    var jdbc = mock(JdbcTemplate.class);
-    var cleanup = new ImageCleanup(storage, jobs, jdbc);
+    var products = mock(ProductRepository.class);
+    var cleanup = new ImageCleanup(storage, jobs, products);
     String old = "00000000-0000-0000-0000-000000000001";
     String active = "00000000-0000-0000-0000-000000000002";
     String referenced = "00000000-0000-0000-0000-000000000003";
@@ -39,10 +39,8 @@ class ImageCleanupTest {
                 "products/" + old + ".webp", expired),
             new S3ObjectStorage.StoredObject(
                 "products/" + referenced + ".webp", expired)), null));
-    when(jdbc.queryForObject(anyString(), eq(Long.class),
-        eq("/api/products/images/" + old + ".webp"))).thenReturn(0L);
-    when(jdbc.queryForObject(anyString(), eq(Long.class),
-        eq("/api/products/images/" + referenced + ".webp"))).thenReturn(1L);
+    when(products.existsByImageUrl(
+        "/api/products/images/" + referenced + ".webp")).thenReturn(true);
 
     cleanup.clean();
 

@@ -107,22 +107,27 @@ export function ChatMessageItem({
             aria-pressed={message.useful === true}
             onClick={() => void rate(message.id!, true)}
             size='icon-sm'
-            variant={message.useful === true ? 'secondary' : 'ghost'}
+            variant='ghost'
           >
-            <ThumbsUp />
+            <ThumbsUp
+              className={
+                message.useful === true
+                  ? 'fill-current text-primary'
+                  : undefined
+              }
+            />
           </Button>
           <Button
             aria-label='Resposta não útil'
             aria-pressed={message.useful === false}
             onClick={() => void rate(message.id!, false)}
             size='icon-sm'
-            variant={message.useful === false ? 'secondary' : 'ghost'}
+            variant='ghost'
           >
-            <ThumbsDown />
+            <ThumbsDown
+              className={message.useful === false ? 'text-primary' : undefined}
+            />
           </Button>
-          {message.useful !== undefined && (
-            <span className='text-xs'>Avaliação registrada</span>
-          )}
         </div>
       )}
     </div>
